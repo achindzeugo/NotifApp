@@ -1,65 +1,226 @@
-@model NotifApps.Models.Group
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
+using NotifApps.Models;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
 
-@{
-    ViewData["Title"] = "Modifier le groupe";
-    var utilisateursWithService = ViewBag.UtilisateursWithService as List<SelectListItem>;
-}
+namespace NotifApps.Controllers
+{
+    public class GroupController : Controller
+    {
+        private readonly NotifdbContext _context;
 
-<div class="container mt-5">
-    <div class="card">
-        <div class="card-header bg-primary text-white">
-            <h2>@ViewData["Title"]</h2>
-        </div>
-        <div class="card-body">
-            <form asp-action="GroupEdit">
-                <div class="form-group">
-                    <label asp-for="GroupNom" class="control-label"></label>
-                    <input asp-for="GroupNom" class="form-control" placeholder="Nom du groupe" />
-                    <span asp-validation-for="GroupNom" class="text-danger"></span>
-                </div>
-                <div class="form-group">
-                    <label for="serviceInput" class="control-label">Service</label>
-                    <input type="text" id="serviceInput" class="form-control" placeholder="Filtrer par service" />
-                </div>
-                <div class="form-group">
-                    <label>Utilisateurs</label>
-                    @Html.DropDownListFor(model => model.SelectedUtilisateurs,
-                        new MultiSelectList(
-                            utilisateursWithService,
-                            "Value",
-                            "Text",
-                            Model.GroupUtilisateurs.Select(gu => gu.UtilisateurId.ToString())),
-                        new { @class = "form-control", multiple = "multiple" })
-                </div>
-                <div class="form-group">
-                    <input type="submit" value="Enregistrer" class="btn btn-primary" />
-                </div>
-            </form>
-            <form asp-action="GroupDelete" method="post" class="mt-3">
-                <input type="hidden" asp-for="GroupId" />
-                <input type="submit" value="Supprimer" class="btn btn-danger" />
-            </form>
-        </div>
-        <div class="card-footer">
-            <a asp-action="GroupList" class="btn btn-secondary">Retour à la liste</a>
-        </div>
-    </div>
-</div>
+        public GroupController(NotifdbContext context)
+        {
+            _context = context;
+        }
 
-@section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
-    <script>
-        // Script pour filtrer les utilisateurs en fonction du service
-        document.getElementById('serviceInput').addEventListener('input', function () {
-            var service = this.value.toLowerCase();
-            var options = document.querySelectorAll('select[name="SelectedUtilisateurs"] option');
-            options.forEach(function (option) {
-                if (option.getAttribute('data-service').toLowerCase().includes(service)) {
-                    option.style.display = '';
-                } else {
-                    option.style.display = 'none';
+        // GET: Group/Create
+        public IActionResult GroupCreate()
+        {
+            var utilisateurs = _context.Utilisateurs.Select(u => new
+            {
+                u.UtilisateurId,
+                u.Nom,
+                u.Service
+            }).ToList();
+
+            ViewBag.Utilisateurs = new SelectList(utilisateurs, "UtilisateurId", "Nom");
+            ViewBag.UtilisateursWithService = utilisateurs.Select(u => new SelectListItem
+            {
+                Value = u.UtilisateurId.ToString(),
+                Text = u.Nom,
+                Group = new SelectListGroup { Name = u.Service }
+            }).ToList();
+
+            return View();
+        }
+
+        // POST: Group/Create
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> GroupCreate([Bind("GroupNom,SelectedUtilisateurs")] Group group)
+        {
+            if (ModelState.IsValid)
+            {
+                _context.Add(group);
+                await _context.SaveChangesAsync();
+
+                // Ajouter les utilisateurs sélectionnés au groupe
+                foreach (var utilisateurId in group.SelectedUtilisateurs)
+                {
+                    var groupUtilisateur = new GroupUtilisateur
+                    {
+                        GroupId = group.GroupId,
+                        UtilisateurId = utilisateurId
+                    };
+                    _context.GroupUtilisateurs.Add(groupUtilisateur);
+                    Console.WriteLine($"Ajout de l'utilisateur {utilisateurId} au groupe {group.GroupId}");
                 }
-            });
-        });
-    </script>
+                await _context.SaveChangesAsync();
+
+                return RedirectToAction(nameof(GroupList));
+            }
+
+            var utilisateurs = _context.Utilisateurs.Select(u => new
+            {
+                u.UtilisateurId,
+                u.Nom,
+                u.Service
+            }).ToList();
+
+            ViewBag.Utilisateurs = new SelectList(utilisateurs, "UtilisateurId", "Nom");
+            ViewBag.UtilisateursWithService = utilisateurs.Select(u => new SelectListItem
+            {
+                Value = u.UtilisateurId.ToString(),
+                Text = u.Nom,
+                Group = new SelectListGroup { Name = u.Service }
+            }).ToList();
+
+            return View(group);
+        }
+
+        // GET: Group
+        public async Task<IActionResult> GroupList()
+        {
+            return View(await _context.Groups.ToListAsync());
+        }
+
+        // GET: Group/Edit/5
+        public async Task<IActionResult> GroupEdit(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var group = await _context.Groups
+                .Include(g => g.GroupUtilisateurs)
+                .FirstOrDefaultAsync(m => m.GroupId == id);
+            if (group == null)
+            {
+                return NotFound();
+            }
+
+            var utilisateurs = _context.Utilisateurs.Select(u => new
+            {
+                u.UtilisateurId,
+                u.Nom,
+                u.Service
+            }).ToList();
+
+            ViewBag.Utilisateurs = new SelectList(utilisateurs, "UtilisateurId", "Nom");
+            ViewBag.UtilisateursWithService = utilisateurs.Select(u => new SelectListItem
+            {
+                Value = u.UtilisateurId.ToString(),
+                Text = u.Nom,
+                Group = new SelectListGroup { Name = u.Service }
+            }).ToList();
+
+            group.SelectedUtilisateurs = group.GroupUtilisateurs.Select(gu => gu.UtilisateurId).ToList();
+
+            return View(group);
+        }
+
+        // POST: Group/Edit/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> GroupEdit(int id, [Bind("GroupId,GroupNom,SelectedUtilisateurs")] Group group)
+        {
+            if (id != group.GroupId)
+            {
+                return NotFound();
+            }
+
+            if (ModelState.IsValid)
+            {
+                try
+                {
+                    _context.Update(group);
+                    await _context.SaveChangesAsync();
+
+                    // Mettre à jour les utilisateurs du groupe
+                    var existingGroupUtilisateurs = _context.GroupUtilisateurs.Where(gu => gu.GroupId == group.GroupId).ToList();
+                    _context.GroupUtilisateurs.RemoveRange(existingGroupUtilisateurs);
+
+                    foreach (var utilisateurId in group.SelectedUtilisateurs)
+                    {
+                        var groupUtilisateur = new GroupUtilisateur
+                        {
+                            GroupId = group.GroupId,
+                            UtilisateurId = utilisateurId
+                        };
+                        _context.GroupUtilisateurs.Add(groupUtilisateur);
+                        Console.WriteLine($"Ajout de l'utilisateur {utilisateurId} au groupe {group.GroupId}");
+                    }
+                    await _context.SaveChangesAsync();
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    if (!GroupExists(group.GroupId))
+                    {
+                        return NotFound();
+                    }
+                    else
+                    {
+                        throw;
+                    }
+                }
+                return RedirectToAction(nameof(GroupList));
+            }
+
+            var utilisateurs = _context.Utilisateurs.Select(u => new
+            {
+                u.UtilisateurId,
+                u.Nom,
+                u.Service
+            }).ToList();
+
+            ViewBag.Utilisateurs = new SelectList(utilisateurs, "UtilisateurId", "Nom");
+            ViewBag.UtilisateursWithService = utilisateurs.Select(u => new SelectListItem
+            {
+                Value = u.UtilisateurId.ToString(),
+                Text = u.Nom,
+                Group = new SelectListGroup { Name = u.Service }
+            }).ToList();
+
+            return View(group);
+        }
+
+        // GET: Group/Delete/5
+        public async Task<IActionResult> GroupDelete(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var group = await _context.Groups
+                .FirstOrDefaultAsync(m => m.GroupId == id);
+            if (group == null)
+            {
+                return NotFound();
+            }
+
+            return View(group);
+        }
+
+        // POST: Group/Delete/5
+        [HttpPost, ActionName("GroupDelete")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> GroupDeleteConfirmed(int id)
+        {
+            var group = await _context.Groups.FindAsync(id);
+            _context.Groups.Remove(group);
+            await _context.SaveChangesAsync();
+            return RedirectToAction(nameof(GroupList));
+        }
+
+        private bool GroupExists(int id)
+        {
+            return _context.Groups.Any(e => e.GroupId == id);
+        }
+    }
 }
