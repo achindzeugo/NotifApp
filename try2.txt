@@ -196,16 +196,44 @@ namespace NotifApps.Controllers
         <input asp-for="Statut" class="form-control" />
     </div>
 
-    <!-- Pre-populate addresses -->
+    <!-- Addresses section -->
+    <h3>Addresses</h3>
     <div id="address-container">
         @for (int i = 0; i < Model.Addresses.Count; i++)
         {
             <div class="form-group">
                 <label>Type of Address</label>
-                <input type="text" name="addresses[@i].Type" class="form-control" value="@Model.Addresses[i].Type" />
+                <!-- Corrected indexation -->
+                <input type="text" name="addresses[@(i)].Type" class="form-control" value="@Model.Addresses[i].Type" />
                 <label>Address Value</label>
-                <input type="text" name="addresses[@i].Value" class="form-control" value="@Model.Addresses[i].Value" />
+                <input type="text" name="addresses[@(i)].Value" class="form-control" value="@Model.Addresses[i].Value" />
             </div>
         }
     </div>
-    <button type="button" id="addAddressBtn
+
+    <!-- Button to add additional addresses dynamically -->
+    <button type="button" id="addAddressBtn" class="btn btn-secondary">Add Another Address</button>
+
+    <div class="form-group">
+        <input type="submit" value="Save Changes" class="btn btn-primary" />
+    </div>
+</form>
+
+@section Scripts {
+    <script>
+        let addressIndex = @Model.Addresses.Count;
+        document.getElementById('addAddressBtn').addEventListener('click', function () {
+            const container = document.getElementById('address-container');
+            const newAddressHtml = `
+                <div class="form-group">
+                    <label>Type of Address</label>
+                    <input type="text" name="addresses[${addressIndex}].Type" class="form-control" />
+                    <label>Address Value</label>
+                    <input type="text" name="addresses[${addressIndex}].Value" class="form-control" />
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', newAddressHtml);
+            addressIndex++;
+        });
+    </script>
+}
