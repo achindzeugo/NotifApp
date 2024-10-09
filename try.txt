@@ -1,0 +1,138 @@
+CREATE TABLE Applicatif (
+    App_ID INT PRIMARY KEY IDENTITY(1,1),
+    App_nom VARCHAR(255),
+    Descriptif NVARCHAR(255),
+    Lien_Web NVARCHAR(255),
+    Statut NVARCHAR(50)
+);
+
+voici son modele
+
+using System;
+using System.Collections.Generic;
+
+#nullable disable
+
+namespace NotifApps.Models
+{
+    public partial class Applicatif
+    {
+        public Applicatif()
+        {
+            ApplicationGroups = new HashSet<ApplicationGroup>();
+            ApplicationIncidents = new HashSet<ApplicationIncident>();
+            Addresses = new HashSet<Address>();
+        }
+
+        public int App_ID { get; set; }
+        public string App_nom { get; set; }
+        public string Descriptif { get; set; }
+        public string Lien_Web { get; set; }
+        public string Statut { get; set; }
+
+        public virtual ICollection<ApplicationGroup> ApplicationGroups { get; set; }
+        public virtual ICollection<ApplicationIncident> ApplicationIncidents { get; set; }
+        public virtual ICollection<Address> Addresses { get; set; }
+    }
+}
+
+table address
+
+CREATE TABLE Address (
+    AddressId INT IDENTITY(1,1) PRIMARY KEY,
+    App_ID INT,
+    Type NVARCHAR(50),
+    Value NVARCHAR(255),
+    FOREIGN KEY (App_ID) REFERENCES Applicatif(App_ID)
+);
+
+voici son model 
+
+using System;
+
+#nullable disable
+
+namespace NotifApps.Models
+{
+    public partial class Address
+    {
+        public int AddressId { get; set; }
+        public int App_ID { get; set; }
+        public string Type { get; set; }
+        public string Value { get; set; }
+
+        public virtual Applicatif Applicatif { get; set; }
+    }
+}
+
+voici leur apparition dans le dbcontext 
+
+public virtual DbSet<Applicatif> Applicatifs { get; set; }
+
+ public virtual DbSet<Address> Addresses { get; set; }
+
+leur section de model builder 
+
+modelBuilder.Entity<Applicatif>(entity =>
+            {
+                entity.HasKey(e => e.App_ID)
+                    .HasName("PK__APPLICAT__E976DDB0E913A6CF");
+
+                entity.ToTable("APPLICATIF");
+
+                entity.Property(e => e.App_ID).HasColumnName("App_ID");
+
+                entity.Property(e => e.App_nom)
+                    .HasMaxLength(255)
+                    .IsUnicode(false)
+                    .HasColumnName("App_nom");
+
+                entity.Property(e => e.Descriptif)
+                    .HasMaxLength(255)
+                    .IsUnicode(false)
+                    .HasColumnName("descriptif");
+
+                entity.Property(e => e.Lien_Web)
+                    .HasMaxLength(255)
+                    .IsUnicode(false)
+                    .HasColumnName("lien_web");
+
+                entity.Property(e => e.Statut)
+                    .HasMaxLength(50)
+                    .IsUnicode(false)
+                    .HasColumnName("statut");
+
+                entity.HasMany(e => e.Addresses)
+                    .WithOne(e => e.Applicatif)
+                    .HasForeignKey(e => e.App_ID)
+                    .HasConstraintName("FK_Address_Applicatif");
+            });
+
+            modelBuilder.Entity<Address>(entity =>
+            {
+                entity.HasKey(e => e.AddressId)
+                    .HasName("PK__ADDRESS__E976DDB0E913A6CF");
+
+                entity.ToTable("ADDRESS");
+
+                entity.Property(e => e.AddressId).HasColumnName("AddressId");
+
+                entity.Property(e => e.App_ID).HasColumnName("App_ID");
+
+                entity.Property(e => e.Type)
+                    .HasMaxLength(50)
+                    .IsUnicode(false)
+                    .HasColumnName("Type");
+
+                entity.Property(e => e.Value)
+                    .HasMaxLength(255)
+                    .IsUnicode(false)
+                    .HasColumnName("Value");
+
+                entity.HasOne(d => d.Applicatif)
+                    .WithMany(p => p.Addresses)
+                    .HasForeignKey(d => d.App_ID)
+                    .HasConstraintName("FK_Address_Applicatif");
+            });
+
+==================================================================================================================================
