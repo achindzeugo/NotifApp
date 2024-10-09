@@ -136,3 +136,156 @@ modelBuilder.Entity<Applicatif>(entity =>
             });
 
 ==================================================================================================================================
+
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using NotifApps.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace NotifApps.Controllers
+{
+    public class ApplicatifController : Controller
+    {
+        private readonly NotifdbContext _context;
+
+        public ApplicatifController(NotifdbContext context)
+        {
+            _context = context;
+        }
+
+        // INDEX: List of all applicatifs
+        public async Task<IActionResult> Index()
+        {
+            var applicatifs = await _context.Applicatifs.Include(a => a.Addresses).ToListAsync();
+            return View(applicatifs);
+        }
+
+        // CREATE: GET method
+        public IActionResult Create()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create(Applicatif applicatif, List<Address> addresses)
+        {
+            if (ModelState.IsValid)
+            {
+                using (var transaction = await _context.Database.BeginTransactionAsync())
+                {
+                    try
+                    {
+                        _context.Add(applicatif);
+                        await _context.SaveChangesAsync();
+
+                        foreach (var address in addresses)
+                        {
+                            // Vérifier si l'adresse existe déjà
+                            var existingAddress = await _context.Addresses
+                                .FirstOrDefaultAsync(a => a.Type == address.Type && a.Value == address.Value && a.App_ID == applicatif.App_ID);
+
+                            if (existingAddress == null)
+                            {
+                                address.App_ID = applicatif.App_ID;
+                                _context.Addresses.Add(address);
+                            }
+                        }
+                        await _context.SaveChangesAsync();
+                        await transaction.CommitAsync();
+
+                        return RedirectToAction(nameof(Index));
+                    }
+                    catch (Exception)
+                    {
+                        await transaction.RollbackAsync();
+                        throw;
+                    }
+                }
+            }
+            return View(applicatif);
+        }
+
+        // EDIT: GET method
+        public async Task<IActionResult> Edit(int? id)
+        {
+            if (id == null) return NotFound();
+
+            var applicatif = await _context.Applicatifs.Include(a => a.Addresses)
+                .FirstOrDefaultAsync(a => a.App_ID == id);
+            if (applicatif == null) return NotFound();
+
+            return View(applicatif);
+        }
+
+        // EDIT: POST method
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(int id, Applicatif applicatif, List<Address> addresses)
+        {
+            if (id != applicatif.App_ID) return NotFound();
+
+            if (ModelState.IsValid)
+            {
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    _context.Update(applicatif);
+                    await _context.SaveChangesAsync();
+
+                    // Handle addresses update
+                    var existingAddresses = _context.Addresses.Where(a => a.App_ID == applicatif.App_ID);
+                    _context.Addresses.RemoveRange(existingAddresses);
+
+                    foreach (var address in addresses)
+                    {
+                        address.App_ID = applicatif.App_ID;
+                        _context.Addresses.Add(address);
+                    }
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    return RedirectToAction(nameof(Index));
+                }
+                catch (Exception)
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            }
+            return View(applicatif);
+        }
+
+        // DELETE: GET method
+        public async Task<IActionResult> Delete(int? id)
+        {
+            if (id == null) return NotFound();
+
+            var applicatif = await _context.Applicatifs.Include(a => a.Addresses)
+                .FirstOrDefaultAsync(a => a.App_ID == id);
+            if (applicatif == null) return NotFound();
+
+            return View(applicatif);
+        }
+
+        // DELETE: POST method
+        [HttpPost, ActionName("Delete")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            var applicatif = await _context.Applicatifs.Include(a => a.Addresses).FirstOrDefaultAsync(a => a.App_ID == id);
+            if (applicatif == null) return NotFound();
+
+            // Supprimer les adresses associées
+            _context.Addresses.RemoveRange(applicatif.Addresses);
+
+            // Supprimer l'applicatif
+            _context.Applicatifs.Remove(applicatif);
+            await _context.SaveChangesAsync();
+            return RedirectToAction(nameof(Index));
+        }
+    }
+}
