@@ -1,141 +1,75 @@
-CREATE TABLE Applicatif (
-    App_ID INT PRIMARY KEY IDENTITY(1,1),
-    App_nom VARCHAR(255),
-    Descriptif NVARCHAR(255),
-    Lien_Web NVARCHAR(255),
-    Statut NVARCHAR(50)
-);
+@model NotifApps.Models.Applicatif
 
-voici son modele
+<h2>Create Applicatif</h2>
 
-using System;
-using System.Collections.Generic;
+<form asp-action="Create">
+    <div class="form-group">
+        <label asp-for="App_nom" class="control-label"></label>
+        <input asp-for="App_nom" class="form-control" />
+    </div>
+    <div class="form-group">
+        <label asp-for="Descriptif" class="control-label"></label>
+        <input asp-for="Descriptif" class="form-control" />
+    </div>
+    <div class="form-group">
+        <label asp-for="Lien_Web" class="control-label"></label>
+        <input asp-for="Lien_Web" class="form-control" />
+    </div>
+    <div class="form-group">
+        <label asp-for="Statut" class="control-label"></label>
+        <input asp-for="Statut" class="form-control" />
+    </div>
 
-#nullable disable
+    <!-- Address input (you can dynamically add multiple addresses) -->
+    <div id="address-container">
+        <div class="form-group">
+            <label>Type of Address</label>
+            <select name="addresses.Type" class="form-control">
 
-namespace NotifApps.Models
-{
-    public partial class Applicatif
-    {
-        public Applicatif()
-        {
-            ApplicationGroups = new HashSet<ApplicationGroup>();
-            ApplicationIncidents = new HashSet<ApplicationIncident>();
-            Addresses = new HashSet<Address>();
-        }
+                @foreach (var type in ViewBag.AddressTypes)
+                {
 
-        public int App_ID { get; set; }
-        public string App_nom { get; set; }
-        public string Descriptif { get; set; }
-        public string Lien_Web { get; set; }
-        public string Statut { get; set; }
+                    <option value="@type.TypeName">@type.TypeName</option>
+                }
+            </select>
+            <label>Address Value</label>
+            <input type="text" name="addresses[0].Value" class="form-control" />
+        </div>
+    </div>
+    <button type="button" id="addAddressBtn" class="btn btn-secondary">Add Another Address</button>
 
-        public virtual ICollection<ApplicationGroup> ApplicationGroups { get; set; }
-        public virtual ICollection<ApplicationIncident> ApplicationIncidents { get; set; }
-        public virtual ICollection<Address> Addresses { get; set; }
-    }
+    <div class="form-group">
+        <input type="submit" value="Create" class="btn btn-primary" />
+    </div>
+</form>
+
+@section Scripts {
+    <script>
+        let addressIndex = 1;
+        document.getElementById('addAddressBtn').addEventListener('click', function () {
+            const container = document.getElementById('address-container');
+            const newAddressHtml = `
+                        <div class="form-group">
+                           <select name="addresses[${addressIndex}].Type" class="form-control">
+                        @foreach (var type in ViewBag.AddressTypes)
+                        {
+                            <option value="@type.TypeName">@type.TypeName</option>
+                        }
+                    </select>
+                            <label>Address Value</label>
+                            <input type="text" name="addresses[${addressIndex}].Value" class="form-control" />
+                        </div>
+                    `;
+            container.insertAdjacentHTML('beforeend', newAddressHtml);
+            addressIndex++;
+        });
+    </script>
 }
 
-table address
 
-CREATE TABLE Address (
-    AddressId INT IDENTITY(1,1) PRIMARY KEY,
-    App_ID INT,
-    Type NVARCHAR(50),
-    Value NVARCHAR(255),
-    FOREIGN KEY (App_ID) REFERENCES Applicatif(App_ID)
-);
+========================================================================== CONTROLLER============================================================================
 
-voici son model 
 
-using System;
-
-#nullable disable
-
-namespace NotifApps.Models
-{
-    public partial class Address
-    {
-        public int AddressId { get; set; }
-        public int App_ID { get; set; }
-        public string Type { get; set; }
-        public string Value { get; set; }
-
-        public virtual Applicatif Applicatif { get; set; }
-    }
-}
-
-voici leur apparition dans le dbcontext 
-
-public virtual DbSet<Applicatif> Applicatifs { get; set; }
-
- public virtual DbSet<Address> Addresses { get; set; }
-
-leur section de model builder 
-
-modelBuilder.Entity<Applicatif>(entity =>
-            {
-                entity.HasKey(e => e.App_ID)
-                    .HasName("PK__APPLICAT__E976DDB0E913A6CF");
-
-                entity.ToTable("APPLICATIF");
-
-                entity.Property(e => e.App_ID).HasColumnName("App_ID");
-
-                entity.Property(e => e.App_nom)
-                    .HasMaxLength(255)
-                    .IsUnicode(false)
-                    .HasColumnName("App_nom");
-
-                entity.Property(e => e.Descriptif)
-                    .HasMaxLength(255)
-                    .IsUnicode(false)
-                    .HasColumnName("descriptif");
-
-                entity.Property(e => e.Lien_Web)
-                    .HasMaxLength(255)
-                    .IsUnicode(false)
-                    .HasColumnName("lien_web");
-
-                entity.Property(e => e.Statut)
-                    .HasMaxLength(50)
-                    .IsUnicode(false)
-                    .HasColumnName("statut");
-
-                entity.HasMany(e => e.Addresses)
-                    .WithOne(e => e.Applicatif)
-                    .HasForeignKey(e => e.App_ID)
-                    .HasConstraintName("FK_Address_Applicatif");
-            });
-
-            modelBuilder.Entity<Address>(entity =>
-            {
-                entity.HasKey(e => e.AddressId)
-                    .HasName("PK__ADDRESS__E976DDB0E913A6CF");
-
-                entity.ToTable("ADDRESS");
-
-                entity.Property(e => e.AddressId).HasColumnName("AddressId");
-
-                entity.Property(e => e.App_ID).HasColumnName("App_ID");
-
-                entity.Property(e => e.Type)
-                    .HasMaxLength(50)
-                    .IsUnicode(false)
-                    .HasColumnName("Type");
-
-                entity.Property(e => e.Value)
-                    .HasMaxLength(255)
-                    .IsUnicode(false)
-                    .HasColumnName("Value");
-
-                entity.HasOne(d => d.Applicatif)
-                    .WithMany(p => p.Addresses)
-                    .HasForeignKey(d => d.App_ID)
-                    .HasConstraintName("FK_Address_Applicatif");
-            });
-
-==================================================================================================================================
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -166,6 +100,7 @@ namespace NotifApps.Controllers
         // CREATE: GET method
         public IActionResult Create()
         {
+            ViewBag.AddressTypes = _context.AddressTypes.ToList();
             return View();
         }
 
@@ -206,6 +141,7 @@ namespace NotifApps.Controllers
                     }
                 }
             }
+            ViewBag.Address = _context.AddressTypes.ToList();
             return View(applicatif);
         }
 
@@ -288,56 +224,4 @@ namespace NotifApps.Controllers
             return RedirectToAction(nameof(Index));
         }
     }
-}
-====================================================
-[HttpPost]
-[ValidateAntiForgeryToken]
-public async Task<IActionResult> Edit(int id, Applicatif applicatif, List<Address> addresses)
-{
-    if (id != applicatif.App_ID) return NotFound();
-
-    if (ModelState.IsValid)
-    {
-        using var transaction = await _context.Database.BeginTransactionAsync();
-        try
-        {
-            // Récupérer l'applicatif existant pour qu'il soit suivi
-            var existingApplicatif = await _context.Applicatifs
-                .Include(a => a.Addresses)
-                .FirstOrDefaultAsync(a => a.App_ID == id);
-
-            if (existingApplicatif == null)
-            {
-                return NotFound();
-            }
-
-            // Mettre à jour les propriétés de l'applicatif
-            existingApplicatif.App_nom = applicatif.App_nom;
-            existingApplicatif.Descriptif = applicatif.Descriptif;
-            existingApplicatif.Lien_Web = applicatif.Lien_Web;
-            existingApplicatif.Statut = applicatif.Statut;
-
-            // Gestion des adresses
-            var existingAddresses = _context.Addresses.Where(a => a.App_ID == id).ToList();
-            _context.Addresses.RemoveRange(existingAddresses); // Supprimer les anciennes adresses
-
-            foreach (var address in addresses)
-            {
-                address.App_ID = id;  // S'assurer que chaque adresse est liée à l'applicatif
-                _context.Addresses.Add(address);
-            }
-
-            // Sauvegarder les modifications
-            await _context.SaveChangesAsync();
-            await transaction.CommitAsync();
-
-            return RedirectToAction(nameof(Index));
-        }
-        catch (Exception)
-        {
-            await transaction.RollbackAsync();
-            throw;
-        }
-    }
-    return View(applicatif);
 }
