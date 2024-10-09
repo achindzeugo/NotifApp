@@ -1,0 +1,211 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using NotifApps.Models;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace NotifApps.Controllers
+{
+    public class ApplicatifController : Controller
+    {
+        private readonly NotifdbContext _context;
+
+        public ApplicatifController(NotifdbContext context)
+        {
+            _context = context;
+        }
+
+        // INDEX: List of all applicatifs
+        public async Task<IActionResult> Index()
+        {
+            var applicatifs = await _context.Applicatifs.Include(a => a.Addresses).ToListAsync();
+            return View(applicatifs);
+        }
+
+        // CREATE: GET method
+        public IActionResult Create()
+        {
+            return View();
+        }
+
+        // CREATE: POST method
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create(Applicatif applicatif, List<Address> addresses)
+        {
+            if (ModelState.IsValid)
+            {
+                _context.Add(applicatif);
+                await _context.SaveChangesAsync();
+
+                foreach (var address in addresses)
+                {
+                    address.App_ID = applicatif.App_ID;
+                    _context.Addresses.Add(address);
+                }
+                await _context.SaveChangesAsync();
+
+                return RedirectToAction(nameof(Index));
+            }
+            return View(applicatif);
+        }
+
+        // EDIT: GET method
+        public async Task<IActionResult> Edit(int? id)
+        {
+            if (id == null) return NotFound();
+
+            var applicatif = await _context.Applicatifs.Include(a => a.Addresses)
+                .FirstOrDefaultAsync(a => a.App_ID == id);
+            if (applicatif == null) return NotFound();
+
+            return View(applicatif);
+        }
+
+        // EDIT: POST method
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(int id, Applicatif applicatif, List<Address> addresses)
+        {
+            if (id != applicatif.App_ID) return NotFound();
+
+            if (ModelState.IsValid)
+            {
+                _context.Update(applicatif);
+                await _context.SaveChangesAsync();
+
+                // Handle addresses update
+                var existingAddresses = _context.Addresses.Where(a => a.App_ID == applicatif.App_ID);
+                _context.Addresses.RemoveRange(existingAddresses);
+
+                foreach (var address in addresses)
+                {
+                    address.App_ID = applicatif.App_ID;
+                    _context.Addresses.Add(address);
+                }
+                await _context.SaveChangesAsync();
+
+                return RedirectToAction(nameof(Index));
+            }
+            return View(applicatif);
+        }
+
+        // DELETE: GET method
+        public async Task<IActionResult> Delete(int? id)
+        {
+            if (id == null) return NotFound();
+
+            var applicatif = await _context.Applicatifs.Include(a => a.Addresses)
+                .FirstOrDefaultAsync(a => a.App_ID == id);
+            if (applicatif == null) return NotFound();
+
+            return View(applicatif);
+        }
+
+        // DELETE: POST method
+        [HttpPost, ActionName("Delete")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            var applicatif = await _context.Applicatifs.FindAsync(id);
+            _context.Applicatifs.Remove(applicatif);
+            await _context.SaveChangesAsync();
+            return RedirectToAction(nameof(Index));
+        }
+    }
+}
+
+========================INDEX===================================
+@model NotifApps.Models.Applicatif
+
+<h2>Create Applicatif</h2>
+
+<form asp-action="Create">
+    <div class="form-group">
+        <label asp-for="App_nom" class="control-label"></label>
+        <input asp-for="App_nom" class="form-control" />
+    </div>
+    <div class="form-group">
+        <label asp-for="Descriptif" class="control-label"></label>
+        <input asp-for="Descriptif" class="form-control" />
+    </div>
+    <div class="form-group">
+        <label asp-for="Lien_Web" class="control-label"></label>
+        <input asp-for="Lien_Web" class="form-control" />
+    </div>
+    <div class="form-group">
+        <label asp-for="Statut" class="control-label"></label>
+        <input asp-for="Statut" class="form-control" />
+    </div>
+
+    <!-- Address input (you can dynamically add multiple addresses) -->
+    <div id="address-container">
+        <div class="form-group">
+            <label>Type of Address</label>
+            <input type="text" name="addresses[0].Type" class="form-control" />
+            <label>Address Value</label>
+            <input type="text" name="addresses[0].Value" class="form-control" />
+        </div>
+    </div>
+    <button type="button" id="addAddressBtn" class="btn btn-secondary">Add Another Address</button>
+
+    <div class="form-group">
+        <input type="submit" value="Create" class="btn btn-primary" />
+    </div>
+</form>
+
+@section Scripts {
+    <script>
+        let addressIndex = 1;
+        document.getElementById('addAddressBtn').addEventListener('click', function () {
+            const container = document.getElementById('address-container');
+            const newAddressHtml = `
+                <div class="form-group">
+                    <label>Type of Address</label>
+                    <input type="text" name="addresses[${addressIndex}].Type" class="form-control" />
+                    <label>Address Value</label>
+                    <input type="text" name="addresses[${addressIndex}].Value" class="form-control" />
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', newAddressHtml);
+            addressIndex++;
+        });
+    </script>
+}
+================================Edit============================
+
+@model NotifApps.Models.Applicatif
+
+<h2>Edit Applicatif</h2>
+
+<form asp-action="Edit" method="post">
+    <div class="form-group">
+        <label asp-for="App_nom" class="control-label"></label>
+        <input asp-for="App_nom" class="form-control" />
+    </div>
+    <div class="form-group">
+        <label asp-for="Descriptif" class="control-label"></label>
+        <input asp-for="Descriptif" class="form-control" />
+    </div>
+    <div class="form-group">
+        <label asp-for="Lien_Web" class="control-label"></label>
+        <input asp-for="Lien_Web" class="form-control" />
+    </div>
+    <div class="form-group">
+        <label asp-for="Statut" class="control-label"></label>
+        <input asp-for="Statut" class="form-control" />
+    </div>
+
+    <!-- Pre-populate addresses -->
+    <div id="address-container">
+        @for (int i = 0; i < Model.Addresses.Count; i++)
+        {
+            <div class="form-group">
+                <label>Type of Address</label>
+                <input type="text" name="addresses[@i].Type" class="form-control" value="@Model.Addresses[i].Type" />
+                <label>Address Value</label>
+                <input type="text" name="addresses[@i].Value" class="form-control" value="@Model.Addresses[i].Value" />
+            </div>
+        }
+    </div>
+    <button type="button" id="addAddressBtn
