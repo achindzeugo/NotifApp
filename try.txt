@@ -289,3 +289,55 @@ namespace NotifApps.Controllers
         }
     }
 }
+====================================================
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> Edit(int id, Applicatif applicatif, List<Address> addresses)
+{
+    if (id != applicatif.App_ID) return NotFound();
+
+    if (ModelState.IsValid)
+    {
+        using var transaction = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            // Récupérer l'applicatif existant pour qu'il soit suivi
+            var existingApplicatif = await _context.Applicatifs
+                .Include(a => a.Addresses)
+                .FirstOrDefaultAsync(a => a.App_ID == id);
+
+            if (existingApplicatif == null)
+            {
+                return NotFound();
+            }
+
+            // Mettre à jour les propriétés de l'applicatif
+            existingApplicatif.App_nom = applicatif.App_nom;
+            existingApplicatif.Descriptif = applicatif.Descriptif;
+            existingApplicatif.Lien_Web = applicatif.Lien_Web;
+            existingApplicatif.Statut = applicatif.Statut;
+
+            // Gestion des adresses
+            var existingAddresses = _context.Addresses.Where(a => a.App_ID == id).ToList();
+            _context.Addresses.RemoveRange(existingAddresses); // Supprimer les anciennes adresses
+
+            foreach (var address in addresses)
+            {
+                address.App_ID = id;  // S'assurer que chaque adresse est liée à l'applicatif
+                _context.Addresses.Add(address);
+            }
+
+            // Sauvegarder les modifications
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            return RedirectToAction(nameof(Index));
+        }
+        catch (Exception)
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
+    return View(applicatif);
+}
