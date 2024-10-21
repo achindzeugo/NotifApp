@@ -1,227 +1,173 @@
-@model NotifApps.Models.Applicatif
-
-<h2>Create Applicatif</h2>
-
-<form asp-action="Create">
-    <div class="form-group">
-        <label asp-for="App_nom" class="control-label"></label>
-        <input asp-for="App_nom" class="form-control" />
-    </div>
-    <div class="form-group">
-        <label asp-for="Descriptif" class="control-label"></label>
-        <input asp-for="Descriptif" class="form-control" />
-    </div>
-    <div class="form-group">
-        <label asp-for="Lien_Web" class="control-label"></label>
-        <input asp-for="Lien_Web" class="form-control" />
-    </div>
-    <div class="form-group">
-        <label asp-for="Statut" class="control-label"></label>
-        <input asp-for="Statut" class="form-control" />
-    </div>
-
-    <!-- Address input (you can dynamically add multiple addresses) -->
-    <div id="address-container">
-        <div class="form-group">
-            <label>Type of Address</label>
-            <select name="addresses.Type" class="form-control">
-
-                @foreach (var type in ViewBag.AddressTypes)
-                {
-
-                    <option value="@type.TypeName">@type.TypeName</option>
-                }
-            </select>
-            <label>Address Value</label>
-            <input type="text" name="addresses[0].Value" class="form-control" />
-        </div>
-    </div>
-    <button type="button" id="addAddressBtn" class="btn btn-secondary">Add Another Address</button>
-
-    <div class="form-group">
-        <input type="submit" value="Create" class="btn btn-primary" />
-    </div>
-</form>
-
-@section Scripts {
-    <script>
-        let addressIndex = 1;
-        document.getElementById('addAddressBtn').addEventListener('click', function () {
-            const container = document.getElementById('address-container');
-            const newAddressHtml = `
-                        <div class="form-group">
-                           <select name="addresses[${addressIndex}].Type" class="form-control">
-                        @foreach (var type in ViewBag.AddressTypes)
-                        {
-                            <option value="@type.TypeName">@type.TypeName</option>
-                        }
-                    </select>
-                            <label>Address Value</label>
-                            <input type="text" name="addresses[${addressIndex}].Value" class="form-control" />
-                        </div>
-                    `;
-            container.insertAdjacentHTML('beforeend', newAddressHtml);
-            addressIndex++;
-        });
-    </script>
+json
+Copier le code
+{
+   "results":[
+      {
+         "gender":"male",
+         "name":{ "title":"Mr", "first":"John", "last":"Doe" },
+         "location":{
+            "street":{ "number":123, "name":"Main Street" },
+            "city":"Anytown",
+            "state":"State",
+            "country":"USA",
+            "postcode":12345
+         },
+         "email":"john.doe@example.com",
+         "login":{
+            "uuid":"123abc-456def-789ghi",
+            "username":"johndoe123"
+         },
+         "dob":{ "date":"1985-12-12T00:00:00Z", "age":38 },
+         "picture":{
+            "large":"https://randomuser.me/api/portraits/men/1.jpg"
+         }
+      }
+   ],
+   "info":{ "seed":"weenect", "page":1, "results":10, "version":"1.4" }
 }
+Cette API est utile pour :
+
+Tester des interfaces utilisateur (comme des listes d’utilisateurs).
+Simuler des données sans avoir à créer manuellement des entrées.
+Utiliser des avatars aléatoires pour donner vie à une interface.
+Besoin d’un exemple d’utilisation spécifique de cette API ?
 
 
-========================================================================== CONTROLLER============================================================================
 
 
 
+
+
+Vous avez dit :
+comment puisje get cela en asp core dotnet ?
+je veux le nom, prenom et email
+ChatGPT a dit :
+ChatGPT
+Pour faire un appel à l'API Random User et extraire le nom, prénom et email en ASP.NET Core, vous pouvez utiliser HttpClient. Voici un guide étape par étape.
+
+1. Configuration de base
+Assurez-vous que le SDK .NET Core est installé, et que le projet est bien configuré avec ASP.NET Core.
+
+2. Code du Controller
+Voici un exemple de code complet avec un controller pour faire la requête et récupérer les données.
+
+Étape 1 : Installer System.Net.Http.Json
+Ajoutez ce package si ce n’est pas déjà le cas :
+
+bash
+Copier le code
+dotnet add package System.Net.Http.Json
+Étape 2 : Créer le Model pour la Réponse
+Dans le dossier Models, créez un fichier RandomUserModel.cs :
+
+csharp
+Copier le code
+namespace NotifApp.Models
+{
+    public class RandomUserResponse
+    {
+        public List<Result> Results { get; set; }
+    }
+
+    public class Result
+    {
+        public Name Name { get; set; }
+        public string Email { get; set; }
+    }
+
+    public class Name
+    {
+        public string First { get; set; }
+        public string Last { get; set; }
+    }
+}
+Étape 3 : Créer un Controller
+Dans le dossier Controllers, ajoutez un fichier RandomUserController.cs :
+
+csharp
+Copier le code
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using NotifApps.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+using NotifApp.Models;
+using System.Net.Http;
+using System.Net.Http.Json;
 using System.Threading.Tasks;
 
-namespace NotifApps.Controllers
+namespace NotifApp.Controllers
 {
-    public class ApplicatifController : Controller
+    public class RandomUserController : Controller
     {
-        private readonly NotifdbContext _context;
+        private readonly HttpClient _httpClient;
 
-        public ApplicatifController(NotifdbContext context)
+        public RandomUserController(HttpClient httpClient)
         {
-            _context = context;
+            _httpClient = httpClient;
         }
 
-        // INDEX: List of all applicatifs
-        public async Task<IActionResult> Index()
+        [HttpGet("/random-users")]
+        public async Task<IActionResult> GetRandomUsers()
         {
-            var applicatifs = await _context.Applicatifs.Include(a => a.Addresses).ToListAsync();
-            return View(applicatifs);
-        }
+            // URL de l'API Random User
+            string apiUrl = "https://randomuser.me/api/?page=1&results=10&seed=weenect";
 
-        // CREATE: GET method
-        public IActionResult Create()
-        {
-            ViewBag.AddressTypes = _context.AddressTypes.ToList();
-            return View();
-        }
+            // Appel API et désérialisation
+            var response = await _httpClient.GetFromJsonAsync<RandomUserResponse>(apiUrl);
 
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(Applicatif applicatif, List<Address> addresses)
-        {
-            if (ModelState.IsValid)
+            if (response == null || response.Results == null)
+                return BadRequest("Erreur lors de la récupération des utilisateurs.");
+
+            // Extraire les noms et emails
+            var users = response.Results.Select(u => new
             {
-                using (var transaction = await _context.Database.BeginTransactionAsync())
-                {
-                    try
-                    {
-                        _context.Add(applicatif);
-                        await _context.SaveChangesAsync();
+                Nom = u.Name.Last,
+                Prenom = u.Name.First,
+                Email = u.Email
+            });
 
-                        foreach (var address in addresses)
-                        {
-                            // Vérifier si l'adresse existe déjà
-                            var existingAddress = await _context.Addresses
-                                .FirstOrDefaultAsync(a => a.Type == address.Type && a.Value == address.Value && a.App_ID == applicatif.App_ID);
-
-                            if (existingAddress == null)
-                            {
-                                address.App_ID = applicatif.App_ID;
-                                _context.Addresses.Add(address);
-                            }
-                        }
-                        await _context.SaveChangesAsync();
-                        await transaction.CommitAsync();
-
-                        return RedirectToAction(nameof(Index));
-                    }
-                    catch (Exception)
-                    {
-                        await transaction.RollbackAsync();
-                        throw;
-                    }
-                }
-            }
-            ViewBag.Address = _context.AddressTypes.ToList();
-            return View(applicatif);
-        }
-
-        // EDIT: GET method
-        public async Task<IActionResult> Edit(int? id)
-        {
-            if (id == null) return NotFound();
-
-            var applicatif = await _context.Applicatifs.Include(a => a.Addresses)
-                .FirstOrDefaultAsync(a => a.App_ID == id);
-            if (applicatif == null) return NotFound();
-
-            return View(applicatif);
-        }
-
-        // EDIT: POST method
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, Applicatif applicatif, List<Address> addresses)
-        {
-            if (id != applicatif.App_ID) return NotFound();
-
-            if (ModelState.IsValid)
-            {
-                using var transaction = await _context.Database.BeginTransactionAsync();
-                try
-                {
-                    _context.Update(applicatif);
-                    await _context.SaveChangesAsync();
-
-                    // Handle addresses update
-                    var existingAddresses = _context.Addresses.Where(a => a.App_ID == applicatif.App_ID);
-                    _context.Addresses.RemoveRange(existingAddresses);
-
-                    foreach (var address in addresses)
-                    {
-                        address.App_ID = applicatif.App_ID;
-                        _context.Addresses.Add(address);
-                    }
-                    await _context.SaveChangesAsync();
-                    await transaction.CommitAsync();
-
-                    return RedirectToAction(nameof(Index));
-                }
-                catch (Exception)
-                {
-                    await transaction.RollbackAsync();
-                    throw;
-                }
-            }
-            return View(applicatif);
-        }
-
-        // DELETE: GET method
-        public async Task<IActionResult> Delete(int? id)
-        {
-            if (id == null) return NotFound();
-
-            var applicatif = await _context.Applicatifs.Include(a => a.Addresses)
-                .FirstOrDefaultAsync(a => a.App_ID == id);
-            if (applicatif == null) return NotFound();
-
-            return View(applicatif);
-        }
-
-        // DELETE: POST method
-        [HttpPost, ActionName("Delete")]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(int id)
-        {
-            var applicatif = await _context.Applicatifs.Include(a => a.Addresses).FirstOrDefaultAsync(a => a.App_ID == id);
-            if (applicatif == null) return NotFound();
-
-            // Supprimer les adresses associées
-            _context.Addresses.RemoveRange(applicatif.Addresses);
-
-            // Supprimer l'applicatif
-            _context.Applicatifs.Remove(applicatif);
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+            // Retourner les utilisateurs sous forme de JSON
+            return Ok(users);
         }
     }
 }
+Étape 4 : Configurer Program.cs ou Startup.cs
+Dans Program.cs (ou Startup.cs selon votre version), ajoutez la configuration suivante :
+
+Program.cs :
+
+csharp
+Copier le code
+var builder = WebApplication.CreateBuilder(args);
+
+// Ajouter HttpClient comme service
+builder.Services.AddHttpClient();
+
+var app = builder.Build();
+
+app.MapControllers();  // Active les routes du Controller
+
+app.Run();
+3. Résultat attendu
+Quand vous visitez /random-users dans votre navigateur ou via un outil comme Postman, vous obtiendrez une réponse JSON similaire à celle-ci :
+
+json
+Copier le code
+[
+    { "Nom": "Doe", "Prenom": "John", "Email": "john.doe@example.com" },
+    { "Nom": "Smith", "Prenom": "Alice", "Email": "alice.smith@example.com" }
+]
+4. Résumé
+Avec ce code :
+
+Vous appelez l'API Random User via HttpClient.
+Les données sont désérialisées en objets C#.
+Le controller renvoie uniquement le nom, prénom, et email des utilisateurs en JSON.
+Si vous avez besoin d'autres fonctionnalités, comme l'affichage sur une page Razor, je peux vous guider davantage !
+
+
+
+
+
+
+
+
+
+
