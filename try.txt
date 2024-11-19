@@ -28,31 +28,40 @@ public async Task<IActionResult> ProcessUpload(int equipeId, IFormFile ExcelFile
                         var email = worksheet.Cells[row, 3].Text;
                         var ag = worksheet.Cells[row, 4].Text;
 
-                        var utilisateur = new Utilisateurs
+                        // Vérifier si l'utilisateur existe déjà
+                        var utilisateur = _context.Utilisateurs
+                            .FirstOrDefault(u => u.Email == email);
+
+                        if (utilisateur == null)
                         {
-                            NomUtilisateurs = nom,
-                            PrenomUtilisateurs = prenom,
-                            Email = email,
-                            AG = ag
-                        };
+                            utilisateur = new Utilisateurs
+                            {
+                                NomUtilisateurs = nom,
+                                PrenomUtilisateurs = prenom,
+                                Email = email,
+                                AG = ag
+                            };
 
-                        _context.Add(utilisateur);
-                        await _context.SaveChangesAsync();
+                            _context.Add(utilisateur);
+                            await _context.SaveChangesAsync();
+                        }
 
-                        // Créer et sauvegarder l'association
+                        // Associer l'utilisateur à l'équipe
                         var equipeUtilisateur = new EquipeUtilisateur
                         {
-                            EquipeId = equipeId,
+                            EquipeId = equipe.EquipeId,
                             UtilisateursId = utilisateur.UtilisateursID
                         };
 
                         _context.Add(equipeUtilisateur);
                     }
+
                     await _context.SaveChangesAsync();
                 }
             }
         }
         return RedirectToAction(nameof(Details), new { id = equipeId });
     }
+
     return View();
 }
