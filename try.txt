@@ -1,67 +1,453 @@
-[HttpPost]
-[ValidateAntiForgeryToken]
-public async Task<IActionResult> ProcessUpload(int equipeId, IFormFile ExcelFile)
-{
-    ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+An unhandled exception occurred while processing the request.
+InvalidOperationException: The value of 'EquipeUtilisateur.EquipeId' is unknown when attempting to save changes. This is because the property is also part of a foreign key for which the principal entity in the relationship is not known.
 
-    if (ExcelFile != null && ExcelFile.Length > 0)
-    {
-        using (var stream = new MemoryStream())
-        {
-            await ExcelFile.CopyToAsync(stream);
-            using (var package = new ExcelPackage(stream))
+mon modelbuilder pour EquipeUtilisateur
+ modelBuilder.Entity<EquipeUtilisateur>(entity =>
             {
-                var worksheet = package.Workbook.Worksheets.FirstOrDefault();
-                if (worksheet != null)
+                entity.HasKey(e => new { e.EquipeId, e.UtilisateursId })
+                    .HasName("PK__EquipeUt__E90BC6AA67FCC771");
+
+                entity.ToTable("EquipeUtilisateur");
+
+                entity.Property(e => e.EquipeId).HasColumnName("EquipeID");
+
+                entity.Property(e => e.UtilisateursId).HasColumnName("UtilisateursID");
+
+                entity.HasOne(d => d.Equipe)
+                    .WithMany(p => p.EquipeUtilisateurs)
+                    .HasForeignKey(d => d.EquipeId)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK__EquipeUti__Equip__40F9A68C");
+
+                entity.HasOne(d => d.Utilisateurs)
+                    .WithMany(p => p.EquipeUtilisateur)
+                    .HasForeignKey(d => d.UtilisateursId)
+                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .HasConstraintName("FK__EquipeUti__Utili__41EDCAC5");
+            });
+mon modelbuilder pour Equipe
+ modelBuilder.Entity<Equipe>(entity =>
+            {
+                entity.Property(e => e.EquipeId).HasColumnName("EquipeID");
+
+                entity.Property(e => e.CriticiteNom)
+                    .HasMaxLength(255)
+                    .IsUnicode(false)
+                    .HasColumnName("Criticite_nom");
+
+                entity.Property(e => e.NomEquipe)
+                    .HasMaxLength(255)
+                    .IsUnicode(false)
+                    .HasColumnName("nomEquipe");
+            });
+mon modelbuilder Utilisateurs 
+
+            modelBuilder.Entity<Utilisateurs>(entity =>
+            {
+                entity.HasKey(e => e.UtilisateursID)
+                    .HasName("PK__Utilisat__501F1C92E0CD5439");
+
+                entity.ToTable("Utilisateurs");
+
+                entity.Property(e => e.UtilisateursID).HasColumnName("UtilisateursID");
+
+                entity.Property(e => e.Email)
+                    .HasMaxLength(255)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.NomUtilisateurs)
+                    .HasMaxLength(255)
+                    .IsUnicode(false);
+
+                entity.Property(e => e.PrenomUtilisateurs)
+                    .HasMaxLength(255)
+                    .IsUnicode(false);
+            });
+mon model Equipe
+using System;
+using System.Collections.Generic;
+
+#nullable disable
+
+namespace NotifApps.Models
+{
+    public partial class Equipe
+    {
+        public Equipe()
+        {
+            EquipeApplicatifs = new HashSet<EquipeApplicatif>();
+            EquipeUtilisateurs = new HashSet<EquipeUtilisateur>();
+        }
+
+        public int EquipeId { get; set; }
+        public string NomEquipe { get; set; }
+        public string CriticiteNom { get; set; }
+
+        public virtual ICollection<EquipeApplicatif> EquipeApplicatifs { get; set; }
+        public virtual ICollection<EquipeUtilisateur> EquipeUtilisateurs { get; set; }
+    }
+}
+mon model Utilisateurs 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations;
+
+namespace NotifApps.Models
+{
+    public class Utilisateurs
+    {
+        public int UtilisateursID { get; set; }
+        public string NomUtilisateurs { get; set; }
+        public string PrenomUtilisateurs { get; set; }
+        public string Email { get; set; }
+        public string AG { get; set; }
+
+
+
+        // Navigation property
+        public virtual ICollection<EquipeUtilisateur> EquipeUtilisateur { get; set; }
+    }
+
+}
+mom Model EquipeUtilisateur
+using System;
+using System.Collections.Generic;
+
+#nullable disable
+
+namespace NotifApps.Models
+{
+    public partial class EquipeUtilisateur
+    {
+        public int EquipeId { get; set; }
+        public int UtilisateursId { get; set; }
+
+        public virtual Equipe Equipe { get; set; }
+        public virtual Utilisateurs Utilisateurs { get; set; }
+    }
+}
+======================================================================
+voici ma page d'upload
+@{
+    ViewData["Title"] = "Téléverser le Template";
+}
+
+<h2>Téléverser le Template d'Utilisateurs</h2>
+
+<form asp-action="ProcessUpload" method="post" enctype="multipart/form-data">
+    <input type="hidden" name="EquipeId" value="@ViewBag.EquipeId" />
+    <div class="form-group">
+        <label for="ExcelFile">Sélectionnez un fichier Excel</label>
+        <input type="file" name="ExcelFile" class="form-control" required />
+    </div>
+    <button type="submit" class="btn btn-primary">Téléverser</button>
+</form>
+=====================================================
+voici mon controller 
+namespace NotifApps.Controllers
+{
+    public class EquipesController : Controller
+    {
+        private readonly NotifdbContext _context;
+
+        public EquipesController(NotifdbContext context)
+        {
+            _context = context;
+        }
+
+        // GET: Equipes
+        public IActionResult Index()
+        {
+            var equipes = _context.Equipes.ToList(); 
+            return View(equipes); 
+        }
+        // GET: Equipes/Create
+        public IActionResult Create()
+        {
+            ViewBag.Utilisateurs = _context.Utilisateurs.ToList(); // Récupérer tous les utilisateurs
+            return View();
+        }
+
+        // POST: Equipes/Create
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create([Bind("NomEquipe")] Equipe equipe, int[] selectedUsers)
+        {
+            if (ModelState.IsValid)
+            {
+                _context.Add(equipe);
+                await _context.SaveChangesAsync();
+
+                // Rattacher les utilisateurs sélectionnés
+                if (selectedUsers != null)
                 {
-                    // Charger ou attacher l'équipe
-                    var equipe = await _context.Equipes.FindAsync(equipeId);
-                    if (equipe == null)
+                    foreach (var userId in selectedUsers)
                     {
-                        return NotFound($"L'équipe avec l'ID {equipeId} n'existe pas.");
-                    }
-
-                    for (int row = 2; row <= worksheet.Dimension.End.Row; row++)
-                    {
-                        var nom = worksheet.Cells[row, 1].Text;
-                        var prenom = worksheet.Cells[row, 2].Text;
-                        var email = worksheet.Cells[row, 3].Text;
-                        var ag = worksheet.Cells[row, 4].Text;
-
-                        // Vérifier si l'utilisateur existe déjà
-                        var utilisateur = _context.Utilisateurs
-                            .FirstOrDefault(u => u.Email == email);
-
-                        if (utilisateur == null)
-                        {
-                            utilisateur = new Utilisateurs
-                            {
-                                NomUtilisateurs = nom,
-                                PrenomUtilisateurs = prenom,
-                                Email = email,
-                                AG = ag
-                            };
-
-                            _context.Add(utilisateur);
-                            await _context.SaveChangesAsync();
-                        }
-
-                        // Associer l'utilisateur à l'équipe
                         var equipeUtilisateur = new EquipeUtilisateur
                         {
                             EquipeId = equipe.EquipeId,
-                            UtilisateursId = utilisateur.UtilisateursID
+                            UtilisateursId = userId
+                        };
+                        _context.Add(equipeUtilisateur);
+                    }
+                    await _context.SaveChangesAsync();
+                }
+
+                return RedirectToAction(nameof(Index));
+            }
+
+            ViewBag.Utilisateurs = _context.Utilisateurs.ToList(); // Récupérer à nouveau les utilisateurs en cas d'erreur
+            return View(equipe);
+        }
+
+
+
+        //GET : Vue de rattachement par selection
+        public IActionResult AttachUtilisateur(int id)
+        {
+            ViewBag.EquipeId = id;
+            var utilisateurs = _context.Utilisateurs
+                .Include(u => u.EquipeUtilisateur)
+                .ThenInclude(eu => eu.Equipe)
+                .ToList();
+
+            // Get the IDs of users already associated with the team and remain marked
+            var existingUserIds = _context.EquipeUtilisateurs
+                .Where(eu => eu.EquipeId == id)
+                .Select(eu => eu.UtilisateursId)
+                .ToList();
+
+            ViewBag.ExistingUserIds = existingUserIds;
+
+            return View(utilisateurs);
+        }
+
+        // POST : RATTACHEMENT PAR SELECCTION
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SaveUtilisateurs(int equipeId, int[] selectedUsers)
+        {
+            if (selectedUsers != null)
+            {
+                foreach (var userId in selectedUsers)
+                {
+                    // Check if the association already exists
+                    var existingAssociation = await _context.EquipeUtilisateurs
+                        .FirstOrDefaultAsync(eu => eu.EquipeId == equipeId && eu.UtilisateursId == userId);
+
+                    if (existingAssociation == null) // Only add if the association does not exist
+                    {
+                        var equipeUtilisateur = new EquipeUtilisateur
+                        {
+                            EquipeId = equipeId,
+                            UtilisateursId = userId
                         };
 
                         _context.Add(equipeUtilisateur);
                     }
+                }
+                await _context.SaveChangesAsync();
+            }
 
-                    await _context.SaveChangesAsync();
+            return RedirectToAction(nameof(Details), new { id = equipeId });
+        }
+
+        //Details EQUIPES
+        public async Task<IActionResult> Details(int id)
+        {
+            var equipe = await _context.Equipes
+                .Include(e => e.EquipeUtilisateurs) 
+                .ThenInclude(eu => eu.Utilisateurs) 
+                .FirstOrDefaultAsync(e => e.EquipeId == id);
+
+            if (equipe == null)
+            {
+                return NotFound();
+            }
+
+            return View(equipe);
+        }
+
+        // Creéation POST Utilisateur 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SaveUtilisateur(int equipeId, [Bind("NomUtilisateurs,PrenomUtilisateurs,Email,AG")] Utilisateurs utilisateur)
+        {
+            if (ModelState.IsValid)
+            {
+                _context.Add(utilisateur);
+                await _context.SaveChangesAsync();
+
+                // Create the association
+                var equipeUtilisateur = new EquipeUtilisateur
+                {
+                    EquipeId = equipeId,
+                    UtilisateursId = utilisateur.UtilisateursID 
+                };
+
+                _context.Add(equipeUtilisateur);
+                await _context.SaveChangesAsync();
+
+                return RedirectToAction(nameof(Details), new { id = equipeId });
+            }
+
+            return View(utilisateur);
+        }
+        //Utilisateur Upload GET 
+        public IActionResult UploadTemplate(int id)
+        {
+            ViewBag.EquipeId = id; // Pass the team ID to the view
+            return View();
+        }
+
+        // Utilisateur Upload POST
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ProcessUpload(int equipeId, IFormFile ExcelFile)
+        {
+            ExcelPackage.LicenseContext = LicenseContext.NonCommercial; 
+
+            if (ExcelFile != null && ExcelFile.Length > 0)
+            {
+                using (var stream = new MemoryStream())
+                {
+                    await ExcelFile.CopyToAsync(stream);
+                    using (var package = new ExcelPackage(stream))
+                    {
+                        var worksheet = package.Workbook.Worksheets.FirstOrDefault();
+                        if (worksheet != null)
+                        {
+                            for (int row = 2; row <= worksheet.Dimension.End.Row; row++) 
+                            {
+                                var nom = worksheet.Cells[row, 1].Text;
+                                var prenom = worksheet.Cells[row, 2].Text;
+                                var email = worksheet.Cells[row, 3].Text;
+                                var ag = worksheet.Cells[row, 4].Text;
+
+                                var utilisateur = new Utilisateurs
+                                {
+                                    NomUtilisateurs = nom,
+                                    PrenomUtilisateurs = prenom,
+                                    Email = email,
+                                    AG = ag
+                                };
+
+                                _context.Add(utilisateur);
+                                await _context.SaveChangesAsync(); 
+
+                                // Créer l'association
+                                var equipeUtilisateur = new EquipeUtilisateur
+                                {
+                                    EquipeId = equipeId,
+                                    UtilisateursId = utilisateur.UtilisateursID 
+                                };
+                                _context.Add(equipeUtilisateur);
+                            }
+                            await _context.SaveChangesAsync(); 
+                        }
+                    }
+                }
+                return RedirectToAction(nameof(Details), new { id = equipeId });
+            }
+            return View();
+        }
+
+
+        // GET: Equipes/Edit/5
+        public async Task<IActionResult> Edit(int id)
+        {
+            var equipe = await _context.Equipes
+                .Include(e => e.EquipeUtilisateurs)
+                .ThenInclude(eu => eu.Utilisateurs)
+                .FirstOrDefaultAsync(e => e.EquipeId == id);
+
+            if (equipe == null)
+            {
+                return NotFound();
+            }
+
+            // Get all users
+            var utilisateurs = await _context.Utilisateurs.ToListAsync();
+
+            // Get the IDs of users already associated with the team
+            var existingUserIds = equipe.EquipeUtilisateurs.Select(eu => eu.UtilisateursId).ToList();
+
+            ViewBag.Utilisateurs = utilisateurs;
+            ViewBag.ExistingUserIds = existingUserIds;
+
+            return View(equipe);
+        }
+
+
+
+        //POST : EDit
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SaveEdit(int equipeId, int[] selectedUsers)
+        {
+            // Remove existing associations
+            var existingAssociations = await _context.EquipeUtilisateurs
+                .Where(eu => eu.EquipeId == equipeId)
+                .ToListAsync();
+
+            _context.EquipeUtilisateurs.RemoveRange(existingAssociations);
+
+            // Add new associations
+            if (selectedUsers != null)
+            {
+                foreach (var userId in selectedUsers)
+                {
+                    var equipeUtilisateur = new EquipeUtilisateur
+                    {
+                        EquipeId = equipeId,
+                        UtilisateursId = userId
+                    };
+
+                    _context.Add(equipeUtilisateur);
                 }
             }
-        }
-        return RedirectToAction(nameof(Details), new { id = equipeId });
-    }
 
-    return View();
-}
+            await _context.SaveChangesAsync();
+            return RedirectToAction(nameof(Details), new { id = equipeId });
+        }
+
+        // GET: Equipes/Delete/5
+        public async Task<IActionResult> Delete(int id)
+        {
+            var equipe = await _context.Equipes
+                .Include(e => e.EquipeUtilisateurs) // Include associations
+                .FirstOrDefaultAsync(e => e.EquipeId == id);
+
+            if (equipe == null)
+            {
+                return NotFound();
+            }
+
+            return View(equipe);
+        }
+
+        // POST: Equipes/Delete/5
+        [HttpPost, ActionName("Delete")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            // Get the associations to remove
+            var associations = await _context.EquipeUtilisateurs
+                .Where(eu => eu.EquipeId == id)
+                .ToListAsync();
+
+            // Remove associations
+            _context.EquipeUtilisateurs.RemoveRange(associations);
+
+            // Remove the team
+            var equipe = await _context.Equipes.FindAsync(id);
+            if (equipe != null)
+            {
+                _context.Equipes.Remove(equipe);
+            }
+
+            await _context.SaveChangesAsync();
+            return RedirectToAction(nameof(Index));
+        }
