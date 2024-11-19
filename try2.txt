@@ -1,281 +1,128 @@
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using NotifApps.Models;
-using System.Linq;
-using System.Threading.Tasks;
-
-namespace NotifApps.Controllers
-{
-    public class ApplicatifController : Controller
+// Utilisateur Upload POST
+[HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ProcessUpload(int equipeId, IFormFile ExcelFile)
     {
-        private readonly NotifdbContext _context;
+        
+        ExcelPackage.LicenseContext = LicenseContext.NonCommercial; // setting nonCommercial license for usage 
 
-        public ApplicatifController(NotifdbContext context)
+        if (ExcelFile != null && ExcelFile.Length > 0)
         {
-            _context = context;
+            using (var stream = new MemoryStream())
+            {
+                await ExcelFile.CopyToAsync(stream);
+                using (var package = new ExcelPackage(stream))
+                {
+                    var worksheet = package.Workbook.Worksheets.FirstOrDefault();
+                    if (worksheet != null)
+                    {
+                        for (int row = 2; row <= worksheet.Dimension.End.Row; row++) // setting first row as header
+                        {
+                            var nom = worksheet.Cells[row, 1].Text; 
+                            var prenom = worksheet.Cells[row, 2].Text; 
+                            var email = worksheet.Cells[row, 3].Text;
+                            var ag = worksheet.Cells[row, 4].Text;
+
+
+                                var utilisateur = new Utilisateurs
+                            {
+                                NomUtilisateurs = nom,
+                                PrenomUtilisateurs = prenom,
+                                Email = email,
+                                AG = ag
+                                };
+
+                            _context.Add(utilisateur);
+                            await _context.SaveChangesAsync();
+
+                            // Create the association
+                            var equipeUtilisateur = new EquipeUtilisateur
+                            {
+                                EquipeId = equipeId,
+                                UtilisateursId = utilisateur.UtilisateursID // set after saving
+                            };
+
+                            _context.Add(equipeUtilisateur);
+                        }
+                        await _context.SaveChangesAsync();
+                    }
+                }
+            }
+            return RedirectToAction(nameof(Details), new { id = equipeId });
         }
+        return View();
+    }
 
-        // INDEX: List of all applicatifs
-        public async Task<IActionResult> Index()
-        {
-            var applicatifs = await _context.Applicatifs.Include(a => a.Addresses).ToListAsync();
-            return View(applicatifs);
-        }
+================================================
+@{
+    ViewData["Title"] = "Téléverser le Template";
+}
 
-        // CREATE: GET method
-        public IActionResult Create()
+<h2>Téléverser le Template d'Utilisateurs</h2>
+
+<form asp-action="ProcessUpload" method="post" enctype="multipart/form-data">
+    <input type="hidden" name="EquipeId" value="@ViewBag.EquipeId" />
+    <div class="form-group">
+        <label for="ExcelFile">Sélectionnez un fichier Excel</label>
+        <input type="file" name="ExcelFile" class="form-control" required />
+    </div>
+    <button type="submit" class="btn btn-primary">Téléverser</button>
+</form>
+=============================================================
+@model NotifApps.Models.Equipe
+
+@{
+    ViewData["Title"] = "Détails de l'Équipe";
+}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+
+
+
+<div class="container mt-5">
+    <p>
+        <a asp-action="UploadTemplate" asp-route-equipeId="@Model.EquipeId" class="btn btn-black">Ajouter Utilisateurs</a>
+    </p>
+    <div class="card">
+        <div class="card-header bg-black text-white text-center">
+            <h2>@Model.NomEquipe</h2>
+        </div>
+        <div class="card-body">
+            <h4>Utilisateurs Associés</h4>
+            <ul>
+                @foreach (var equipeUtilisateur in Model.EquipeUtilisateurs)
+                {
+                    <li>@equipeUtilisateur.Utilisateurs.NomUtilisateurs @equipeUtilisateur.Utilisateurs.PrenomUtilisateurs</li>
+                }
+            </ul>
+
+            <div class="d-flex justify-content-center mt-4">
+                <a asp-action="Index" class="btn btn-black mx-2" title="Retour à la liste">
+                    <i class="fa fa-arrow-circle-left"></i>
+                </a>
+                <a asp-action="Delete" asp-route-id="@Model.EquipeId" class="btn btn-danger mx-2" title="Supprimer">
+                    <i class="fas fa-trash-alt"></i>
+                </a>
+
+                <a asp-action="AttachUtilisateur" asp-route-id="@Model.EquipeId" class="btn btn-primary mx-2" title="Rattacher Utilisateur">
+                    <i class="fas fa-user-plus"></i>
+                </a>
+                <a asp-action="Edit" asp-route-id="@Model.EquipeId" class="btn btn-warning mx-2" title="Modifier">
+                    <i class="fas fa-edit"></i>
+                </a>
+            </div>
+
+        </div>
+    </div>
+</div>
+============================================================
+public IActionResult UploadTemplate(int id)
         {
+            ViewBag.EquipeId = id; // Pass the team ID to the view
             return View();
         }
 
-        // CREATE: POST method
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(Applicatif applicatif, List<Address> addresses)
-        {
-            if (ModelState.IsValid)
-            {
-                _context.Add(applicatif);
-                await _context.SaveChangesAsync();
-
-                foreach (var address in addresses)
-                {
-                    address.App_ID = applicatif.App_ID;
-                    _context.Addresses.Add(address);
-                }
-                await _context.SaveChangesAsync();
-
-                return RedirectToAction(nameof(Index));
-            }
-            return View(applicatif);
-        }
-
-        // EDIT: GET method
-        public async Task<IActionResult> Edit(int? id)
-        {
-            if (id == null) return NotFound();
-
-            var applicatif = await _context.Applicatifs.Include(a => a.Addresses)
-                .FirstOrDefaultAsync(a => a.App_ID == id);
-            if (applicatif == null) return NotFound();
-
-            return View(applicatif);
-        }
-
-        // EDIT: POST method
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, Applicatif applicatif, List<Address> addresses)
-        {
-            if (id != applicatif.App_ID) return NotFound();
-
-            if (ModelState.IsValid)
-            {
-                _context.Update(applicatif);
-                await _context.SaveChangesAsync();
-
-                // Handle addresses update
-                var existingAddresses = _context.Addresses.Where(a => a.App_ID == applicatif.App_ID);
-                _context.Addresses.RemoveRange(existingAddresses);
-
-                foreach (var address in addresses)
-                {
-                    address.App_ID = applicatif.App_ID;
-                    _context.Addresses.Add(address);
-                }
-                await _context.SaveChangesAsync();
-
-                return RedirectToAction(nameof(Index));
-            }
-            return View(applicatif);
-        }
-
-        // DELETE: GET method
-        public async Task<IActionResult> Delete(int? id)
-        {
-            if (id == null) return NotFound();
-
-            var applicatif = await _context.Applicatifs.Include(a => a.Addresses)
-                .FirstOrDefaultAsync(a => a.App_ID == id);
-            if (applicatif == null) return NotFound();
-
-            return View(applicatif);
-        }
-
-        // DELETE: POST method
-        [HttpPost, ActionName("Delete")]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(int id)
-        {
-            var applicatif = await _context.Applicatifs.FindAsync(id);
-            _context.Applicatifs.Remove(applicatif);
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
-        }
-    }
-}
-
-========================INDEX===================================
-@model IEnumerable<NotifApps.Models.Applicatif>
-
-<h2>List of Applicatifs</h2>
-
-<table class="table">
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Description</th>
-            <th>Link</th>
-            <th>Status</th>
-            <th>Addresses</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var item in Model)
-        {
-            <tr>
-                <td>@item.App_nom</td>
-                <td>@item.Descriptif</td>
-                <td>@item.Lien_Web</td>
-                <td>@item.Statut</td>
-                <td>
-                    <ul>
-                        @foreach (var address in item.Addresses)
-                        {
-                            <li>@address.Type: @address.Value</li>
-                        }
-                    </ul>
-                </td>
-                <td>
-                    <a asp-action="Edit" asp-route-id="@item.App_ID" class="btn btn-primary">Edit</a>
-                    <a asp-action="Delete" asp-route-id="@item.App_ID" class="btn btn-danger">Delete</a>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
-<a asp-action="Create" class="btn btn-success">Create New Applicatif</a>
-
-================================Edit============================
-
-@model NotifApps.Models.Applicatif
-
-<h2>Edit Applicatif</h2>
-
-<form asp-action="Edit" method="post">
-    <div class="form-group">
-        <label asp-for="App_nom" class="control-label"></label>
-        <input asp-for="App_nom" class="form-control" />
-    </div>
-    <div class="form-group">
-        <label asp-for="Descriptif" class="control-label"></label>
-        <input asp-for="Descriptif" class="form-control" />
-    </div>
-    <div class="form-group">
-        <label asp-for="Lien_Web" class="control-label"></label>
-        <input asp-for="Lien_Web" class="form-control" />
-    </div>
-    <div class="form-group">
-        <label asp-for="Statut" class="control-label"></label>
-        <input asp-for="Statut" class="form-control" />
-    </div>
-
-    <!-- Addresses section -->
-    <h3>Addresses</h3>
-    <div id="address-container">
-        @for (int i = 0; i < Model.Addresses.Count; i++)
-        {
-            <div class="form-group">
-                <label>Type of Address</label>
-                <!-- Corrected indexation -->
-                <input type="text" name="addresses[@(i)].Type" class="form-control" value="@Model.Addresses[i].Type" />
-                <label>Address Value</label>
-                <input type="text" name="addresses[@(i)].Value" class="form-control" value="@Model.Addresses[i].Value" />
-            </div>
-        }
-    </div>
-
-    <!-- Button to add additional addresses dynamically -->
-    <button type="button" id="addAddressBtn" class="btn btn-secondary">Add Another Address</button>
-
-    <div class="form-group">
-        <input type="submit" value="Save Changes" class="btn btn-primary" />
-    </div>
-</form>
-
-@section Scripts {
-    <script>
-        let addressIndex = @Model.Addresses.Count;
-        document.getElementById('addAddressBtn').addEventListener('click', function () {
-            const container = document.getElementById('address-container');
-            const newAddressHtml = `
-                <div class="form-group">
-                    <label>Type of Address</label>
-                    <input type="text" name="addresses[${addressIndex}].Type" class="form-control" />
-                    <label>Address Value</label>
-                    <input type="text" name="addresses[${addressIndex}].Value" class="form-control" />
-                </div>
-            `;
-            container.insertAdjacentHTML('beforeend', newAddressHtml);
-            addressIndex++;
-        });
-    </script>
-}
-==================================CREATE ============================================
-@model NotifApps.Models.Applicatif
-
-<h2>Create Applicatif</h2>
-
-<form asp-action="Create">
-    <div class="form-group">
-        <label asp-for="App_nom" class="control-label"></label>
-        <input asp-for="App_nom" class="form-control" />
-    </div>
-    <div class="form-group">
-        <label asp-for="Descriptif" class="control-label"></label>
-        <input asp-for="Descriptif" class="form-control" />
-    </div>
-    <div class="form-group">
-        <label asp-for="Lien_Web" class="control-label"></label>
-        <input asp-for="Lien_Web" class="form-control" />
-    </div>
-    <div class="form-group">
-        <label asp-for="Statut" class="control-label"></label>
-        <input asp-for="Statut" class="form-control" />
-    </div>
-
-    <!-- Address input (you can dynamically add multiple addresses) -->
-    <div id="address-container">
-        <div class="form-group">
-            <label>Type of Address</label>
-            <input type="text" name="addresses[0].Type" class="form-control" />
-            <label>Address Value</label>
-            <input type="text" name="addresses[0].Value" class="form-control" />
-        </div>
-    </div>
-    <button type="button" id="addAddressBtn" class="btn btn-secondary">Add Another Address</button>
-
-    <div class="form-group">
-        <input type="submit" value="Create" class="btn btn-primary" />
-    </div>
-</form>
-
-@section Scripts {
-    <script>
-        let addressIndex = 1;
-        document.getElementById('addAddressBtn').addEventListener('click', function () {
-            const container = document.getElementById('address-container');
-            const newAddressHtml = `
-                <div class="form-group">
-                    <label>Type of Address</label>
-                    <input type="text" name="addresses[${addressIndex}].Type" class="form-control" />
-                    <label>Address Value</label>
-                    <input type="text" name="addresses[${addressIndex}].Value" class="form-control" />
-                </div>
-            `;
-            container.insertAdjacentHTML('beforeend', newAddressHtml);
-            addressIndex++;
-        });
-    </script>
-}
+===================================================================
+An unhandled exception occurred while processing the request.
+InvalidOperationException: The value of 'EquipeUtilisateur.EquipeId' is unknown when attempting to save changes. This is because the property is also part of a foreign key for which the principal entity in the relationship is not known.
+Microsoft.Ent
