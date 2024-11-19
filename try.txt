@@ -1,3 +1,74 @@
+// Utilisateur Upload POST
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> ProcessUpload(int equipeId, IFormFile ExcelFile)
+{
+    ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+
+    if (ExcelFile != null && ExcelFile.Length > 0)
+    {
+        // Vérification si l'équipe existe dans la base de données
+        var equipeExists = await _context.Equipes.AnyAsync(e => e.EquipeId == equipeId);
+        if (!equipeExists)
+        {
+            return NotFound("L'équipe spécifiée est introuvable.");
+        }
+
+        using (var stream = new MemoryStream())
+        {
+            await ExcelFile.CopyToAsync(stream);
+            using (var package = new ExcelPackage(stream))
+            {
+                var worksheet = package.Workbook.Worksheets.FirstOrDefault();
+                if (worksheet != null)
+                {
+                    for (int row = 2; row <= worksheet.Dimension.End.Row; row++)
+                    {
+                        // Extraction des données Excel
+                        var nom = worksheet.Cells[row, 1].Text.Trim();
+                        var prenom = worksheet.Cells[row, 2].Text.Trim();
+                        var email = worksheet.Cells[row, 3].Text.Trim();
+                        var ag = worksheet.Cells[row, 4].Text.Trim();
+
+                        // Création d'un nouvel utilisateur
+                        var utilisateur = new Utilisateurs
+                        {
+                            NomUtilisateurs = nom,
+                            PrenomUtilisateurs = prenom,
+                            Email = email,
+                            AG = ag
+                        };
+
+                        // Ajout de l'utilisateur à la base de données
+                        _context.Utilisateurs.Add(utilisateur);
+                        await _context.SaveChangesAsync(); // Sauvegarde pour obtenir l'ID
+
+                        // Création de la relation avec l'équipe
+                        var equipeUtilisateur = new EquipeUtilisateur
+                        {
+                            EquipeId = equipeId,
+                            UtilisateursId = utilisateur.UtilisateursID
+                        };
+
+                        _context.EquipeUtilisateurs.Add(equipeUtilisateur);
+                    }
+
+                    // Sauvegarde des relations EquipeUtilisateur
+                    await _context.SaveChangesAsync();
+                }
+            }
+        }
+
+        // Redirection vers la page de détails de l'équipe
+        return RedirectToAction(nameof(Details), new { id = equipeId });
+    }
+
+    // Retourner une vue avec un message d'erreur si le fichier est vide ou nul
+    ModelState.AddModelError("", "Le fichier Excel est invalide ou vide.");
+    return View();
+}
+
+
 An unhandled exception occurred while processing the request.
 InvalidOperationException: The value of 'EquipeUtilisateur.EquipeId' is unknown when attempting to save changes. This is because the property is also part of a foreign key for which the principal entity in the relationship is not known.
 
