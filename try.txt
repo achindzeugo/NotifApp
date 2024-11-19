@@ -1,3 +1,132 @@
+on me dit l'equipe specifier est introuvable
+alors que je vois bien l'ID sur le navigateur
+Equipes/UploadTemplate?equipeId=9
+
+estce que le probleme ne vient pas de cette page ?
+voici ma page d'upload
+@{
+    ViewData["Title"] = "Téléverser le Template";
+}
+
+<h2>Téléverser le Template d'Utilisateurs</h2>
+
+<form asp-action="ProcessUpload" method="post" enctype="multipart/form-data">
+    <input type="hidden" name="EquipeId" value="@ViewBag.EquipeId" />
+    <div class="form-group">
+        <label for="ExcelFile">Sélectionnez un fichier Excel</label>
+        <input type="file" name="ExcelFile" class="form-control" required />
+    </div>
+    <button type="submit" class="btn btn-primary">Téléverser</button>
+</form>
+==========
+<form asp-action="ProcessUpload" method="post" enctype="multipart/form-data">
+    <input asp-for="EquipeId" type="hidden" />
+    <div class="form-group">
+        <label for="ExcelFile">Sélectionnez un fichier Excel</label>
+        <input asp-for="ExcelFile" type="file" class="form-control" required />
+    </div>
+    <button type="submit" class="btn btn-primary">Téléverser</button>
+</form>
+
+// Action pour afficher le formulaire d'upload
+public IActionResult UploadTemplate(int equipeId)
+{
+    if (equipeId == 0)
+    {
+        return NotFound("L'équipe spécifiée est introuvable.");
+    }
+
+    // Transmettre l'ID de l'équipe à la vue via ViewBag
+    ViewBag.EquipeId = equipeId;
+    return View();
+}
+
+// Action POST pour traiter l'upload
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> ProcessUpload(int equipeId, IFormFile ExcelFile)
+{
+    // Vérification si l'ID de l'équipe est valide
+    if (equipeId == 0)
+    {
+        return BadRequest("L'ID de l'équipe est manquant ou invalide.");
+    }
+
+    // Vérifiez si l'équipe existe dans la base de données
+    var equipeExists = await _context.Equipes.AnyAsync(e => e.EquipeId == equipeId);
+    if (!equipeExists)
+    {
+        return NotFound("L'équipe spécifiée est introuvable.");
+    }
+
+    if (ExcelFile != null && ExcelFile.Length > 0)
+    {
+        // Utilisation de EPPlus pour traiter le fichier Excel
+        ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+
+        using (var stream = new MemoryStream())
+        {
+            await ExcelFile.CopyToAsync(stream);
+
+            using (var package = new ExcelPackage(stream))
+            {
+                var worksheet = package.Workbook.Worksheets.FirstOrDefault();
+
+                if (worksheet != null)
+                {
+                    // Lecture des données du fichier Excel
+                    for (int row = 2; row <= worksheet.Dimension.End.Row; row++) // Ignorer la première ligne (en-têtes)
+                    {
+                        var nom = worksheet.Cells[row, 1].Text?.Trim();
+                        var prenom = worksheet.Cells[row, 2].Text?.Trim();
+                        var email = worksheet.Cells[row, 3].Text?.Trim();
+                        var ag = worksheet.Cells[row, 4].Text?.Trim();
+
+                        if (string.IsNullOrWhiteSpace(nom) || string.IsNullOrWhiteSpace(email))
+                        {
+                            continue; // Ignorez les lignes incomplètes
+                        }
+
+                        // Création d'un nouvel utilisateur
+                        var utilisateur = new Utilisateurs
+                        {
+                            NomUtilisateurs = nom,
+                            PrenomUtilisateurs = prenom,
+                            Email = email,
+                            AG = ag
+                        };
+
+                        // Ajout de l'utilisateur à la base de données
+                        _context.Add(utilisateur);
+                        await _context.SaveChangesAsync(); // Sauvegarder pour obtenir l'ID généré
+
+                        // Création de l'association utilisateur-équipe
+                        var equipeUtilisateur = new EquipeUtilisateur
+                        {
+                            EquipeId = equipeId,
+                            UtilisateursId = utilisateur.UtilisateursID
+                        };
+
+                        _context.Add(equipeUtilisateur);
+                    }
+
+                    // Sauvegarder toutes les associations en une seule transaction
+                    await _context.SaveChangesAsync();
+                }
+            }
+        }
+
+        // Redirection vers une page de détails ou confirmation
+        return RedirectToAction(nameof(Details), new { id = equipeId });
+    }
+
+    // Si le fichier n'est pas valide, renvoyez la vue avec une erreur
+    ModelState.AddModelError("ExcelFile", "Veuillez sélectionner un fichier Excel valide.");
+    return View();
+}
+
+===============
+
 // Utilisateur Upload POST
 [HttpPost]
 [ValidateAntiForgeryToken]
