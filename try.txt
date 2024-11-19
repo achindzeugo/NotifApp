@@ -1,72 +1,58 @@
-// GET: Applicatif/EditCriticite
-[HttpGet]
-public async Task<IActionResult> EditCriticite(int applicatifId, int equipeId)
-{
-    // Recherche de l'association entre l'applicatif et l'équipe
-    var equipeApplicatif = await _context.EquipeApplicatifs
-        .FirstOrDefaultAsync(ea => ea.AppId == applicatifId && ea.EquipeId == equipeId);
-
-    if (equipeApplicatif == null)
-    {
-        // Retourne une erreur 404 si l'association n'est pas trouvée
-        return NotFound();
-    }
-
-    // Options de criticité pour le sélecteur dans la vue
-    ViewBag.CriticiteOptions = new List<string> { "P0", "P1", "P2", "P3" };
-    return View(equipeApplicatif);
-}
-// POST: Applicatif/EditCriticite
 [HttpPost]
 [ValidateAntiForgeryToken]
-public async Task<IActionResult> EditCriticite(int applicatifId, int equipeId, string criticiteNom)
+public async Task<IActionResult> ProcessUpload(int equipeId, IFormFile ExcelFile)
 {
-    // Recherche de l'association entre l'applicatif et l'équipe
-    var equipeApplicatif = await _context.EquipeApplicatifs
-        .FirstOrDefaultAsync(ea => ea.AppId == applicatifId && ea.EquipeId == equipeId);
+    ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 
-    if (equipeApplicatif == null)
+    if (ExcelFile != null && ExcelFile.Length > 0)
     {
-        // Retourne une erreur 404 si l'association n'est pas trouvée
-        return NotFound();
-    }
-
-    // Mise à jour du champ CriticiteNom
-    equipeApplicatif.CriticiteNom = criticiteNom;
-
-    // Validation et enregistrement des modifications
-    if (ModelState.IsValid)
-    {
-        try
+        using (var stream = new MemoryStream())
         {
-            _context.Update(equipeApplicatif);
-            await _context.SaveChangesAsync();
+            await ExcelFile.CopyToAsync(stream);
+            using (var package = new ExcelPackage(stream))
+            {
+                var worksheet = package.Workbook.Worksheets.FirstOrDefault();
+                if (worksheet != null)
+                {
+                    // Charger ou attacher l'équipe
+                    var equipe = await _context.Equipes.FindAsync(equipeId);
+                    if (equipe == null)
+                    {
+                        return NotFound($"L'équipe avec l'ID {equipeId} n'existe pas.");
+                    }
 
-            // Redirection vers la page de détails de l'applicatif après enregistrement
-            return RedirectToAction("Details", new { id = applicatifId });
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            // Vérifie l'existence avant de retourner une erreur
-            if (!EquipeApplicatifExists(applicatifId, equipeId))
-            {
-                return NotFound();
+                    for (int row = 2; row <= worksheet.Dimension.End.Row; row++)
+                    {
+                        var nom = worksheet.Cells[row, 1].Text;
+                        var prenom = worksheet.Cells[row, 2].Text;
+                        var email = worksheet.Cells[row, 3].Text;
+                        var ag = worksheet.Cells[row, 4].Text;
+
+                        var utilisateur = new Utilisateurs
+                        {
+                            NomUtilisateurs = nom,
+                            PrenomUtilisateurs = prenom,
+                            Email = email,
+                            AG = ag
+                        };
+
+                        _context.Add(utilisateur);
+                        await _context.SaveChangesAsync();
+
+                        // Créer et sauvegarder l'association
+                        var equipeUtilisateur = new EquipeUtilisateur
+                        {
+                            EquipeId = equipeId,
+                            UtilisateursId = utilisateur.UtilisateursID
+                        };
+
+                        _context.Add(equipeUtilisateur);
+                    }
+                    await _context.SaveChangesAsync();
+                }
             }
-            else
-            {
-                throw;
-            }
         }
+        return RedirectToAction(nameof(Details), new { id = equipeId });
     }
-
-    // Recharge les options de criticité si le ModelState n'est pas valide
-    ViewBag.CriticiteOptions = new List<string> { "P0", "P1", "P2", "P3" };
-    return View(equipeApplicatif);
+    return View();
 }
-
-// Méthode pour vérifier l'existence de l'association équipe-applicatif
-private bool EquipeApplicatifExists(int applicatifId, int equipeId)
-{
-    return _context.EquipeApplicatifs.Any(e => e.AppId == applicatifId && e.EquipeId == equipeId);
-}
-
