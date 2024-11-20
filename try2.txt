@@ -1,428 +1,146 @@
-// POST: Criticite/Create
+//Create Origine
 [HttpPost]
 [ValidateAntiForgeryToken]
-public async Task<IActionResult> CreateCriticite(Criticite criticite)
+public async Task<IActionResult> CreateOrigine(Origine origine)
 {
     if (ModelState.IsValid)
     {
-        // Assurez-vous que le statut est défini par défaut à "Actif"
-        criticite.Statut = "Actif";
-
-        // La date de création est déjà initialisée dans le modèle
-        _context.Add(criticite);
+        origine.Statut = "Actif"; // Par défaut
+        origine.DateCreation = DateTime.Now; // Date de création
+        origine.DateDesactivation = null; // Pas encore désactivée
+        _context.Add(origine);
         await _context.SaveChangesAsync();
         return RedirectToAction(nameof(Index));
     }
-    return View(criticite);
+    return View(origine);
 }
 
-@model IEnumerable<NotifApps.Models.Criticite>
+//Edit Origine
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> EditOrigine(int id, Origine origine)
+{
+    if (id != origine.OrigineId)
+    {
+        return NotFound();
+    }
+
+    if (ModelState.IsValid)
+    {
+        try
+        {
+            var existingOrigine = await _context.Origines.FindAsync(id);
+            if (existingOrigine == null)
+            {
+                return NotFound();
+            }
+
+            // Mise à jour des propriétés
+            existingOrigine.OrigineNom = origine.OrigineNom;
+
+            // Si le statut change, gérer les dates
+            if (existingOrigine.Statut != origine.Statut)
+            {
+                existingOrigine.Statut = origine.Statut;
+
+                if (origine.Statut == "Inactif")
+                {
+                    existingOrigine.DateDesactivation = DateTime.Now;
+                }
+                else
+                {
+                    existingOrigine.DateDesactivation = null; // Réactivation
+                }
+            }
+
+            _context.Update(existingOrigine);
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!OrigineExists(origine.OrigineId))
+            {
+                return NotFound();
+            }
+            throw;
+        }
+        return RedirectToAction(nameof(Index));
+    }
+    return View(origine);
+}
+
+//Vue Edit Origine 
+@model NotifApps.Models.Origine
 
 @{
-    ViewData["Title"] = "Liste des Criticités";
+    ViewData["Title"] = "Modifier Origine";
 }
 
-<h2>Liste des Criticités</h2>
+<h2>Modifier l'origine</h2>
+<hr />
 
-<table class="table table-bordered table-striped">
-    <thead class="bg-black text-white">
+<div class="container mt-5">
+    <form asp-action="EditOrigine">
+        <input type="hidden" asp-for="OrigineId" />
+        <div class="form-group">
+            <label asp-for="OrigineNom"></label>
+            <input asp-for="OrigineNom" class="form-control" />
+            <span asp-validation-for="OrigineNom" class="text-danger"></span>
+        </div>
+        <div class="form-group">
+            <label asp-for="Statut"></label>
+            <select asp-for="Statut" class="form-control">
+                <option value="Actif" @(Model.Statut == "Actif" ? "selected" : "")>Actif</option>
+                <option value="Inactif" @(Model.Statut == "Inactif" ? "selected" : "")>Inactif</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Date de création : @Model.DateCreation.ToString("dd/MM/yyyy HH:mm")</label>
+        </div>
+        <div class="form-group">
+            <label>Date de désactivation : 
+                @(Model.DateDesactivation.HasValue ? Model.DateDesactivation.Value.ToString("dd/MM/yyyy HH:mm") : "N/A")
+            </label>
+        </div>
+        <div class="text-center mt-4">
+            <button type="submit" class="btn btn-warning">Enregistrer</button>
+            <a asp-action="Index" class="btn btn-secondary">Annuler</a>
+        </div>
+    </form>
+</div>
+
+//Vue Index 
+@model IEnumerable<NotifApps.Models.Origine>
+
+<h2>Liste des origines</h2>
+<hr />
+<p>
+    <a asp-action="CreateOrigine" class="btn btn-primary">Ajouter une origine</a>
+</p>
+
+<table class="table table-bordered">
+    <thead>
         <tr>
-            <th>#</th>
-            <th>Nom</th>
-            <th>Couleur</th>
-            <th>Description</th>
+            <th>Nom de l'origine</th>
             <th>Statut</th>
-            <th>Date de Création</th>
+            <th>Date de création</th>
+            <th>Date de désactivation</th>
             <th>Actions</th>
         </tr>
     </thead>
     <tbody>
-        @foreach (var criticite in Model)
+        @foreach (var origine in Model)
         {
             <tr>
-                <td>@criticite.CriticiteId</td>
-                <td>@criticite.CriticiteNom</td>
+                <td>@origine.OrigineNom</td>
+                <td>@origine.Statut</td>
+                <td>@origine.DateCreation.ToString("dd/MM/yyyy HH:mm")</td>
+                <td>@(origine.DateDesactivation.HasValue ? origine.DateDesactivation.Value.ToString("dd/MM/yyyy HH:mm") : "N/A")</td>
                 <td>
-                    <span style="background-color:@criticite.Couleur; padding:5px; border-radius:4px; color:white;">
-                        @criticite.Couleur
-                    </span>
-                </td>
-                <td>@criticite.Descriptions</td>
-                <td>
-                    @if (criticite.Statut == "Actif")
-                    {
-                        <span class="badge bg-success">Actif</span>
-                    }
-                    else
-                    {
-                        <span class="badge bg-secondary">Inactif</span>
-                    }
-                </td>
-                <td>@criticite.DateCreation.ToString("dd/MM/yyyy")</td>
-                <td>
-                    <a asp-action="Edit" asp-route-id="@criticite.CriticiteId" class="btn btn-primary btn-sm" title="Modifier">
-                        <i class="fas fa-edit"></i>
-                    </a>
-                    <a asp-action="Delete" asp-route-id="@criticite.CriticiteId" class="btn btn-danger btn-sm" title="Supprimer">
-                        <i class="fas fa-trash"></i>
-                    </a>
+                    <a asp-action="EditOrigine" asp-route-id="@origine.OrigineId" class="btn btn-warning">Modifier</a>
+                    <a asp-action="DeleteOrigine" asp-route-id="@origine.OrigineId" class="btn btn-danger">Supprimer</a>
                 </td>
             </tr>
         }
     </tbody>
 </table>
-
-// GET: Criticite/Index
-public async Task<IActionResult> Index()
-{
-    // Récupère toutes les criticités depuis la base de données
-    var criticites = await _context.Criticites.ToListAsync();
-
-    // Vérifie s'il n'y a pas de criticités dans la base
-    if (criticites == null || !criticites.Any())
-    {
-        // Retourne une liste vide si aucune criticité n'est trouvée
-        return View(new List<Criticite>());
-    }
-
-    // Passe la liste des criticités à la vue
-    return View(criticites);
-}
-
-
-@model NotifApps.Models.Criticite
-
-@{
-    ViewData["Title"] = "Créer Criticité";
-}
-
-<div class="container mt-5">
-    <div class="card">
-        <div class="card-header bg-black text-white">
-            <h4>Créer une Criticité</h4>
-        </div>
-        <div class="card-body">
-            <form asp-action="CreateCriticite">
-                <!-- Nom de la Criticité -->
-                <div class="form-group">
-                    <label asp-for="CriticiteNom" class="form-label">Nom de la Criticité</label>
-                    <input asp-for="CriticiteNom" class="form-control" placeholder="Entrez le nom de la criticité" />
-                    <span asp-validation-for="CriticiteNom" class="text-danger"></span>
-                </div>
-
-                <!-- Couleur -->
-                <div class="form-group">
-                    <label asp-for="Couleur" class="form-label">Couleur</label>
-                    <select asp-for="Couleur" class="form-control">
-                        <option value="">-- Sélectionnez une couleur --</option>
-                        <option value="red">Rouge</option>
-                        <option value="orange">Orange</option>
-                        <option value="yellow">Jaune</option>
-                        <option value="blue">Bleu</option>
-                        <option value="green">Vert</option>
-                        <option value="purple">Violet</option>
-                        <option value="pink">Rose</option>
-                        <option value="gray">Gris</option>
-                        <option value="brown">Marron</option>
-                        <option value="cyan">Cyan</option>
-                        <option value="lime">Lime</option>
-                    </select>
-                    <span asp-validation-for="Couleur" class="text-danger"></span>
-                </div>
-
-                <!-- Description -->
-                <div class="form-group">
-                    <label asp-for="Descriptions" class="form-label">Description</label>
-                    <textarea asp-for="Descriptions" class="form-control" placeholder="Ajoutez une description si nécessaire"></textarea>
-                    <span asp-validation-for="Descriptions" class="text-danger"></span>
-                </div>
-
-                <!-- Boutons d'action -->
-                <div class="text-center mt-4">
-                    <button type="submit" class="btn btn-success" title="Créer">
-                        <i class="fas fa-save"></i> Enregistrer
-                    </button>
-                    <a asp-action="Index" class="btn btn-secondary mx-2" title="Annuler">
-                        <i class="fas fa-ban"></i> Annuler
-                    </a>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<style>
-    .card {
-        border-top: 5px solid red;
-        border-radius: 8px;
-    }
-
-    .form-label {
-        font-weight: bold;
-    }
-
-    .btn-success {
-        background-color: #28a745;
-        border-color: #28a745;
-    }
-
-    .btn-secondary {
-        background-color: #6c757d;
-        border-color: #6c757d;
-    }
-</style>
-========================================
-[HttpPost]
-[ValidateAntiForgeryToken]
-public async Task<IActionResult> EditCriticite(int id, Criticite criticite)
-{
-    if (id != criticite.CriticiteId)
-    {
-        return NotFound();
-    }
-
-    if (ModelState.IsValid)
-    {
-        try
-        {
-            // Vérifiez si le statut est "Inactif" et mettez la date de désactivation
-            if (criticite.Statut == "Inactif")
-            {
-                criticite.DateDesactivation = DateTime.Now;
-            }
-            else
-            {
-                // Si réactivé, supprimez la date de désactivation
-                criticite.DateDesactivation = null;
-            }
-
-            _context.Update(criticite);
-            await _context.SaveChangesAsync();
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            if (!CriticiteExists(criticite.CriticiteId))
-            {
-                return NotFound();
-            }
-            throw;
-        }
-        return RedirectToAction(nameof(Index));
-    }
-    return View(criticite);
-}
-
-@model NotifApps.Models.Criticite
-
-<div class="container mt-5">
-    <div class="card card">
-        <div class="card-header bg-black text-white">
-            <h4>Modifier Criticité</h4>
-        </div>
-        <div class="card-body">
-            <form asp-action="EditCriticite">
-                <input type="hidden" asp-for="CriticiteId" />
-                <div class="form-group">
-                    <label asp-for="CriticiteNom"></label>
-                    <input asp-for="CriticiteNom" class="form-control" />
-                    <span asp-validation-for="CriticiteNom" class="text-danger"></span>
-                </div>
-                <div class="form-group">
-                    <label for="Couleur">Sélectionnez une couleur</label>
-                    <select asp-for="Couleur" class="form-control">
-                        <option value="red">Rouge</option>
-                        <option value="orange">Orange</option>
-                        <option value="yellow">Jaune</option>
-                        <option value="blue">Bleu</option>
-                        <option value="green">Vert</option>
-                        <option value="purple">Violet</option>
-                        <option value="pink">Rose</option>
-                        <option value="gray">Gris</option>
-                        <option value="brown">Marron</option>
-                        <option value="cyan">Cyan</option>
-                        <option value="lime">Lime</option>
-                    </select>
-                    <span asp-validation-for="Couleur" class="text-danger"></span>
-                </div>
-                <div class="form-group">
-                    <label asp-for="Descriptions"></label>
-                    <input asp-for="Descriptions" class="form-control" />
-                    <span asp-validation-for="Descriptions" class="text-danger"></span>
-                </div>
-                <div class="form-group">
-                    <label asp-for="Statut">Statut</label>
-                    <select asp-for="Statut" class="form-control">
-                        <option value="Actif" selected>Actif</option>
-                        <option value="Inactif">Inactif</option>
-                    </select>
-                    <span asp-validation-for="Statut" class="text-danger"></span>
-                </div>
-                <div class="form-group">
-                    <label>Date de Désactivation</label>
-                    <input type="text" class="form-control" value="@Model.DateDesactivation?.ToString("yyyy-MM-dd HH:mm:ss")" readonly />
-                </div>
-                <div class="d-flex justify-content-center">
-                    <button type="submit" class="btn btn-danger" title="Enregistrer">
-                        <i class="fas fa-save"></i>
-                    </button>
-                    <a asp-action="Index" class="btn btn-black mx-2" title="Annuler">
-                        <i class="fas fa-ban"></i>
-                    </a>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<style>
-    .card {
-        border-top-color: red;
-        border-top-style: solid;
-        border-top-width: 5px;
-        border-top-left-radius: 5px;
-        border-top-right-radius: 5px;
-    }
-</style>
-===========================================
-@model NotifApps.Models.Criticite
-
-<h2>Détails de la Criticité</h2>
-<hr />
-
-<div class="container mt-5">
-    <div class="card card">
-
-        <div class="card-header bg-black text-white">
-            <h4>Détails de la Criticité</h4>
-        </div>
-        <div class="card-body">
-
-            <!-- Nom de la criticité avec badge couleur -->
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h3>@Model.CriticiteNom</h3>
-                <span class="badge text-black" style="background-color: @(Model.Couleur ?? "gray");">
-                    @(Model.CriticiteNom?.ToUpper() ?? "N/A")
-                </span>
-            </div>
-
-            <!-- Description -->
-            <p><strong>Description :</strong> @Model.Descriptions</p>
-
-            <!-- Statut avec badge -->
-            <p>
-                <strong>Statut :</strong>
-                <span class="badge @(Model.Statut == "Actif" ? "bg-success" : "bg-danger") text-white">
-                    @(Model.Statut)
-                </span>
-            </p>
-
-            <!-- Dates -->
-            <p>
-                <strong>Date de Création :</strong>
-                @Model.DateCreation?.ToString("dd MMMM yyyy HH:mm:ss")
-            </p>
-            <p>
-                <strong>Date de Désactivation :</strong>
-                @(Model.DateDesactivation.HasValue 
-                    ? Model.DateDesactivation?.ToString("dd MMMM yyyy HH:mm:ss") 
-                    : "Non désactivée")
-            </p>
-
-            <!-- Boutons d'action -->
-            <div class="d-flex justify-content-center mt-4">
-                <a asp-action="EditCriticite" asp-route-id="@Model.CriticiteId" class="btn btn-warning mx-2" title="Modifier">
-                    <i class="fas fa-edit"></i>
-                </a>
-                <a asp-action="Index" class="btn btn-black mx-2" title="Retour">
-                    <i class="fas fa-arrow-left"></i>
-                </a>
-            </div>
-        </div>
-    </div>
-</div>
-
-<style>
-    .card {
-        border-top-color: red;
-        border-top-style: solid;
-        border-top-width: 5px;
-        border-top-left-radius: 5px;
-        border-top-right-radius: 5px;
-    }
-
-    .badge {
-        font-size: 1rem;
-        padding: 0.5em 1em;
-    }
-
-    .bg-success {
-        background-color: #28a745;
-    }
-
-    .bg-danger {
-        background-color: #dc3545;
-    }
-</style>
-
-
-[HttpPost]
-[ValidateAntiForgeryToken]
-public async Task<IActionResult> EditCriticite(int id, Criticite criticite)
-{
-    if (id != criticite.CriticiteId)
-    {
-        return NotFound();
-    }
-
-    if (ModelState.IsValid)
-    {
-        try
-        {
-            // Récupérer la criticité existante depuis la base
-            var existingCriticite = await _context.Criticites.FindAsync(id);
-            if (existingCriticite == null)
-            {
-                return NotFound();
-            }
-
-            // Mettre à jour les champs modifiables
-            existingCriticite.CriticiteNom = criticite.CriticiteNom;
-            existingCriticite.Couleur = criticite.Couleur;
-            existingCriticite.Descriptions = criticite.Descriptions;
-
-            // Gestion des dates et statut
-            if (existingCriticite.Statut != criticite.Statut)
-            {
-                // Si le statut passe à "Inactif", mettre à jour la date de désactivation
-                if (criticite.Statut == "Inactif")
-                {
-                    existingCriticite.DateDesactivation = DateTime.Now;
-                }
-                else
-                {
-                    // Si réactivé, réinitialiser la date de désactivation
-                    existingCriticite.DateDesactivation = null;
-                }
-
-                // Mettre à jour le statut
-                existingCriticite.Statut = criticite.Statut;
-            }
-
-            // La DateCreation ne doit jamais être modifiée ici
-
-            // Sauvegarder les changements
-            _context.Update(existingCriticite);
-            await _context.SaveChangesAsync();
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            if (!CriticiteExists(criticite.CriticiteId))
-            {
-                return NotFound();
-            }
-            throw;
-        }
-        return RedirectToAction(nameof(Index));
-    }
-    return View(criticite);
-}
