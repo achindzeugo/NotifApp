@@ -283,3 +283,83 @@ public async Task<IActionResult> EditCriticite(int id, Criticite criticite)
         border-top-right-radius: 5px;
     }
 </style>
+===========================================
+@model NotifApps.Models.Criticite
+
+<h2>Détails de la Criticité</h2>
+<hr />
+
+<div class="container mt-5">
+    <div class="card card">
+
+        <div class="card-header bg-black text-white">
+            <h4>Détails de la Criticité</h4>
+        </div>
+        <div class="card-body">
+
+            <!-- Nom de la criticité avec badge couleur -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3>@Model.CriticiteNom</h3>
+                <span class="badge text-black" style="background-color: @(Model.Couleur ?? "gray");">
+                    @(Model.CriticiteNom?.ToUpper() ?? "N/A")
+                </span>
+            </div>
+
+            <!-- Description -->
+            <p><strong>Description :</strong> @Model.Descriptions</p>
+
+            <!-- Statut avec badge -->
+            <p>
+                <strong>Statut :</strong>
+                <span class="badge @(Model.Statut == "Actif" ? "bg-success" : "bg-danger") text-white">
+                    @(Model.Statut)
+                </span>
+            </p>
+
+            <!-- Dates -->
+            <p>
+                <strong>Date de Création :</strong>
+                @Model.DateCreation?.ToString("dd MMMM yyyy HH:mm:ss")
+            </p>
+            <p>
+                <strong>Date de Désactivation :</strong>
+                @(Model.DateDesactivation.HasValue 
+                    ? Model.DateDesactivation?.ToString("dd MMMM yyyy HH:mm:ss") 
+                    : "Non désactivée")
+            </p>
+
+            <!-- Boutons d'action -->
+            <div class="d-flex justify-content-center mt-4">
+                <a asp-action="EditCriticite" asp-route-id="@Model.CriticiteId" class="btn btn-warning mx-2" title="Modifier">
+                    <i class="fas fa-edit"></i>
+                </a>
+                <a asp-action="Index" class="btn btn-black mx-2" title="Retour">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card {
+        border-top-color: red;
+        border-top-style: solid;
+        border-top-width: 5px;
+        border-top-left-radius: 5px;
+        border-top-right-radius: 5px;
+    }
+
+    .badge {
+        font-size: 1rem;
+        padding: 0.5em 1em;
+    }
+
+    .bg-success {
+        background-color: #28a745;
+    }
+
+    .bg-danger {
+        background-color: #dc3545;
+    }
+</style>
