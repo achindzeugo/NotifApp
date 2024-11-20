@@ -363,3 +363,66 @@ public async Task<IActionResult> EditCriticite(int id, Criticite criticite)
         background-color: #dc3545;
     }
 </style>
+
+
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> EditCriticite(int id, Criticite criticite)
+{
+    if (id != criticite.CriticiteId)
+    {
+        return NotFound();
+    }
+
+    if (ModelState.IsValid)
+    {
+        try
+        {
+            // Récupérer la criticité existante depuis la base
+            var existingCriticite = await _context.Criticites.FindAsync(id);
+            if (existingCriticite == null)
+            {
+                return NotFound();
+            }
+
+            // Mettre à jour les champs modifiables
+            existingCriticite.CriticiteNom = criticite.CriticiteNom;
+            existingCriticite.Couleur = criticite.Couleur;
+            existingCriticite.Descriptions = criticite.Descriptions;
+
+            // Gestion des dates et statut
+            if (existingCriticite.Statut != criticite.Statut)
+            {
+                // Si le statut passe à "Inactif", mettre à jour la date de désactivation
+                if (criticite.Statut == "Inactif")
+                {
+                    existingCriticite.DateDesactivation = DateTime.Now;
+                }
+                else
+                {
+                    // Si réactivé, réinitialiser la date de désactivation
+                    existingCriticite.DateDesactivation = null;
+                }
+
+                // Mettre à jour le statut
+                existingCriticite.Statut = criticite.Statut;
+            }
+
+            // La DateCreation ne doit jamais être modifiée ici
+
+            // Sauvegarder les changements
+            _context.Update(existingCriticite);
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!CriticiteExists(criticite.CriticiteId))
+            {
+                return NotFound();
+            }
+            throw;
+        }
+        return RedirectToAction(nameof(Index));
+    }
+    return View(criticite);
+}
