@@ -88,3 +88,86 @@ public async Task<IActionResult> Index()
     // Passe la liste des criticités à la vue
     return View(criticites);
 }
+
+
+@model NotifApps.Models.Criticite
+
+@{
+    ViewData["Title"] = "Créer Criticité";
+}
+
+<div class="container mt-5">
+    <div class="card">
+        <div class="card-header bg-black text-white">
+            <h4>Créer une Criticité</h4>
+        </div>
+        <div class="card-body">
+            <form asp-action="CreateCriticite">
+                <!-- Nom de la Criticité -->
+                <div class="form-group">
+                    <label asp-for="CriticiteNom" class="form-label">Nom de la Criticité</label>
+                    <input asp-for="CriticiteNom" class="form-control" placeholder="Entrez le nom de la criticité" />
+                    <span asp-validation-for="CriticiteNom" class="text-danger"></span>
+                </div>
+
+                <!-- Couleur -->
+                <div class="form-group">
+                    <label asp-for="Couleur" class="form-label">Couleur</label>
+                    <select asp-for="Couleur" class="form-control">
+                        <option value="">-- Sélectionnez une couleur --</option>
+                        <option value="red">Rouge</option>
+                        <option value="orange">Orange</option>
+                        <option value="yellow">Jaune</option>
+                        <option value="blue">Bleu</option>
+                        <option value="green">Vert</option>
+                        <option value="purple">Violet</option>
+                        <option value="pink">Rose</option>
+                        <option value="gray">Gris</option>
+                        <option value="brown">Marron</option>
+                        <option value="cyan">Cyan</option>
+                        <option value="lime">Lime</option>
+                    </select>
+                    <span asp-validation-for="Couleur" class="text-danger"></span>
+                </div>
+
+                <!-- Description -->
+                <div class="form-group">
+                    <label asp-for="Descriptions" class="form-label">Description</label>
+                    <textarea asp-for="Descriptions" class="form-control" placeholder="Ajoutez une description si nécessaire"></textarea>
+                    <span asp-validation-for="Descriptions" class="text-danger"></span>
+                </div>
+
+                <!-- Boutons d'action -->
+                <div class="text-center mt-4">
+                    <button type="submit" class="btn btn-success" title="Créer">
+                        <i class="fas fa-save"></i> Enregistrer
+                    </button>
+                    <a asp-action="Index" class="btn btn-secondary mx-2" title="Annuler">
+                        <i class="fas fa-ban"></i> Annuler
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card {
+        border-top: 5px solid red;
+        border-radius: 8px;
+    }
+
+    .form-label {
+        font-weight: bold;
+    }
+
+    .btn-success {
+        background-color: #28a745;
+        border-color: #28a745;
+    }
+
+    .btn-secondary {
+        background-color: #6c757d;
+        border-color: #6c757d;
+    }
+</style>
