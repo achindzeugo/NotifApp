@@ -1,269 +1,4 @@
-on me dit l'equipe specifier est introuvable
-alors que je vois bien l'ID sur le navigateur
-Equipes/UploadTemplate?equipeId=9
-
-estce que le probleme ne vient pas de cette page ?
-voici ma page d'upload
-@{
-    ViewData["Title"] = "Téléverser le Template";
-}
-
-<h2>Téléverser le Template d'Utilisateurs</h2>
-
-<form asp-action="ProcessUpload" method="post" enctype="multipart/form-data">
-    <input type="hidden" name="EquipeId" value="@ViewBag.EquipeId" />
-    <div class="form-group">
-        <label for="ExcelFile">Sélectionnez un fichier Excel</label>
-        <input type="file" name="ExcelFile" class="form-control" required />
-    </div>
-    <button type="submit" class="btn btn-primary">Téléverser</button>
-</form>
-==========
-<form asp-action="ProcessUpload" method="post" enctype="multipart/form-data">
-    <input asp-for="EquipeId" type="hidden" />
-    <div class="form-group">
-        <label for="ExcelFile">Sélectionnez un fichier Excel</label>
-        <input asp-for="ExcelFile" type="file" class="form-control" required />
-    </div>
-    <button type="submit" class="btn btn-primary">Téléverser</button>
-</form>
-
-// Action pour afficher le formulaire d'upload
-public IActionResult UploadTemplate(int equipeId)
-{
-    if (equipeId == 0)
-    {
-        return NotFound("L'équipe spécifiée est introuvable.");
-    }
-
-    // Transmettre l'ID de l'équipe à la vue via ViewBag
-    ViewBag.EquipeId = equipeId;
-    return View();
-}
-
-// Action POST pour traiter l'upload
-[HttpPost]
-[ValidateAntiForgeryToken]
-public async Task<IActionResult> ProcessUpload(int equipeId, IFormFile ExcelFile)
-{
-    // Vérification si l'ID de l'équipe est valide
-    if (equipeId == 0)
-    {
-        return BadRequest("L'ID de l'équipe est manquant ou invalide.");
-    }
-
-    // Vérifiez si l'équipe existe dans la base de données
-    var equipeExists = await _context.Equipes.AnyAsync(e => e.EquipeId == equipeId);
-    if (!equipeExists)
-    {
-        return NotFound("L'équipe spécifiée est introuvable.");
-    }
-
-    if (ExcelFile != null && ExcelFile.Length > 0)
-    {
-        // Utilisation de EPPlus pour traiter le fichier Excel
-        ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
-
-        using (var stream = new MemoryStream())
-        {
-            await ExcelFile.CopyToAsync(stream);
-
-            using (var package = new ExcelPackage(stream))
-            {
-                var worksheet = package.Workbook.Worksheets.FirstOrDefault();
-
-                if (worksheet != null)
-                {
-                    // Lecture des données du fichier Excel
-                    for (int row = 2; row <= worksheet.Dimension.End.Row; row++) // Ignorer la première ligne (en-têtes)
-                    {
-                        var nom = worksheet.Cells[row, 1].Text?.Trim();
-                        var prenom = worksheet.Cells[row, 2].Text?.Trim();
-                        var email = worksheet.Cells[row, 3].Text?.Trim();
-                        var ag = worksheet.Cells[row, 4].Text?.Trim();
-
-                        if (string.IsNullOrWhiteSpace(nom) || string.IsNullOrWhiteSpace(email))
-                        {
-                            continue; // Ignorez les lignes incomplètes
-                        }
-
-                        // Création d'un nouvel utilisateur
-                        var utilisateur = new Utilisateurs
-                        {
-                            NomUtilisateurs = nom,
-                            PrenomUtilisateurs = prenom,
-                            Email = email,
-                            AG = ag
-                        };
-
-                        // Ajout de l'utilisateur à la base de données
-                        _context.Add(utilisateur);
-                        await _context.SaveChangesAsync(); // Sauvegarder pour obtenir l'ID généré
-
-                        // Création de l'association utilisateur-équipe
-                        var equipeUtilisateur = new EquipeUtilisateur
-                        {
-                            EquipeId = equipeId,
-                            UtilisateursId = utilisateur.UtilisateursID
-                        };
-
-                        _context.Add(equipeUtilisateur);
-                    }
-
-                    // Sauvegarder toutes les associations en une seule transaction
-                    await _context.SaveChangesAsync();
-                }
-            }
-        }
-
-        // Redirection vers une page de détails ou confirmation
-        return RedirectToAction(nameof(Details), new { id = equipeId });
-    }
-
-    // Si le fichier n'est pas valide, renvoyez la vue avec une erreur
-    ModelState.AddModelError("ExcelFile", "Veuillez sélectionner un fichier Excel valide.");
-    return View();
-}
-
-===============
-
-// Utilisateur Upload POST
-[HttpPost]
-[ValidateAntiForgeryToken]
-public async Task<IActionResult> ProcessUpload(int equipeId, IFormFile ExcelFile)
-{
-    ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
-
-    if (ExcelFile != null && ExcelFile.Length > 0)
-    {
-        // Vérification si l'équipe existe dans la base de données
-        var equipeExists = await _context.Equipes.AnyAsync(e => e.EquipeId == equipeId);
-        if (!equipeExists)
-        {
-            return NotFound("L'équipe spécifiée est introuvable.");
-        }
-
-        using (var stream = new MemoryStream())
-        {
-            await ExcelFile.CopyToAsync(stream);
-            using (var package = new ExcelPackage(stream))
-            {
-                var worksheet = package.Workbook.Worksheets.FirstOrDefault();
-                if (worksheet != null)
-                {
-                    for (int row = 2; row <= worksheet.Dimension.End.Row; row++)
-                    {
-                        // Extraction des données Excel
-                        var nom = worksheet.Cells[row, 1].Text.Trim();
-                        var prenom = worksheet.Cells[row, 2].Text.Trim();
-                        var email = worksheet.Cells[row, 3].Text.Trim();
-                        var ag = worksheet.Cells[row, 4].Text.Trim();
-
-                        // Création d'un nouvel utilisateur
-                        var utilisateur = new Utilisateurs
-                        {
-                            NomUtilisateurs = nom,
-                            PrenomUtilisateurs = prenom,
-                            Email = email,
-                            AG = ag
-                        };
-
-                        // Ajout de l'utilisateur à la base de données
-                        _context.Utilisateurs.Add(utilisateur);
-                        await _context.SaveChangesAsync(); // Sauvegarde pour obtenir l'ID
-
-                        // Création de la relation avec l'équipe
-                        var equipeUtilisateur = new EquipeUtilisateur
-                        {
-                            EquipeId = equipeId,
-                            UtilisateursId = utilisateur.UtilisateursID
-                        };
-
-                        _context.EquipeUtilisateurs.Add(equipeUtilisateur);
-                    }
-
-                    // Sauvegarde des relations EquipeUtilisateur
-                    await _context.SaveChangesAsync();
-                }
-            }
-        }
-
-        // Redirection vers la page de détails de l'équipe
-        return RedirectToAction(nameof(Details), new { id = equipeId });
-    }
-
-    // Retourner une vue avec un message d'erreur si le fichier est vide ou nul
-    ModelState.AddModelError("", "Le fichier Excel est invalide ou vide.");
-    return View();
-}
-
-
-An unhandled exception occurred while processing the request.
-InvalidOperationException: The value of 'EquipeUtilisateur.EquipeId' is unknown when attempting to save changes. This is because the property is also part of a foreign key for which the principal entity in the relationship is not known.
-
-mon modelbuilder pour EquipeUtilisateur
- modelBuilder.Entity<EquipeUtilisateur>(entity =>
-            {
-                entity.HasKey(e => new { e.EquipeId, e.UtilisateursId })
-                    .HasName("PK__EquipeUt__E90BC6AA67FCC771");
-
-                entity.ToTable("EquipeUtilisateur");
-
-                entity.Property(e => e.EquipeId).HasColumnName("EquipeID");
-
-                entity.Property(e => e.UtilisateursId).HasColumnName("UtilisateursID");
-
-                entity.HasOne(d => d.Equipe)
-                    .WithMany(p => p.EquipeUtilisateurs)
-                    .HasForeignKey(d => d.EquipeId)
-                    .OnDelete(DeleteBehavior.ClientSetNull)
-                    .HasConstraintName("FK__EquipeUti__Equip__40F9A68C");
-
-                entity.HasOne(d => d.Utilisateurs)
-                    .WithMany(p => p.EquipeUtilisateur)
-                    .HasForeignKey(d => d.UtilisateursId)
-                    .OnDelete(DeleteBehavior.ClientSetNull)
-                    .HasConstraintName("FK__EquipeUti__Utili__41EDCAC5");
-            });
-mon modelbuilder pour Equipe
- modelBuilder.Entity<Equipe>(entity =>
-            {
-                entity.Property(e => e.EquipeId).HasColumnName("EquipeID");
-
-                entity.Property(e => e.CriticiteNom)
-                    .HasMaxLength(255)
-                    .IsUnicode(false)
-                    .HasColumnName("Criticite_nom");
-
-                entity.Property(e => e.NomEquipe)
-                    .HasMaxLength(255)
-                    .IsUnicode(false)
-                    .HasColumnName("nomEquipe");
-            });
-mon modelbuilder Utilisateurs 
-
-            modelBuilder.Entity<Utilisateurs>(entity =>
-            {
-                entity.HasKey(e => e.UtilisateursID)
-                    .HasName("PK__Utilisat__501F1C92E0CD5439");
-
-                entity.ToTable("Utilisateurs");
-
-                entity.Property(e => e.UtilisateursID).HasColumnName("UtilisateursID");
-
-                entity.Property(e => e.Email)
-                    .HasMaxLength(255)
-                    .IsUnicode(false);
-
-                entity.Property(e => e.NomUtilisateurs)
-                    .HasMaxLength(255)
-                    .IsUnicode(false);
-
-                entity.Property(e => e.PrenomUtilisateurs)
-                    .HasMaxLength(255)
-                    .IsUnicode(false);
-            });
-mon model Equipe
+voici mon modele pour criticite 
 using System;
 using System.Collections.Generic;
 
@@ -271,383 +6,494 @@ using System.Collections.Generic;
 
 namespace NotifApps.Models
 {
-    public partial class Equipe
+    public partial class Criticite
     {
-        public Equipe()
+        public Criticite()
         {
-            EquipeApplicatifs = new HashSet<EquipeApplicatif>();
-            EquipeUtilisateurs = new HashSet<EquipeUtilisateur>();
+            Incidents = new HashSet<Incident>(); // Assurez-vous de spécifier le type d'élément
         }
 
-        public int EquipeId { get; set; }
-        public string NomEquipe { get; set; }
+        public int CriticiteId { get; set; }
         public string CriticiteNom { get; set; }
+        public string? Couleur { get; set; }
+        public string? Descriptions { get; set; }
+        
+        // Nouvelles propriétés ajoutées
+        public DateTime DateCreation { get; set; } = DateTime.Now; // Valeur par défaut à la date actuelle
+        public DateTime? DateDesactivation { get; set; } // Nullable pour permettre une valeur nulle
+        public string Statut { get; set; } // Peut être "Actif" ou "Inactif"
 
-        public virtual ICollection<EquipeApplicatif> EquipeApplicatifs { get; set; }
-        public virtual ICollection<EquipeUtilisateur> EquipeUtilisateurs { get; set; }
+        public virtual ICollection<Incident> Incidents { get; set; }
     }
 }
-mon model Utilisateurs 
-using System;
+
+voici ma table criticite
+ 
+CREATE TABLE CRITICITE (
+    Criticite_ID INT PRIMARY KEY IDENTITY(1,1),
+    Criticite_nom VARCHAR(255),
+    Couleur VARCHAR(50),
+    Descriptions VARCHAR(500),
+    Date_Creation DATETIME DEFAULT GETDATE(),
+    Date_Desactivation DATETIME NULL,
+    Statut VARCHAR(10) CHECK (Statut IN ('Actif', 'Inactif'))
+);
+
+j'aimerais que quand on crée une criticité, de base c'est activé, 
+le statut doit s'afficher dans la vue Index, la date de creation est mise automatiquement quand on cree la criticité
+
+voici ma vue Index 
+@model IEnumerable<NotifApps.Models.Criticite>
+
+<h2>Criticités</h2>
+<hr />
+<p>
+    <a asp-action="CreateCriticite" class="btn btn-black">Ajouter Criticité</a>
+</p>
+
+<table class="table table">
+    <thead>
+        <tr>
+            <th class="bg-black text-white">Nom de Criticité</th>
+            <th class="bg-black text-white">Criticité</th>
+            <th class="bg-black text-white">Descriptions</th>
+            <th class="bg-black text-white">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var criticite in Model)
+        {
+            <tr>
+                <td>@criticite.CriticiteNom</td>
+                <td>
+                    <span class="badge text-black" style="background-color: @(criticite.Couleur ?? "gray");">
+                        @(criticite.CriticiteNom?.ToUpper() ?? "N/A")
+                    </span>
+                </td>
+                <td>
+                    @if (criticite.Descriptions.Length > 50)
+                    {
+                        @criticite.Descriptions.Substring(0, 50) 
+                        }
+                    else
+                    {
+                        @criticite.Descriptions
+                    }
+                </td>
+
+                <td>
+                    <a asp-action="Details" asp-route-id="@criticite.CriticiteId" class="btn btn-black" title="Détails">
+                        <i class="fas fa-list"></i>
+                    </a>
+                    <a asp-action="EditCriticite" asp-route-id="@criticite.CriticiteId" class="btn btn-warning" title="Modifier">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                    <a asp-action="DeleteCriticite" asp-route-id="@criticite.CriticiteId" class="btn btn-danger" title="Supprimer">
+                        <i class="fas fa-trash"></i>
+                    </a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<style>
+    .table {
+        border-top-color: red;
+        border-top-style: solid;
+        border-top-width: 5px;
+        border-top-left-radius: 5px;
+        border-top-right-radius: 5px;
+    }
+</style>
+
+voici ma vue Create 
+@model NotifApps.Models.Criticite
+
+@{
+    ViewData["Title"] = "Créer Criticité";
+}
+
+<div class="container mt-5">
+    <div class="card card">
+        <div class="card-header bg-black text-white">
+            <h4>Créer Criticité</h4>
+        </div>
+        <div class="card-body">
+            <form asp-action="CreateCriticite">
+                <div class="form-group">
+                    <label asp-for="CriticiteNom"></label>
+                    <input asp-for="CriticiteNom" class="form-control" placeholder="Entrez un nom"/>
+                    <span asp-validation-for="CriticiteNom" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label for="Couleur">Sélectionnez une couleur</label>
+                    <select asp-for="Couleur" class="form-control">
+                        <option value="red">Rouge</option>
+                        <option value="orange">Orange</option>
+                        <option value="yellow">Jaune</option>
+                        <option value="blue">Bleu</option>
+                        <option value="green">Vert</option>
+                        <option value="purple">Violet</option>
+                        <option value="pink">Rose</option>
+                        <option value="gray">Gris</option>
+                        <option value="brown">Marron</option>
+                        <option value="cyan">Cyan</option>
+                        <option value="lime">Lime</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label asp-for="Descriptions"></label>
+                    <input asp-for="Descriptions" class="form-control" placeholder="Entrez une description" />
+                    <span asp-validation-for="Descriptions" class="text-danger"></span>
+                </div>
+                <div class="text-center mt-4">
+                    <button type="submit" class="btn btn-danger" title="Créer">
+                        <i class="fas fa-save"></i>
+                    </button>
+
+                    <a asp-action="Index" class="btn btn-black mx-2" title="Annuler">
+                        <i class="fas fa-ban"></i>
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card {
+        border-top-color: red;
+        border-top-style: solid;
+        border-top-width: 5px;
+        border-top-left-radius: 5px;
+        border-top-right-radius: 5px;
+    }
+</style>
+
+ma vue Edit 
+@model NotifApps.Models.Criticite
+
+<div class="container mt-5">
+    <div class="card card">
+        <div class="card-header bg-black text-white">
+            <h4>Modifier Criticité</h4>
+        </div>
+        <div class="card-body">
+            <form asp-action="EditCriticite">
+                <input type="hidden" asp-for="CriticiteId" />
+                <div class="form-group">
+                    <label asp-for="CriticiteNom"></label>
+                    <input asp-for="CriticiteNom" class="form-control" />
+                    <span asp-validation-for="CriticiteNom" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label for="Couleur">Sélectionnez une couleur</label>
+                    <select asp-for="Couleur" class="form-control">
+                        <option value="red">Rouge</option>
+                        <option value="orange">Orange</option>
+                        <option value="yellow">Jaune</option>
+                        <option value="blue">Bleu</option>
+                        <option value="green">Vert</option>
+                        <option value="purple">Violet</option>
+                        <option value="pink">Rose</option>
+                        <option value="gray">Gris</option>
+                        <option value="brown">Marron</option>
+                        <option value="cyan">Cyan</option>
+                        <option value="lime">Lime</option>
+                    </select>
+                    <span asp-validation-for="Couleur" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="Descriptions"></label>
+                    <input asp-for="Descriptions" class="form-control" />
+                    <span asp-validation-for="Descriptions" class="text-danger"></span>
+                </div>
+                <div class="d-flex justify-content-center">
+                    <button type="submit" class="btn btn-danger" title="Enregistrer">
+                        <i class="fas fa-save"></i>
+                    </button>
+                    <a asp-action="Index" class="btn btn-black mx-2" title="Annuler">
+                        <i class="fas fa-ban"></i>
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+<style>
+    .card {
+        border-top-color: red;
+        border-top-style: solid;
+        border-top-width: 5px;
+        border-top-left-radius: 5px;
+        border-top-right-radius: 5px;
+    }
+</style>
+
+ma vue Details
+@model NotifApps.Models.Criticite
+
+<h2>Détails de la Criticité</h2>
+<hr />
+
+
+<div class="container mt-5">
+    <div class="card card">
+
+        <div class="card-header bg-black text-white">
+            <h4>Modifier Criticité</h4>
+        </div>
+        <div class="card-body">
+
+            <div class="d-flex justify-content-evenly">
+                <h3>@Model.CriticiteNom</h3>
+                <p>
+                    <strong>Criticité :</strong>
+                    <span class="badge text-black" style="background-color: @(Model.Couleur ?? "gray");">
+                        @(Model.CriticiteNom?.ToUpper() ?? "N/A")
+                    </span>
+                </p>
+
+
+            </div>
+            <p><strong>Description :</strong> @Model.Descriptions</p>
+
+
+            <div class="d-flex justify-content-center">
+                <a asp-action="EditCriticite" asp-route-id="@Model.CriticiteId" class="btn btn-warning mx-2" title="Modifier">
+                    <i class="fas fa-edit"></i>
+                </a>
+                <a asp-action="Index" class="btn btn-black mx-2" title="Annuler">
+                    <i class="fas fa-ban"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<style>
+    .card {
+        border-top-color: red;
+        border-top-style: solid;
+        border-top-width: 5px;
+        border-top-left-radius: 5px;
+        border-top-right-radius: 5px;
+    }
+</style>
+
+ma vue Delete 
+@model NotifApps.Models.Criticite
+
+<div class="container mt-4">
+    <div class="card card">
+        <div class="card-header bg-black text-white text-center">
+            <h4>Supprimer Criticité</h4>
+        </div>
+        <div class="card-body text-center">
+            <h4>Êtes-vous sûr de vouloir supprimer ceci ?</h4>
+
+            <div class="d-flex justify-content-evenly">
+
+                <div>
+                    <h4>@Model.CriticiteNom</h4>
+                    <p><strong>Couleur:</strong> @Model.Couleur</p> <!-- Display the color -->
+                </div>
+
+
+            </div>
+            <div>
+                <h4>@Model.Descriptions</h4>
+            </div>
+            <form asp-action="DeleteCriticite" method="post">
+                <input type="hidden" asp-for="CriticiteId" />
+                <div class="d-flex justify-content-center mt-4">
+                    <button type="submit" class="btn btn-danger me-2" title="Supprimer">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                    <a asp-action="Index" class="btn btn-black" title="Annuler">
+                        <i class="fas fa-ban"></i>
+                    </a>
+                </div>
+            </form>
+        </div>
+        </div>
+</div>
+
+<style>
+    .card {
+        border-top-color: red;
+        border-top-style: solid;
+        border-top-width: 5px;
+        border-top-left-radius: 5px;
+        border-top-right-radius: 5px;
+    }
+</style>
+
+voici mon controller 
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using NotifApps.Models;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using System.ComponentModel.DataAnnotations;
 
-namespace NotifApps.Models
-{
-    public class Utilisateurs
-    {
-        public int UtilisateursID { get; set; }
-        public string NomUtilisateurs { get; set; }
-        public string PrenomUtilisateurs { get; set; }
-        public string Email { get; set; }
-        public string AG { get; set; }
-
-
-
-        // Navigation property
-        public virtual ICollection<EquipeUtilisateur> EquipeUtilisateur { get; set; }
-    }
-
-}
-mom Model EquipeUtilisateur
-using System;
-using System.Collections.Generic;
-
-#nullable disable
-
-namespace NotifApps.Models
-{
-    public partial class EquipeUtilisateur
-    {
-        public int EquipeId { get; set; }
-        public int UtilisateursId { get; set; }
-
-        public virtual Equipe Equipe { get; set; }
-        public virtual Utilisateurs Utilisateurs { get; set; }
-    }
-}
-======================================================================
-voici ma page d'upload
-@{
-    ViewData["Title"] = "Téléverser le Template";
-}
-
-<h2>Téléverser le Template d'Utilisateurs</h2>
-
-<form asp-action="ProcessUpload" method="post" enctype="multipart/form-data">
-    <input type="hidden" name="EquipeId" value="@ViewBag.EquipeId" />
-    <div class="form-group">
-        <label for="ExcelFile">Sélectionnez un fichier Excel</label>
-        <input type="file" name="ExcelFile" class="form-control" required />
-    </div>
-    <button type="submit" class="btn btn-primary">Téléverser</button>
-</form>
-=====================================================
-voici mon controller 
 namespace NotifApps.Controllers
 {
-    public class EquipesController : Controller
+    public class CriticiteController : Controller
     {
         private readonly NotifdbContext _context;
 
-        public EquipesController(NotifdbContext context)
+        public CriticiteController(NotifdbContext context)
         {
             _context = context;
         }
 
-        // GET: Equipes
-        public IActionResult Index()
+        // GET: Criticite/Index
+        public async Task<IActionResult> Index()
         {
-            var equipes = _context.Equipes.ToList(); 
-            return View(equipes); 
+            var criticites = await _context.Criticites.ToListAsync();
+            if (criticites == null || !criticites.Any())
+            {
+                // Handle the case where there are no criticites
+                return View(new List<Criticite>()); // Pass an empty list to the view
+            }
+            return View(criticites);
         }
-        // GET: Equipes/Create
-        public IActionResult Create()
+
+
+        // GET: Criticite/Create
+        public IActionResult CreateCriticite()
         {
-            ViewBag.Utilisateurs = _context.Utilisateurs.ToList(); // Récupérer tous les utilisateurs
             return View();
         }
 
-        // POST: Equipes/Create
+        // POST: Criticite/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("NomEquipe")] Equipe equipe, int[] selectedUsers)
+        public async Task<IActionResult> CreateCriticite(Criticite criticite)
         {
             if (ModelState.IsValid)
             {
-                _context.Add(equipe);
+                _context.Add(criticite);
                 await _context.SaveChangesAsync();
-
-                // Rattacher les utilisateurs sélectionnés
-                if (selectedUsers != null)
-                {
-                    foreach (var userId in selectedUsers)
-                    {
-                        var equipeUtilisateur = new EquipeUtilisateur
-                        {
-                            EquipeId = equipe.EquipeId,
-                            UtilisateursId = userId
-                        };
-                        _context.Add(equipeUtilisateur);
-                    }
-                    await _context.SaveChangesAsync();
-                }
-
                 return RedirectToAction(nameof(Index));
             }
-
-            ViewBag.Utilisateurs = _context.Utilisateurs.ToList(); // Récupérer à nouveau les utilisateurs en cas d'erreur
-            return View(equipe);
+            return View(criticite);
         }
 
 
-
-        //GET : Vue de rattachement par selection
-        public IActionResult AttachUtilisateur(int id)
+        // GET: Criticite/Edit/5
+        public async Task<IActionResult> EditCriticite(int? id)
         {
-            ViewBag.EquipeId = id;
-            var utilisateurs = _context.Utilisateurs
-                .Include(u => u.EquipeUtilisateur)
-                .ThenInclude(eu => eu.Equipe)
-                .ToList();
-
-            // Get the IDs of users already associated with the team and remain marked
-            var existingUserIds = _context.EquipeUtilisateurs
-                .Where(eu => eu.EquipeId == id)
-                .Select(eu => eu.UtilisateursId)
-                .ToList();
-
-            ViewBag.ExistingUserIds = existingUserIds;
-
-            return View(utilisateurs);
-        }
-
-        // POST : RATTACHEMENT PAR SELECCTION
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> SaveUtilisateurs(int equipeId, int[] selectedUsers)
-        {
-            if (selectedUsers != null)
-            {
-                foreach (var userId in selectedUsers)
-                {
-                    // Check if the association already exists
-                    var existingAssociation = await _context.EquipeUtilisateurs
-                        .FirstOrDefaultAsync(eu => eu.EquipeId == equipeId && eu.UtilisateursId == userId);
-
-                    if (existingAssociation == null) // Only add if the association does not exist
-                    {
-                        var equipeUtilisateur = new EquipeUtilisateur
-                        {
-                            EquipeId = equipeId,
-                            UtilisateursId = userId
-                        };
-
-                        _context.Add(equipeUtilisateur);
-                    }
-                }
-                await _context.SaveChangesAsync();
-            }
-
-            return RedirectToAction(nameof(Details), new { id = equipeId });
-        }
-
-        //Details EQUIPES
-        public async Task<IActionResult> Details(int id)
-        {
-            var equipe = await _context.Equipes
-                .Include(e => e.EquipeUtilisateurs) 
-                .ThenInclude(eu => eu.Utilisateurs) 
-                .FirstOrDefaultAsync(e => e.EquipeId == id);
-
-            if (equipe == null)
+            if (id == null)
             {
                 return NotFound();
             }
 
-            return View(equipe);
+            var criticite = await _context.Criticites.FindAsync(id);
+            if (criticite == null)
+            {
+                return NotFound();
+            }
+            return View(criticite);
         }
 
-        // Creéation POST Utilisateur 
+        // POST: Criticite/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> SaveUtilisateur(int equipeId, [Bind("NomUtilisateurs,PrenomUtilisateurs,Email,AG")] Utilisateurs utilisateur)
+        public async Task<IActionResult> EditCriticite(int id, Criticite criticite)
         {
+            if (id != criticite.CriticiteId)
+            {
+                return NotFound();
+            }
+
             if (ModelState.IsValid)
             {
-                _context.Add(utilisateur);
-                await _context.SaveChangesAsync();
-
-                // Create the association
-                var equipeUtilisateur = new EquipeUtilisateur
+                try
                 {
-                    EquipeId = equipeId,
-                    UtilisateursId = utilisateur.UtilisateursID 
-                };
-
-                _context.Add(equipeUtilisateur);
-                await _context.SaveChangesAsync();
-
-                return RedirectToAction(nameof(Details), new { id = equipeId });
-            }
-
-            return View(utilisateur);
-        }
-        //Utilisateur Upload GET 
-        public IActionResult UploadTemplate(int id)
-        {
-            ViewBag.EquipeId = id; // Pass the team ID to the view
-            return View();
-        }
-
-        // Utilisateur Upload POST
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> ProcessUpload(int equipeId, IFormFile ExcelFile)
-        {
-            ExcelPackage.LicenseContext = LicenseContext.NonCommercial; 
-
-            if (ExcelFile != null && ExcelFile.Length > 0)
-            {
-                using (var stream = new MemoryStream())
+                    _context.Update(criticite);
+                    await _context.SaveChangesAsync();
+                }
+                catch (DbUpdateConcurrencyException)
                 {
-                    await ExcelFile.CopyToAsync(stream);
-                    using (var package = new ExcelPackage(stream))
+                    if (!CriticiteExists(criticite.CriticiteId))
                     {
-                        var worksheet = package.Workbook.Worksheets.FirstOrDefault();
-                        if (worksheet != null)
-                        {
-                            for (int row = 2; row <= worksheet.Dimension.End.Row; row++) 
-                            {
-                                var nom = worksheet.Cells[row, 1].Text;
-                                var prenom = worksheet.Cells[row, 2].Text;
-                                var email = worksheet.Cells[row, 3].Text;
-                                var ag = worksheet.Cells[row, 4].Text;
-
-                                var utilisateur = new Utilisateurs
-                                {
-                                    NomUtilisateurs = nom,
-                                    PrenomUtilisateurs = prenom,
-                                    Email = email,
-                                    AG = ag
-                                };
-
-                                _context.Add(utilisateur);
-                                await _context.SaveChangesAsync(); 
-
-                                // Créer l'association
-                                var equipeUtilisateur = new EquipeUtilisateur
-                                {
-                                    EquipeId = equipeId,
-                                    UtilisateursId = utilisateur.UtilisateursID 
-                                };
-                                _context.Add(equipeUtilisateur);
-                            }
-                            await _context.SaveChangesAsync(); 
-                        }
+                        return NotFound();
                     }
+                    throw;
                 }
-                return RedirectToAction(nameof(Details), new { id = equipeId });
+                return RedirectToAction(nameof(Index));
             }
-            return View();
+            return View(criticite);
         }
 
-
-        // GET: Equipes/Edit/5
-        public async Task<IActionResult> Edit(int id)
+        // GET: Criticite/Details/5
+        public async Task<IActionResult> Details(int? id)
         {
-            var equipe = await _context.Equipes
-                .Include(e => e.EquipeUtilisateurs)
-                .ThenInclude(eu => eu.Utilisateurs)
-                .FirstOrDefaultAsync(e => e.EquipeId == id);
-
-            if (equipe == null)
+            if (id == null)
             {
                 return NotFound();
             }
 
-            // Get all users
-            var utilisateurs = await _context.Utilisateurs.ToListAsync();
+            var criticite = await _context.Criticites
+                .FirstOrDefaultAsync(m => m.CriticiteId == id);
 
-            // Get the IDs of users already associated with the team
-            var existingUserIds = equipe.EquipeUtilisateurs.Select(eu => eu.UtilisateursId).ToList();
-
-            ViewBag.Utilisateurs = utilisateurs;
-            ViewBag.ExistingUserIds = existingUserIds;
-
-            return View(equipe);
-        }
-
-
-
-        //POST : EDit
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> SaveEdit(int equipeId, int[] selectedUsers)
-        {
-            // Remove existing associations
-            var existingAssociations = await _context.EquipeUtilisateurs
-                .Where(eu => eu.EquipeId == equipeId)
-                .ToListAsync();
-
-            _context.EquipeUtilisateurs.RemoveRange(existingAssociations);
-
-            // Add new associations
-            if (selectedUsers != null)
-            {
-                foreach (var userId in selectedUsers)
-                {
-                    var equipeUtilisateur = new EquipeUtilisateur
-                    {
-                        EquipeId = equipeId,
-                        UtilisateursId = userId
-                    };
-
-                    _context.Add(equipeUtilisateur);
-                }
-            }
-
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Details), new { id = equipeId });
-        }
-
-        // GET: Equipes/Delete/5
-        public async Task<IActionResult> Delete(int id)
-        {
-            var equipe = await _context.Equipes
-                .Include(e => e.EquipeUtilisateurs) // Include associations
-                .FirstOrDefaultAsync(e => e.EquipeId == id);
-
-            if (equipe == null)
+            if (criticite == null)
             {
                 return NotFound();
             }
 
-            return View(equipe);
+            return View(criticite);
         }
 
-        // POST: Equipes/Delete/5
-        [HttpPost, ActionName("Delete")]
+
+        // GET: Criticite/Delete/5
+        public async Task<IActionResult> DeleteCriticite(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var criticite = await _context.Criticites
+                .FirstOrDefaultAsync(m => m.CriticiteId == id);
+            if (criticite == null)
+            {
+                return NotFound();
+            }
+
+            return View(criticite);
+        }
+
+        // POST: Criticite/Delete/5
+        [HttpPost, ActionName("DeleteCriticite")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            // Get the associations to remove
-            var associations = await _context.EquipeUtilisateurs
-                .Where(eu => eu.EquipeId == id)
-                .ToListAsync();
-
-            // Remove associations
-            _context.EquipeUtilisateurs.RemoveRange(associations);
-
-            // Remove the team
-            var equipe = await _context.Equipes.FindAsync(id);
-            if (equipe != null)
+            var criticite = await _context.Criticites.FindAsync(id);
+            if (criticite == null)
             {
-                _context.Equipes.Remove(equipe);
+                return NotFound();
             }
 
+            var incidents = await _context.Incidents.Where(i => i.CriticiteId == id).ToListAsync();
+            _context.Incidents.RemoveRange(incidents);
+
+            _context.Criticites.Remove(criticite);
             await _context.SaveChangesAsync();
+
             return RedirectToAction(nameof(Index));
         }
+
+        private bool CriticiteExists(int id)
+        {
+            return _context.Criticites.Any(e => e.CriticiteId == id);
+        }
+    }
+}
+
