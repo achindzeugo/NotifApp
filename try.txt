@@ -1,165 +1,183 @@
-voici mon modele pour criticite 
+voici mon controller
+
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using NotifApps.Models;
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
-#nullable disable
-
-namespace NotifApps.Models
+namespace NotifApps.Controllers
 {
-    public partial class Criticite
+    public class OrigineController : Controller
     {
-        public Criticite()
+        private readonly NotifdbContext _context;
+
+        public OrigineController(NotifdbContext context)
         {
-            Incidents = new HashSet<Incident>(); // Assurez-vous de spécifier le type d'élément
+            _context = context;
+        }
+        // GET: Origine/Index
+        public async Task<IActionResult> Index()
+        {
+            var origines = await _context.Origines.ToListAsync();
+
+            if (origines == null || !origines.Any())
+            {
+                // Retourne une liste vide si aucune criticité n'est trouvée
+                return View(new List<Origine>());
+            }
+            return View(origines);
+
         }
 
-        public int CriticiteId { get; set; }
-        public string CriticiteNom { get; set; }
-        public string? Couleur { get; set; }
-        public string? Descriptions { get; set; }
-        
-        // Nouvelles propriétés ajoutées
-        public DateTime DateCreation { get; set; } = DateTime.Now; // Valeur par défaut à la date actuelle
-        public DateTime? DateDesactivation { get; set; } // Nullable pour permettre une valeur nulle
-        public string Statut { get; set; } // Peut être "Actif" ou "Inactif"
 
-        public virtual ICollection<Incident> Incidents { get; set; }
+
+        // GET: Origine/Create
+        public IActionResult CreateOrigine()
+        {
+            return View();
+        }
+
+        // POST: Origine/Create
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateOrigine(Origine origine)
+        {
+            if (ModelState.IsValid)
+            {
+                origine.Statut = "Actif";
+                _context.Add(origine);
+                await _context.SaveChangesAsync();
+                return RedirectToAction(nameof(Index)); 
+            }
+            return View(origine);
+        }
+
+        // GET: Origine/Edit/5
+        public async Task<IActionResult> EditOrigine(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var origine = await _context.Origines.FindAsync(id);
+            if (origine == null)
+            {
+                return NotFound();
+            }
+            return View(origine);
+        }
+
+        // POST: Origine/Edit/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditOrigine(int id, Origine origine)
+        {
+            if (id != origine.OrigineId)
+            {
+                return NotFound();
+            }
+
+            if (ModelState.IsValid)
+            {
+                try
+                {
+                    _context.Update(origine);
+                    await _context.SaveChangesAsync();
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    if (!OrigineExists(origine.OrigineId))
+                    {
+                        return NotFound();
+                    }
+                    throw;
+                }
+                return RedirectToAction(nameof(Index)); 
+            }
+            return View(origine);
+        }
+
+        private bool OrigineExists(int origineId)
+        {
+            throw new NotImplementedException();
+        }
+
+        // GET: Origine/Delete/5
+        public async Task<IActionResult> DeleteOrigine(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var origine = await _context.Origines
+                .FirstOrDefaultAsync(m => m.OrigineId == id);
+            if (origine == null)
+            {
+                return NotFound();
+            }
+
+            return View(origine);
+        }
+
+        // POST: Origine/Delete/5
+        [HttpPost, ActionName("DeleteOrigine")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            var origine = await _context.Origines.FindAsync(id);
+            if (origine == null)
+            {
+                return NotFound();
+            }
+
+            var incidents = await _context.Incidents.Where(i => i.OrigineId == id).ToListAsync();
+            _context.Incidents.RemoveRange(incidents);
+
+            _context.Origines.Remove(origine);
+            await _context.SaveChangesAsync();
+
+            return RedirectToAction(nameof(Index));
+        }
+
     }
 }
 
-voici ma table criticite
- 
-CREATE TABLE CRITICITE (
-    Criticite_ID INT PRIMARY KEY IDENTITY(1,1),
-    Criticite_nom VARCHAR(255),
-    Couleur VARCHAR(50),
-    Descriptions VARCHAR(500),
-    Date_Creation DATETIME DEFAULT GETDATE(),
-    Date_Desactivation DATETIME NULL,
-    Statut VARCHAR(10) CHECK (Statut IN ('Actif', 'Inactif'))
-);
-
-j'aimerais que quand on crée une criticité, de base c'est activé, 
-le statut doit s'afficher dans la vue Index, la date de creation est mise automatiquement quand on cree la criticité
-
-voici ma vue Index 
-@model IEnumerable<NotifApps.Models.Criticite>
-
-<h2>Criticités</h2>
-<hr />
-<p>
-    <a asp-action="CreateCriticite" class="btn btn-black">Ajouter Criticité</a>
-</p>
-
-<table class="table table">
-    <thead>
-        <tr>
-            <th class="bg-black text-white">Nom de Criticité</th>
-            <th class="bg-black text-white">Criticité</th>
-            <th class="bg-black text-white">Descriptions</th>
-            <th class="bg-black text-white">Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var criticite in Model)
-        {
-            <tr>
-                <td>@criticite.CriticiteNom</td>
-                <td>
-                    <span class="badge text-black" style="background-color: @(criticite.Couleur ?? "gray");">
-                        @(criticite.CriticiteNom?.ToUpper() ?? "N/A")
-                    </span>
-                </td>
-                <td>
-                    @if (criticite.Descriptions.Length > 50)
-                    {
-                        @criticite.Descriptions.Substring(0, 50) 
-                        }
-                    else
-                    {
-                        @criticite.Descriptions
-                    }
-                </td>
-
-                <td>
-                    <a asp-action="Details" asp-route-id="@criticite.CriticiteId" class="btn btn-black" title="Détails">
-                        <i class="fas fa-list"></i>
-                    </a>
-                    <a asp-action="EditCriticite" asp-route-id="@criticite.CriticiteId" class="btn btn-warning" title="Modifier">
-                        <i class="fas fa-edit"></i>
-                    </a>
-                    <a asp-action="DeleteCriticite" asp-route-id="@criticite.CriticiteId" class="btn btn-danger" title="Supprimer">
-                        <i class="fas fa-trash"></i>
-                    </a>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
-
-<style>
-    .table {
-        border-top-color: red;
-        border-top-style: solid;
-        border-top-width: 5px;
-        border-top-left-radius: 5px;
-        border-top-right-radius: 5px;
-    }
-</style>
-
-voici ma vue Create 
-@model NotifApps.Models.Criticite
+ma vue create 
+@model NotifApps.Models.Origine
 
 @{
-    ViewData["Title"] = "Créer Criticité";
+    ViewData["Title"] = "Créer Origine";
 }
-
+<h2> créer Origine</h2>
+<hr />
 <div class="container mt-5">
     <div class="card card">
         <div class="card-header bg-black text-white">
-            <h4>Créer Criticité</h4>
+            <h4>Créer Origine</h4>
         </div>
         <div class="card-body">
-            <form asp-action="CreateCriticite">
+            <form asp-action="CreateOrigine">
                 <div class="form-group">
-                    <label asp-for="CriticiteNom"></label>
-                    <input asp-for="CriticiteNom" class="form-control" placeholder="Entrez un nom"/>
-                    <span asp-validation-for="CriticiteNom" class="text-danger"></span>
+                    <label asp-for="OrigineNom"></label>
+                    <input asp-for="OrigineNom" class="form-control" placeholder="Entrez un nom" />
+                    <span asp-validation-for="OrigineNom" class="text-danger"></span>
                 </div>
-                <div class="form-group">
-                    <label for="Couleur">Sélectionnez une couleur</label>
-                    <select asp-for="Couleur" class="form-control">
-                        <option value="red">Rouge</option>
-                        <option value="orange">Orange</option>
-                        <option value="yellow">Jaune</option>
-                        <option value="blue">Bleu</option>
-                        <option value="green">Vert</option>
-                        <option value="purple">Violet</option>
-                        <option value="pink">Rose</option>
-                        <option value="gray">Gris</option>
-                        <option value="brown">Marron</option>
-                        <option value="cyan">Cyan</option>
-                        <option value="lime">Lime</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label asp-for="Descriptions"></label>
-                    <input asp-for="Descriptions" class="form-control" placeholder="Entrez une description" />
-                    <span asp-validation-for="Descriptions" class="text-danger"></span>
-                </div>
-                <div class="text-center mt-4">
-                    <button type="submit" class="btn btn-danger" title="Créer">
-                        <i class="fas fa-save"></i>
-                    </button>
+                <div class=" d-flex justify-content-center text-center mt-4">
+                    <button type="submit" class="btn btn-danger ms-3" title="Créer"><i class="fas fa-save"></i></button>
+                    <a asp-action="Index" class="btn btn-black ms-3" title="Annuler"><i class="fas fa-ban"></i></a>
 
-                    <a asp-action="Index" class="btn btn-black mx-2" title="Annuler">
-                        <i class="fas fa-ban"></i>
-                    </a>
+
                 </div>
             </form>
         </div>
     </div>
 </div>
+
 
 <style>
     .card {
@@ -172,328 +190,88 @@ voici ma vue Create
 </style>
 
 ma vue Edit 
-@model NotifApps.Models.Criticite
+@model NotifApps.Models.Origine
 
-<div class="container mt-5">
-    <div class="card card">
-        <div class="card-header bg-black text-white">
-            <h4>Modifier Criticité</h4>
-        </div>
-        <div class="card-body">
-            <form asp-action="EditCriticite">
-                <input type="hidden" asp-for="CriticiteId" />
-                <div class="form-group">
-                    <label asp-for="CriticiteNom"></label>
-                    <input asp-for="CriticiteNom" class="form-control" />
-                    <span asp-validation-for="CriticiteNom" class="text-danger"></span>
-                </div>
-                <div class="form-group">
-                    <label for="Couleur">Sélectionnez une couleur</label>
-                    <select asp-for="Couleur" class="form-control">
-                        <option value="red">Rouge</option>
-                        <option value="orange">Orange</option>
-                        <option value="yellow">Jaune</option>
-                        <option value="blue">Bleu</option>
-                        <option value="green">Vert</option>
-                        <option value="purple">Violet</option>
-                        <option value="pink">Rose</option>
-                        <option value="gray">Gris</option>
-                        <option value="brown">Marron</option>
-                        <option value="cyan">Cyan</option>
-                        <option value="lime">Lime</option>
-                    </select>
-                    <span asp-validation-for="Couleur" class="text-danger"></span>
-                </div>
-                <div class="form-group">
-                    <label asp-for="Descriptions"></label>
-                    <input asp-for="Descriptions" class="form-control" />
-                    <span asp-validation-for="Descriptions" class="text-danger"></span>
-                </div>
-                <div class="d-flex justify-content-center">
-                    <button type="submit" class="btn btn-danger" title="Enregistrer">
-                        <i class="fas fa-save"></i>
-                    </button>
-                    <a asp-action="Index" class="btn btn-black mx-2" title="Annuler">
-                        <i class="fas fa-ban"></i>
-                    </a>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-
-<style>
-    .card {
-        border-top-color: red;
-        border-top-style: solid;
-        border-top-width: 5px;
-        border-top-left-radius: 5px;
-        border-top-right-radius: 5px;
-    }
-</style>
-
-ma vue Details
-@model NotifApps.Models.Criticite
-
-<h2>Détails de la Criticité</h2>
-<hr />
-
-
-<div class="container mt-5">
-    <div class="card card">
-
-        <div class="card-header bg-black text-white">
-            <h4>Modifier Criticité</h4>
-        </div>
-        <div class="card-body">
-
-            <div class="d-flex justify-content-evenly">
-                <h3>@Model.CriticiteNom</h3>
-                <p>
-                    <strong>Criticité :</strong>
-                    <span class="badge text-black" style="background-color: @(Model.Couleur ?? "gray");">
-                        @(Model.CriticiteNom?.ToUpper() ?? "N/A")
-                    </span>
-                </p>
-
-
-            </div>
-            <p><strong>Description :</strong> @Model.Descriptions</p>
-
-
-            <div class="d-flex justify-content-center">
-                <a asp-action="EditCriticite" asp-route-id="@Model.CriticiteId" class="btn btn-warning mx-2" title="Modifier">
-                    <i class="fas fa-edit"></i>
-                </a>
-                <a asp-action="Index" class="btn btn-black mx-2" title="Annuler">
-                    <i class="fas fa-ban"></i>
-                </a>
-            </div>
-        </div>
-    </div>
-
-</div>
-
-<style>
-    .card {
-        border-top-color: red;
-        border-top-style: solid;
-        border-top-width: 5px;
-        border-top-left-radius: 5px;
-        border-top-right-radius: 5px;
-    }
-</style>
-
-ma vue Delete 
-@model NotifApps.Models.Criticite
-
-<div class="container mt-4">
-    <div class="card card">
-        <div class="card-header bg-black text-white text-center">
-            <h4>Supprimer Criticité</h4>
-        </div>
-        <div class="card-body text-center">
-            <h4>Êtes-vous sûr de vouloir supprimer ceci ?</h4>
-
-            <div class="d-flex justify-content-evenly">
-
-                <div>
-                    <h4>@Model.CriticiteNom</h4>
-                    <p><strong>Couleur:</strong> @Model.Couleur</p> <!-- Display the color -->
-                </div>
-
-
-            </div>
-            <div>
-                <h4>@Model.Descriptions</h4>
-            </div>
-            <form asp-action="DeleteCriticite" method="post">
-                <input type="hidden" asp-for="CriticiteId" />
-                <div class="d-flex justify-content-center mt-4">
-                    <button type="submit" class="btn btn-danger me-2" title="Supprimer">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                    <a asp-action="Index" class="btn btn-black" title="Annuler">
-                        <i class="fas fa-ban"></i>
-                    </a>
-                </div>
-            </form>
-        </div>
-        </div>
-</div>
-
-<style>
-    .card {
-        border-top-color: red;
-        border-top-style: solid;
-        border-top-width: 5px;
-        border-top-left-radius: 5px;
-        border-top-right-radius: 5px;
-    }
-</style>
-
-voici mon controller 
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using NotifApps.Models;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-
-namespace NotifApps.Controllers
-{
-    public class CriticiteController : Controller
-    {
-        private readonly NotifdbContext _context;
-
-        public CriticiteController(NotifdbContext context)
-        {
-            _context = context;
-        }
-
-        // GET: Criticite/Index
-        public async Task<IActionResult> Index()
-        {
-            var criticites = await _context.Criticites.ToListAsync();
-            if (criticites == null || !criticites.Any())
-            {
-                // Handle the case where there are no criticites
-                return View(new List<Criticite>()); // Pass an empty list to the view
-            }
-            return View(criticites);
-        }
-
-
-        // GET: Criticite/Create
-        public IActionResult CreateCriticite()
-        {
-            return View();
-        }
-
-        // POST: Criticite/Create
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> CreateCriticite(Criticite criticite)
-        {
-            if (ModelState.IsValid)
-            {
-                _context.Add(criticite);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
-            }
-            return View(criticite);
-        }
-
-
-        // GET: Criticite/Edit/5
-        public async Task<IActionResult> EditCriticite(int? id)
-        {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var criticite = await _context.Criticites.FindAsync(id);
-            if (criticite == null)
-            {
-                return NotFound();
-            }
-            return View(criticite);
-        }
-
-        // POST: Criticite/Edit/5
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> EditCriticite(int id, Criticite criticite)
-        {
-            if (id != criticite.CriticiteId)
-            {
-                return NotFound();
-            }
-
-            if (ModelState.IsValid)
-            {
-                try
-                {
-                    _context.Update(criticite);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!CriticiteExists(criticite.CriticiteId))
-                    {
-                        return NotFound();
-                    }
-                    throw;
-                }
-                return RedirectToAction(nameof(Index));
-            }
-            return View(criticite);
-        }
-
-        // GET: Criticite/Details/5
-        public async Task<IActionResult> Details(int? id)
-        {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var criticite = await _context.Criticites
-                .FirstOrDefaultAsync(m => m.CriticiteId == id);
-
-            if (criticite == null)
-            {
-                return NotFound();
-            }
-
-            return View(criticite);
-        }
-
-
-        // GET: Criticite/Delete/5
-        public async Task<IActionResult> DeleteCriticite(int? id)
-        {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var criticite = await _context.Criticites
-                .FirstOrDefaultAsync(m => m.CriticiteId == id);
-            if (criticite == null)
-            {
-                return NotFound();
-            }
-
-            return View(criticite);
-        }
-
-        // POST: Criticite/Delete/5
-        [HttpPost, ActionName("DeleteCriticite")]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(int id)
-        {
-            var criticite = await _context.Criticites.FindAsync(id);
-            if (criticite == null)
-            {
-                return NotFound();
-            }
-
-            var incidents = await _context.Incidents.Where(i => i.CriticiteId == id).ToListAsync();
-            _context.Incidents.RemoveRange(incidents);
-
-            _context.Criticites.Remove(criticite);
-            await _context.SaveChangesAsync();
-
-            return RedirectToAction(nameof(Index));
-        }
-
-        private bool CriticiteExists(int id)
-        {
-            return _context.Criticites.Any(e => e.CriticiteId == id);
-        }
-    }
+@{
+    ViewData["Title"] = "Modifier Origine";
 }
 
+<h2>Modifier l'origine</h2>
+<hr />
+
+<div class="container mt-5">
+    <div class="card card">
+        <div class="card-header bg-black text-white">
+            <h4>Modifier Origine</h4>
+        </div>
+        <div class="card-body">
+            <form asp-action="EditOrigine">
+                <input type="hidden" asp-for="OrigineId" />
+                <div class="form-group">
+                    <label asp-for="OrigineNom"></label>
+                    <input asp-for="OrigineNom" class="form-control" />
+                    <span asp-validation-for="OrigineNom" class="text-danger"></span>
+                </div>
+                <div class="text-center mt-4">
+                    <button type="submit" class="btn btn-danger" title="Enregistrer"><i class="fas fa-save"></i></button>
+                    <a asp-action="Index" class="btn btn-black mx-2 ms-3" title="Annuler"><i class="fas fa-ban"></i></a>
+
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+
+<style>
+    .card {
+        border-top-color: red;
+        border-top-style: solid;
+        border-top-width: 5px;
+        border-top-left-radius: 5px;
+        border-top-right-radius: 5px;
+    }
+</style>
+
+ma vue Index 
+@model IEnumerable<NotifApps.Models.Origine>
+
+<h2>Origines</h2>
+<hr />
+<p>
+    <a asp-action="CreateOrigine" class="btn btn-black">Ajouter Origine</a>
+</p>
+
+<table class="table table">
+    <thead>
+        <tr>
+            <th class="bg-black text-white" >Origine Name</th>
+            <th class="bg-black text-white">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var origine in Model)
+        {
+            <tr>
+                <td>@origine.OrigineNom</td>
+                <td>
+                    <a asp-action="EditOrigine" asp-route-id="@origine.OrigineId" class="btn btn-warning" title="Modifier"><i class="fas fa-edit"></i></a>
+                    <a asp-action="DeleteOrigine" asp-route-id="@origine.OrigineId" class="btn btn-danger" title="Effacer"><i class="fas fa-trash"></i></a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+
+
+<style>
+    .table {
+        border-top-color: red;
+        border-top-style: solid;
+        border-top-width: 5px;
+        border-top-left-radius: 5px;
+        border-top-right-radius: 5px;
+    }
+</style>
