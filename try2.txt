@@ -1,128 +1,90 @@
-// Utilisateur Upload POST
+// POST: Criticite/Create
 [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ProcessUpload(int equipeId, IFormFile ExcelFile)
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> CreateCriticite(Criticite criticite)
+{
+    if (ModelState.IsValid)
     {
-        
-        ExcelPackage.LicenseContext = LicenseContext.NonCommercial; // setting nonCommercial license for usage 
+        // Assurez-vous que le statut est défini par défaut à "Actif"
+        criticite.Statut = "Actif";
 
-        if (ExcelFile != null && ExcelFile.Length > 0)
+        // La date de création est déjà initialisée dans le modèle
+        _context.Add(criticite);
+        await _context.SaveChangesAsync();
+        return RedirectToAction(nameof(Index));
+    }
+    return View(criticite);
+}
+
+@model IEnumerable<NotifApps.Models.Criticite>
+
+@{
+    ViewData["Title"] = "Liste des Criticités";
+}
+
+<h2>Liste des Criticités</h2>
+
+<table class="table table-bordered table-striped">
+    <thead class="bg-black text-white">
+        <tr>
+            <th>#</th>
+            <th>Nom</th>
+            <th>Couleur</th>
+            <th>Description</th>
+            <th>Statut</th>
+            <th>Date de Création</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var criticite in Model)
         {
-            using (var stream = new MemoryStream())
-            {
-                await ExcelFile.CopyToAsync(stream);
-                using (var package = new ExcelPackage(stream))
-                {
-                    var worksheet = package.Workbook.Worksheets.FirstOrDefault();
-                    if (worksheet != null)
+            <tr>
+                <td>@criticite.CriticiteId</td>
+                <td>@criticite.CriticiteNom</td>
+                <td>
+                    <span style="background-color:@criticite.Couleur; padding:5px; border-radius:4px; color:white;">
+                        @criticite.Couleur
+                    </span>
+                </td>
+                <td>@criticite.Descriptions</td>
+                <td>
+                    @if (criticite.Statut == "Actif")
                     {
-                        for (int row = 2; row <= worksheet.Dimension.End.Row; row++) // setting first row as header
-                        {
-                            var nom = worksheet.Cells[row, 1].Text; 
-                            var prenom = worksheet.Cells[row, 2].Text; 
-                            var email = worksheet.Cells[row, 3].Text;
-                            var ag = worksheet.Cells[row, 4].Text;
-
-
-                                var utilisateur = new Utilisateurs
-                            {
-                                NomUtilisateurs = nom,
-                                PrenomUtilisateurs = prenom,
-                                Email = email,
-                                AG = ag
-                                };
-
-                            _context.Add(utilisateur);
-                            await _context.SaveChangesAsync();
-
-                            // Create the association
-                            var equipeUtilisateur = new EquipeUtilisateur
-                            {
-                                EquipeId = equipeId,
-                                UtilisateursId = utilisateur.UtilisateursID // set after saving
-                            };
-
-                            _context.Add(equipeUtilisateur);
-                        }
-                        await _context.SaveChangesAsync();
+                        <span class="badge bg-success">Actif</span>
                     }
-                }
-            }
-            return RedirectToAction(nameof(Details), new { id = equipeId });
+                    else
+                    {
+                        <span class="badge bg-secondary">Inactif</span>
+                    }
+                </td>
+                <td>@criticite.DateCreation.ToString("dd/MM/yyyy")</td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@criticite.CriticiteId" class="btn btn-primary btn-sm" title="Modifier">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                    <a asp-action="Delete" asp-route-id="@criticite.CriticiteId" class="btn btn-danger btn-sm" title="Supprimer">
+                        <i class="fas fa-trash"></i>
+                    </a>
+                </td>
+            </tr>
         }
-        return View();
+    </tbody>
+</table>
+
+// GET: Criticite/Index
+public async Task<IActionResult> Index()
+{
+    // Récupère toutes les criticités depuis la base de données
+    var criticites = await _context.Criticites.ToListAsync();
+
+    // Vérifie s'il n'y a pas de criticités dans la base
+    if (criticites == null || !criticites.Any())
+    {
+        // Retourne une liste vide si aucune criticité n'est trouvée
+        return View(new List<Criticite>());
     }
 
-================================================
-@{
-    ViewData["Title"] = "Téléverser le Template";
+    // Passe la liste des criticités à la vue
+    return View(criticites);
 }
-
-<h2>Téléverser le Template d'Utilisateurs</h2>
-
-<form asp-action="ProcessUpload" method="post" enctype="multipart/form-data">
-    <input type="hidden" name="EquipeId" value="@ViewBag.EquipeId" />
-    <div class="form-group">
-        <label for="ExcelFile">Sélectionnez un fichier Excel</label>
-        <input type="file" name="ExcelFile" class="form-control" required />
-    </div>
-    <button type="submit" class="btn btn-primary">Téléverser</button>
-</form>
-=============================================================
-@model NotifApps.Models.Equipe
-
-@{
-    ViewData["Title"] = "Détails de l'Équipe";
-}
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-
-
-
-
-<div class="container mt-5">
-    <p>
-        <a asp-action="UploadTemplate" asp-route-equipeId="@Model.EquipeId" class="btn btn-black">Ajouter Utilisateurs</a>
-    </p>
-    <div class="card">
-        <div class="card-header bg-black text-white text-center">
-            <h2>@Model.NomEquipe</h2>
-        </div>
-        <div class="card-body">
-            <h4>Utilisateurs Associés</h4>
-            <ul>
-                @foreach (var equipeUtilisateur in Model.EquipeUtilisateurs)
-                {
-                    <li>@equipeUtilisateur.Utilisateurs.NomUtilisateurs @equipeUtilisateur.Utilisateurs.PrenomUtilisateurs</li>
-                }
-            </ul>
-
-            <div class="d-flex justify-content-center mt-4">
-                <a asp-action="Index" class="btn btn-black mx-2" title="Retour à la liste">
-                    <i class="fa fa-arrow-circle-left"></i>
-                </a>
-                <a asp-action="Delete" asp-route-id="@Model.EquipeId" class="btn btn-danger mx-2" title="Supprimer">
-                    <i class="fas fa-trash-alt"></i>
-                </a>
-
-                <a asp-action="AttachUtilisateur" asp-route-id="@Model.EquipeId" class="btn btn-primary mx-2" title="Rattacher Utilisateur">
-                    <i class="fas fa-user-plus"></i>
-                </a>
-                <a asp-action="Edit" asp-route-id="@Model.EquipeId" class="btn btn-warning mx-2" title="Modifier">
-                    <i class="fas fa-edit"></i>
-                </a>
-            </div>
-
-        </div>
-    </div>
-</div>
-============================================================
-public IActionResult UploadTemplate(int id)
-        {
-            ViewBag.EquipeId = id; // Pass the team ID to the view
-            return View();
-        }
-
-===================================================================
-An unhandled exception occurred while processing the request.
-InvalidOperationException: The value of 'EquipeUtilisateur.EquipeId' is unknown when attempting to save changes. This is because the property is also part of a foreign key for which the principal entity in the relationship is not known.
-Microsoft.Ent
