@@ -1,32 +1,5 @@
-using System;
-using System.Collections.Generic;
-
-#nullable disable
-
-namespace NotifApps.Models
-{
-    public partial class Equipe
-    {
-        public Equipe()
-        {
-            EquipeApplicatifs = new HashSet<EquipeApplicatif>();
-            EquipeUtilisateurs = new HashSet<EquipeUtilisateur>();
-        }
-
-        public int EquipeId { get; set; }
-        public string NomEquipe { get; set; }
-        public string CriticiteNom { get; set; }
-        public string Descriptions { get; set; }
-        public DateTime? DateCreation { get; set; } = DateTime.Now;
-        public DateTime? DateDesactivation { get; set; }
-        public string Statut { get; set; } ="Actif";
-
-        public virtual ICollection<EquipeApplicatif> EquipeApplicatifs { get; set; }
-        public virtual ICollection<EquipeUtilisateur> EquipeUtilisateurs { get; set; }
-    }
-}
-
-
+Mes methodes du controller 
+ 
 // GET: Equipes/Edit/5
         public async Task<IActionResult> Edit(int id)
         {
@@ -57,16 +30,38 @@ namespace NotifApps.Models
         //POST : EDit
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> SaveEdit(int equipeId, int[] selectedUsers)
+        public async Task<IActionResult> SaveEdit(int equipeId, int[] selectedUsers, string statut, string description)
         {
-            // Remove existing associations
-            var existingAssociations = await _context.EquipeUtilisateurs
-                .Where(eu => eu.EquipeId == equipeId)
-                .ToListAsync();
+            // Charger l'équipe existante depuis la base
+            var equipe = await _context.Equipes
+                .Include(e => e.EquipeUtilisateurs)
+                .FirstOrDefaultAsync(e => e.EquipeId == equipeId);
 
-            _context.EquipeUtilisateurs.RemoveRange(existingAssociations);
+            if (equipe == null)
+            {
+                return NotFound();
+            }
 
-            // Add new associations
+            // Mise à jour de la description
+            
+
+            // Mise à jour du statut et de la date de désactivation
+            if (statut == "Inactif" && equipe.Statut != "Inactif")
+            {
+                equipe.Statut = "Inactif";
+                equipe.DateDesactivation = DateTime.Now; // Ajouter la date de désactivation
+            }
+            else if (statut == "Actif" && equipe.Statut != "Actif")
+            {
+                equipe.Statut = "Actif";
+                equipe.DateDesactivation = null; // Supprimer la date de désactivation
+            }
+            equipe.Descriptions = description;
+
+            // Mise à jour des utilisateurs associés à l'équipe
+            var existingAssociations = equipe.EquipeUtilisateurs.ToList();
+            _context.EquipeUtilisateurs.RemoveRange(existingAssociations); // Supprimer les anciennes associations
+
             if (selectedUsers != null)
             {
                 foreach (var userId in selectedUsers)
@@ -77,14 +72,32 @@ namespace NotifApps.Models
                         UtilisateursId = userId
                     };
 
-                    _context.Add(equipeUtilisateur);
+                    _context.EquipeUtilisateurs.Add(equipeUtilisateur);
                 }
             }
 
-            await _context.SaveChangesAsync();
+            try
+            {
+
+                await _context.SaveChangesAsync(); // Enregistrer toutes les modifications
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!_context.Equipes.Any(e => e.EquipeId == equipeId))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+
             return RedirectToAction(nameof(Details), new { id = equipeId });
         }
-ma vue Edit 
+
+Ma vue 
+
 @model NotifApps.Models.Equipe
 
 @{
@@ -117,7 +130,24 @@ ma vue Edit
                         </div>
                     }
                 </div>
-
+                <div class="form-group">
+                    <label asp-for="Descriptions"></label>
+                    <input asp-for="Descriptions" class="form-control" />
+                    <span asp-validation-for="Descriptions" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="Statut">Statut</label>
+                    <select asp-for="Statut" class="form-control">
+                        <option value="Actif" selected>Actif</option>
+                        <option value="Inactif">Inactif</option>
+                    </select>
+                    <span asp-validation-for="Statut" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label>Date de Désactivation</label>
+                    <input type="text" class="form-control" value="@Model.DateDesactivation?.ToString("yyyy-MM-dd HH:mm:ss")" readonly />
+                </div>
+               
                 <div class="d-flex justify-content-center">
                     <button type="submit" class="btn btn-danger mx-2" title="Enregistrer les modifications">
                         <i class="fas fa-save"></i>
@@ -144,3 +174,4 @@ ma vue Edit
         border-top-right-radius: 5px;
     }
 </style>
+
