@@ -1,8 +1,29 @@
+public async Task<IActionResult> Edit(int id)
+{
+    var equipe = await _context.Equipes
+        .Include(e => e.EquipeUtilisateurs)
+        .ThenInclude(eu => eu.Utilisateurs)
+        .FirstOrDefaultAsync(e => e.EquipeId == id);
+
+    if (equipe == null)
+    {
+        return NotFound();
+    }
+
+    // Obtenez uniquement les utilisateurs déjà associés
+    var utilisateursAssocies = equipe.EquipeUtilisateurs.Select(eu => eu.Utilisateurs).ToList();
+
+    // Enregistrez les utilisateurs associés dans ViewBag pour affichage initial
+    ViewBag.UtilisateursAssocies = utilisateursAssocies;
+
+    return View(equipe);
+}
+
+
 [HttpPost]
 [ValidateAntiForgeryToken]
-public async Task<IActionResult> SaveEdit(int equipeId, int[] selectedUsers, string statut, string description)
+public async Task<IActionResult> SaveEdit(int equipeId, int[] selectedUsers, string statut, string Descriptions, string NomEquipe)
 {
-    // Charger l'équipe existante depuis la base
     var equipe = await _context.Equipes
         .Include(e => e.EquipeUtilisateurs)
         .FirstOrDefaultAsync(e => e.EquipeId == equipeId);
@@ -12,42 +33,43 @@ public async Task<IActionResult> SaveEdit(int equipeId, int[] selectedUsers, str
         return NotFound();
     }
 
+    // Mise à jour du nom de l'équipe
+    equipe.NomEquipe = NomEquipe;
+
     // Mise à jour de la description
-    equipe.Descriptions = description;
+    equipe.Descriptions = Descriptions;
 
     // Mise à jour du statut et de la date de désactivation
     if (statut == "Inactif" && equipe.Statut != "Inactif")
     {
         equipe.Statut = "Inactif";
-        equipe.DateDesactivation = DateTime.Now; // Ajouter la date de désactivation
+        equipe.DateDesactivation = DateTime.Now;
     }
     else if (statut == "Actif" && equipe.Statut != "Actif")
     {
         equipe.Statut = "Actif";
-        equipe.DateDesactivation = null; // Supprimer la date de désactivation
+        equipe.DateDesactivation = null;
     }
 
-    // Mise à jour des utilisateurs associés à l'équipe
+    // Mise à jour des utilisateurs associés
     var existingAssociations = equipe.EquipeUtilisateurs.ToList();
-    _context.EquipeUtilisateurs.RemoveRange(existingAssociations); // Supprimer les anciennes associations
+    _context.EquipeUtilisateurs.RemoveRange(existingAssociations);
 
     if (selectedUsers != null)
     {
         foreach (var userId in selectedUsers)
         {
-            var equipeUtilisateur = new EquipeUtilisateur
+            _context.EquipeUtilisateurs.Add(new EquipeUtilisateur
             {
                 EquipeId = equipeId,
                 UtilisateursId = userId
-            };
-
-            _context.EquipeUtilisateurs.Add(equipeUtilisateur);
+            });
         }
     }
 
     try
     {
-        await _context.SaveChangesAsync(); // Enregistrer toutes les modifications
+        await _context.SaveChangesAsync();
     }
     catch (DbUpdateConcurrencyException)
     {
@@ -55,14 +77,12 @@ public async Task<IActionResult> SaveEdit(int equipeId, int[] selectedUsers, str
         {
             return NotFound();
         }
-        else
-        {
-            throw;
-        }
+        throw;
     }
 
     return RedirectToAction(nameof(Details), new { id = equipeId });
 }
+
 
 
 @model NotifApps.Models.Equipe
@@ -74,433 +94,97 @@ public async Task<IActionResult> SaveEdit(int equipeId, int[] selectedUsers, str
 <div class="container mt-5">
     <h2 class="text-center mb-4">Modifier Équipe</h2>
 
-    <div class="card card">
-        <div class="card-header bg-black text-white">
-            <h4>Modifier @Model.NomEquipe</h4>
+    <form asp-action="SaveEdit" method="post">
+        <input type="hidden" name="equipeId" value="@Model.EquipeId" />
+
+        <!-- Champ pour modifier le nom de l'équipe -->
+        <div class="form-group">
+            <label asp-for="NomEquipe">Nom de l'équipe</label>
+            <input asp-for="NomEquipe" class="form-control" />
+            <span asp-validation-for="NomEquipe" class="text-danger"></span>
         </div>
-        <div class="card-body">
-            <form asp-action="SaveEdit" method="post">
-                <input type="hidden" name="EquipeId" value="@Model.EquipeId" />
 
-                <!-- Section pour changer le statut -->
-                <div class="form-group">
-                    <label>Statut :</label>
-                    <select class="form-control" name="statut">
-                        <option value="Actif" @(Model.Statut == "Actif" ? "selected" : "")>Actif</option>
-                        <option value="Inactif" @(Model.Statut == "Inactif" ? "selected" : "")>Inactif</option>
-                    </select>
-                </div>
-
-                <!-- Liste des utilisateurs associés -->
-                <div id="userList" class="mb-4 mt-4">
-                    <label>Utilisateurs associés :</label>
-                    @foreach (var utilisateur in ViewBag.Utilisateurs)
-                    {
-                        <div class="form-check">
-                            <input type="checkbox" class="form-check-input"
-                                   name="selectedUsers"
-                                   value="@utilisateur.UtilisateursID"
-                                   id="user_@utilisateur.UtilisateursID"
-                                   @(ViewBag.ExistingUserIds.Contains(utilisateur.UtilisateursID) ? "checked" : "") />
-                            <label class="form-check-label" for="user_@utilisateur.UtilisateursID">
-                                @utilisateur.NomUtilisateurs @utilisateur.PrenomUtilisateurs
-                            </label>
-                        </div>
-                    }
-                </div>
-
-                <!-- Boutons de soumission -->
-                <div class="d-flex justify-content-center">
-                    <button type="submit" class="btn btn-danger mx-2" title="Enregistrer les modifications">
-                        <i class="fas fa-save"></i>
-                    </button>
-                    <a asp-action="Index" class="btn btn-black mx-2" title="Retour à la liste">
-                        <i class="fa fa-arrow-circle-left"></i>
-                    </a>
-                </div>
-            </form>
+        <!-- Champ pour modifier la description -->
+        <div class="form-group">
+            <label asp-for="Descriptions">Description</label>
+            <input asp-for="Descriptions" class="form-control" />
+            <span asp-validation-for="Descriptions" class="text-danger"></span>
         </div>
-    </div>
-</div>
 
-<!-- Include Font Awesome -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-
-<style>
-    .card {
-        border-top-color: red;
-        border-top-style: solid;
-        border-top-width: 5px;
-        border-top-left-radius: 5px;
-        border-top-right-radius: 5px;
-    }
-</style>
-
-[HttpPost]
-[ValidateAntiForgeryToken]
-public async Task<IActionResult> SaveEdit(int equipeId, int[] selectedUsers, string statut)
-{
-    // Charger l'équipe existante depuis la base
-    var equipe = await _context.Equipes
-        .Include(e => e.EquipeUtilisateurs)
-        .FirstOrDefaultAsync(e => e.EquipeId == equipeId);
-
-    if (equipe == null)
-    {
-        return NotFound();
-    }
-
-    // Mise à jour du statut et de la date de désactivation
-    if (statut == "Inactif" && equipe.Statut != "Inactif")
-    {
-        equipe.Statut = "Inactif";
-        equipe.DateDesactivation = DateTime.Now; // Ajouter la date de désactivation
-    }
-    else if (statut == "Actif" && equipe.Statut != "Actif")
-    {
-        equipe.Statut = "Actif";
-        equipe.DateDesactivation = null; // Supprimer la date de désactivation
-    }
-
-    // Mise à jour des utilisateurs associés à l'équipe
-    var existingAssociations = equipe.EquipeUtilisateurs.ToList();
-    _context.EquipeUtilisateurs.RemoveRange(existingAssociations); // Supprimer les anciennes associations
-
-    if (selectedUsers != null)
-    {
-        foreach (var userId in selectedUsers)
-        {
-            var equipeUtilisateur = new EquipeUtilisateur
-            {
-                EquipeId = equipeId,
-                UtilisateursId = userId
-            };
-
-            _context.EquipeUtilisateurs.Add(equipeUtilisateur);
-        }
-    }
-
-    try
-    {
-        await _context.SaveChangesAsync(); // Enregistrer toutes les modifications
-    }
-    catch (DbUpdateConcurrencyException)
-    {
-        if (!_context.Equipes.Any(e => e.EquipeId == equipeId))
-        {
-            return NotFound();
-        }
-        else
-        {
-            throw;
-        }
-    }
-
-    return RedirectToAction(nameof(Details), new { id = equipeId });
-}
-
-
-ProcessUpload
-[HttpPost]
-[ValidateAntiForgeryToken]
-public async Task<IActionResult> ProcessUpload(IFormFile ExcelFile)
-{
-    ExcelPackage.LicenseContext = LicenseContext.NonCommercial; // Setting non-commercial license for usage.
-
-    if (ExcelFile != null && ExcelFile.Length > 0)
-    {
-        using (var stream = new MemoryStream())
-        {
-            await ExcelFile.CopyToAsync(stream);
-            using (var package = new ExcelPackage(stream))
-            {
-                var worksheet = package.Workbook.Worksheets.FirstOrDefault();
-                if (worksheet != null)
+        <!-- Sélection des utilisateurs -->
+        <div class="form-group">
+            <label>Utilisateurs associés</label>
+            <div id="associated-users">
+                @foreach (var utilisateur in ViewBag.UtilisateursAssocies)
                 {
-                    for (int row = 2; row <= worksheet.Dimension.End.Row; row++) // Skip header row
-                    {
-                        var nom = worksheet.Cells[row, 1].Text;
-                        var prenom = worksheet.Cells[row, 2].Text;
-                        var email = worksheet.Cells[row, 3].Text;
-                        var ag = worksheet.Cells[row, 4].Text;
-
-                        // Check if the user already exists
-                        var existingUser = await _context.Utilisateurs
-                            .FirstOrDefaultAsync(u => u.Email == email);
-
-                        if (existingUser == null) // Only add if the user does not exist
-                        {
-                            var utilisateur = new Utilisateurs
-                            {
-                                NomUtilisateurs = nom,
-                                PrenomUtilisateurs = prenom,
-                                Email = email,
-                                AG = ag,
-                                DateCreation = DateTime.Now, // Automatically set creation date
-                                Statut = "Actif" // Automatically set status to "Actif"
-                            };
-
-                            _context.Add(utilisateur);
-                        }
-                        // Optional: You can handle cases where the user already exists here.
-                    }
-                    await _context.SaveChangesAsync();
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" name="selectedUsers" 
+                               value="@utilisateur.UtilisateursID" checked />
+                        <label class="form-check-label">
+                            @utilisateur.NomUtilisateurs @utilisateur.PrenomUtilisateurs
+                        </label>
+                    </div>
                 }
-            }
-        }
-        return RedirectToAction(nameof(Index));
-    }
-    return View();
-}
-
-============================================
-public class Utilisateurs
-{
-    public int UtilisateursID { get; set; }
-    public string NomUtilisateurs { get; set; }
-    public string PrenomUtilisateurs { get; set; }
-    public string Email { get; set; }
-    public string AG { get; set; }
-
-    [Display(Name = "Date de création")]
-    public DateTime? DateCreation { get; set; } = DateTime.Now; // Default to current date
-
-    [Display(Name = "Date de désactivation")]
-    public DateTime? DateDesactivation { get; set; }
-
-    [Display(Name = "Statut")]
-    public string Statut { get; set; } = "Actif"; // Default to "Actif"
-
-    // Navigation property
-    public virtual ICollection<EquipeUtilisateur> EquipeUtilisateur { get; set; }
-}
-
-===================
-entity.Property(e => e.DateCreation)
-    .HasColumnType("datetime")
-    .HasColumnName("Date_Creation")
-    .HasDefaultValueSql("GETDATE()"); // Default value for SQL Server
-
-entity.Property(e => e.Statut)
-    .HasMaxLength(10)
-    .IsUnicode(false)
-    .HasDefaultValue("Actif"); // Default value for "Statut"
-=====================================================================================================
-<table class="table table">
-    <thead>
-        <tr>
-            <th class="bg-black text-white">MATRICULE</th>
-            <th class="bg-black text-white">Nom</th>
-            <th class="bg-black text-white">Prénom</th>
-            <th class="bg-black text-white">Email</th>
-            <th class="bg-black text-white">Équipes Associées</th>
-            <th class="bg-black text-white">Statut</th>
-            <th class="bg-black text-white">Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var utilisateur in Model)
-        {
-        <tr>
-            <td>@utilisateur.AG</td>
-            <td>@utilisateur.NomUtilisateurs</td>
-            <td>@utilisateur.PrenomUtilisateurs</td>
-            <td>@utilisateur.Email</td>
-            <td>
-                @foreach (var equipeUtilisateur in utilisateur.EquipeUtilisateur)
-                {
-                    <span>@equipeUtilisateur.Equipe.NomEquipe</span><br />
-                }
-            </td>
-            <td>@utilisateur.Statut</td> <!-- Nouvelle colonne pour le statut -->
-            <td>
-                <a asp-action="Details" asp-route-id="@utilisateur.UtilisateursID" class="btn btn-black ms-3" title="Détails" style="width: 50px;">
-                    <i class="fas fa-list-alt"></i>
-                </a>
-                <a asp-action="AttachEquipe" asp-route-id="@utilisateur.UtilisateursID" class="btn btn-primary ms-3" title="Attacher une équipe" style="width: 50px;">
-                    <i class="fas fa-user-plus"></i>
-                </a>
-            </td>
-        </tr>
-        }
-    </tbody>
-</table>
-
-
-==========================
-@model NotifApps.Models.Utilisateurs
-
-@{
-    ViewData["Title"] = "Détails de l'Utilisateur";
-}
-
-<div class="container mt-5">
-    <div class="card card">
-        <div class="card-header bg-black text-white">
-            <h4>Détails de l'Utilisateur</h4>
-        </div>
-        <div class="card-body">
-            <h5>@Model.NomUtilisateurs @Model.PrenomUtilisateurs</h5>
-            <p><strong>Matricule:</strong> @Model.AG</p>
-            <p><strong>Email:</strong> @Model.Email</p>
-            <p><strong>Statut:</strong> @Model.Statut</p>
-            <p><strong>Date de Création:</strong> @Model.DateCreation?.ToString("dd/MM/yyyy")</p>
-            <p><strong>Date de Désactivation:</strong> @(Model.DateDesactivation.HasValue ? Model.DateDesactivation.Value.ToString("dd/MM/yyyy") : "Non désactivé")</p>
-
-            <h6>Équipes Associées</h6>
-            <ul>
-                @foreach (var equipeUtilisateur in Model.EquipeUtilisateur)
-                {
-                    <li>@equipeUtilisateur.Equipe.NomEquipe</li>
-                }
-            </ul>
-
-            <div class="d-flex justify-content-center mt-4">
-                <a asp-action="Index" class="btn btn-black mx-2" title="Retour à la liste">
-                    <i class="fas fa-arrow-alt-circle-left"></i>
-                </a>
-                <a asp-action="Edit" asp-route-id="@Model.UtilisateursID" class="btn btn-warning mx-2" title="Modifier">
-                    <i class="fas fa-edit"></i>
-                </a>
-                <form asp-action="Delete" asp-route-id="@Model.UtilisateursID" method="post" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur ?');" class="mx-2">
-                    <button type="submit" class="btn btn-danger" title="Supprimer">
-                        <i class="fas fa-trash-alt"></i>
-                    </button>
-                </form>
             </div>
         </div>
-    </div>
+
+        <!-- Barre de recherche pour ajouter d'autres utilisateurs -->
+        <div class="form-group">
+            <label>Recherche d’utilisateurs</label>
+            <input type="text" id="search-users" class="form-control" placeholder="Rechercher un utilisateur..." />
+            <div id="search-results" class="mt-2"></div>
+        </div>
+
+        <!-- Champ pour sélectionner le statut -->
+        <div class="form-group">
+            <label asp-for="Statut">Statut</label>
+            <select asp-for="Statut" class="form-control">
+                <option value="Actif" selected>Actif</option>
+                <option value="Inactif">Inactif</option>
+            </select>
+        </div>
+
+        <!-- Date de désactivation (readonly) -->
+        <div class="form-group">
+            <label>Date de Désactivation</label>
+            <input type="text" class="form-control" value="@Model.DateDesactivation?.ToString("yyyy-MM-dd HH:mm:ss")" readonly />
+        </div>
+
+        <!-- Boutons d'action -->
+        <div class="d-flex justify-content-center">
+            <button type="submit" class="btn btn-danger mx-2">
+                Enregistrer
+            </button>
+            <a asp-action="Index" class="btn btn-black mx-2">
+                Retour
+            </a>
+        </div>
+    </form>
 </div>
 
-<!-- Include Font Awesome for icons -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<script>
+    // Script pour gérer la recherche
+    document.getElementById('search-users').addEventListener('input', function () {
+        const query = this.value.trim();
 
-<style>
-    .card {
-        border-top-color: red;
-        border-top-style: solid;
-        border-top-width: 5px;
-        border-top-left-radius: 5px;
-        border-top-right-radius: 5px;
-    }
-</style>
+        if (query.length > 0) {
+            fetch(`/Utilisateurs/Search?query=${query}`)
+                .then(response => response.json())
+                .then(data => {
+                    const results = document.getElementById('search-results');
+                    results.innerHTML = '';
 
-=================================EDIT==========================
-<div class="form-group">
-    <label asp-for="Statut"></label>
-    <select asp-for="Statut" class="form-control">
-        <option value="Actif" selected>Actif</option>
-        <option value="Inactif">Inactif</option>
-    </select>
-</div>
-<input type="hidden" asp-for="DateDesactivation" />
-=======================================================
-
-[HttpPost]
-[ValidateAntiForgeryToken]
-public async Task<IActionResult> Edit(int id, Utilisateurs utilisateur)
-{
-    if (id != utilisateur.UtilisateursID)
-    {
-        return NotFound();
-    }
-
-    if (ModelState.IsValid)
-    {
-        try
-        {
-            // Vérifiez si l'utilisateur est désactivé
-            if (utilisateur.Statut == "Inactif" && utilisateur.DateDesactivation == null)
-            {
-                utilisateur.DateDesactivation = DateTime.Now;
-            }
-            else if (utilisateur.Statut == "Actif")
-            {
-                utilisateur.DateDesactivation = null; // Réinitialisez la date de désactivation si réactivé
-            }
-
-            _context.Update(utilisateur);
-            await _context.SaveChangesAsync();
+                    data.forEach(user => {
+                        const div = document.createElement('div');
+                        div.className = 'form-check';
+                        div.innerHTML = `
+                            <input type="checkbox" class="form-check-input" name="selectedUsers" value="${user.utilisateursId}" />
+                            <label class="form-check-label">
+                                ${user.nomUtilisateurs} ${user.prenomUtilisateurs}
+                            </label>`;
+                        results.appendChild(div);
+                    });
+                });
         }
-        catch (DbUpdateConcurrencyException)
-        {
-            if (!UtilisateurExists(utilisateur.UtilisateursID))
-            {
-                return NotFound();
-            }
-            else
-            {
-                throw;
-            }
-        }
-        return RedirectToAction(nameof(Index));
-    }
-    return View(utilisateur);
-}
-===========================
-public class Utilisateurs
-{
-    public int UtilisateursID { get; set; }
-    public string NomUtilisateurs { get; set; }
-    public string PrenomUtilisateurs { get; set; }
-    public string Email { get; set; }
-    public string AG { get; set; }
-    public string Statut { get; set; } = "Actif"; // Par défaut Actif
-    public DateTime? DateDesactivation { get; set; } // Nullable
-}
-
-
-[HttpPost]
-[ValidateAntiForgeryToken]
-public async Task<IActionResult> Edit(int id, Utilisateurs utilisateur)
-{
-    if (id != utilisateur.UtilisateursID)
-    {
-        return NotFound();
-    }
-
-    if (ModelState.IsValid)
-    {
-        try
-        {
-            // Charger l'utilisateur existant depuis la base de données
-            var utilisateurExistant = await _context.Utilisateurs.AsNoTracking().FirstOrDefaultAsync(u => u.UtilisateursID == id);
-
-            if (utilisateurExistant == null)
-            {
-                return NotFound();
-            }
-
-            // Préserver les valeurs existantes
-            utilisateur.DateCreation = utilisateurExistant.DateCreation; // Conserver la date de création
-
-            // Vérifier et mettre à jour le statut et la date de désactivation
-            if (utilisateur.Statut == "Inactif" && utilisateurExistant.Statut != "Inactif")
-            {
-                utilisateur.DateDesactivation = DateTime.Now; // Ajouter la date de désactivation
-            }
-            else if (utilisateur.Statut == "Actif")
-            {
-                utilisateur.DateDesactivation = null; // Réinitialiser la date de désactivation si réactivé
-            }
-
-            // Mettre à jour l'utilisateur
-            _context.Update(utilisateur);
-            await _context.SaveChangesAsync();
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            if (!UtilisateurExists(utilisateur.UtilisateursID))
-            {
-                return NotFound();
-            }
-            else
-            {
-                throw;
-            }
-        }
-        return RedirectToAction(nameof(Index));
-    }
-    return View(utilisateur);
-}
-
+    });
+</script>
