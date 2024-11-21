@@ -1,3 +1,138 @@
+@model NotifApps.Models.Equipe
+
+@{
+    ViewData["Title"] = "Modifier Équipe";
+}
+
+<div class="container mt-5">
+    <h2 class="text-center mb-4">Modifier Équipe</h2>
+
+    <div class="card card">
+        <div class="card-header bg-black text-white">
+            <h4>Modifier @Model.NomEquipe</h4>
+        </div>
+        <div class="card-body">
+            <form asp-action="SaveEdit" method="post">
+                <input type="hidden" name="EquipeId" value="@Model.EquipeId" />
+
+                <!-- Section pour changer le statut -->
+                <div class="form-group">
+                    <label>Statut :</label>
+                    <select class="form-control" name="statut">
+                        <option value="Actif" @(Model.Statut == "Actif" ? "selected" : "")>Actif</option>
+                        <option value="Inactif" @(Model.Statut == "Inactif" ? "selected" : "")>Inactif</option>
+                    </select>
+                </div>
+
+                <!-- Liste des utilisateurs associés -->
+                <div id="userList" class="mb-4 mt-4">
+                    <label>Utilisateurs associés :</label>
+                    @foreach (var utilisateur in ViewBag.Utilisateurs)
+                    {
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input"
+                                   name="selectedUsers"
+                                   value="@utilisateur.UtilisateursID"
+                                   id="user_@utilisateur.UtilisateursID"
+                                   @(ViewBag.ExistingUserIds.Contains(utilisateur.UtilisateursID) ? "checked" : "") />
+                            <label class="form-check-label" for="user_@utilisateur.UtilisateursID">
+                                @utilisateur.NomUtilisateurs @utilisateur.PrenomUtilisateurs
+                            </label>
+                        </div>
+                    }
+                </div>
+
+                <!-- Boutons de soumission -->
+                <div class="d-flex justify-content-center">
+                    <button type="submit" class="btn btn-danger mx-2" title="Enregistrer les modifications">
+                        <i class="fas fa-save"></i>
+                    </button>
+                    <a asp-action="Index" class="btn btn-black mx-2" title="Retour à la liste">
+                        <i class="fa fa-arrow-circle-left"></i>
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Include Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+<style>
+    .card {
+        border-top-color: red;
+        border-top-style: solid;
+        border-top-width: 5px;
+        border-top-left-radius: 5px;
+        border-top-right-radius: 5px;
+    }
+</style>
+
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> SaveEdit(int equipeId, int[] selectedUsers, string statut)
+{
+    // Charger l'équipe existante depuis la base
+    var equipe = await _context.Equipes
+        .Include(e => e.EquipeUtilisateurs)
+        .FirstOrDefaultAsync(e => e.EquipeId == equipeId);
+
+    if (equipe == null)
+    {
+        return NotFound();
+    }
+
+    // Mise à jour du statut et de la date de désactivation
+    if (statut == "Inactif" && equipe.Statut != "Inactif")
+    {
+        equipe.Statut = "Inactif";
+        equipe.DateDesactivation = DateTime.Now; // Ajouter la date de désactivation
+    }
+    else if (statut == "Actif" && equipe.Statut != "Actif")
+    {
+        equipe.Statut = "Actif";
+        equipe.DateDesactivation = null; // Supprimer la date de désactivation
+    }
+
+    // Mise à jour des utilisateurs associés à l'équipe
+    var existingAssociations = equipe.EquipeUtilisateurs.ToList();
+    _context.EquipeUtilisateurs.RemoveRange(existingAssociations); // Supprimer les anciennes associations
+
+    if (selectedUsers != null)
+    {
+        foreach (var userId in selectedUsers)
+        {
+            var equipeUtilisateur = new EquipeUtilisateur
+            {
+                EquipeId = equipeId,
+                UtilisateursId = userId
+            };
+
+            _context.EquipeUtilisateurs.Add(equipeUtilisateur);
+        }
+    }
+
+    try
+    {
+        await _context.SaveChangesAsync(); // Enregistrer toutes les modifications
+    }
+    catch (DbUpdateConcurrencyException)
+    {
+        if (!_context.Equipes.Any(e => e.EquipeId == equipeId))
+        {
+            return NotFound();
+        }
+        else
+        {
+            throw;
+        }
+    }
+
+    return RedirectToAction(nameof(Details), new { id = equipeId });
+}
+
+
 ProcessUpload
 [HttpPost]
 [ValidateAntiForgeryToken]
