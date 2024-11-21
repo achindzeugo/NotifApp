@@ -1,3 +1,70 @@
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> SaveEdit(int equipeId, int[] selectedUsers, string statut, string description)
+{
+    // Charger l'équipe existante depuis la base
+    var equipe = await _context.Equipes
+        .Include(e => e.EquipeUtilisateurs)
+        .FirstOrDefaultAsync(e => e.EquipeId == equipeId);
+
+    if (equipe == null)
+    {
+        return NotFound();
+    }
+
+    // Mise à jour de la description
+    equipe.Descriptions = description;
+
+    // Mise à jour du statut et de la date de désactivation
+    if (statut == "Inactif" && equipe.Statut != "Inactif")
+    {
+        equipe.Statut = "Inactif";
+        equipe.DateDesactivation = DateTime.Now; // Ajouter la date de désactivation
+    }
+    else if (statut == "Actif" && equipe.Statut != "Actif")
+    {
+        equipe.Statut = "Actif";
+        equipe.DateDesactivation = null; // Supprimer la date de désactivation
+    }
+
+    // Mise à jour des utilisateurs associés à l'équipe
+    var existingAssociations = equipe.EquipeUtilisateurs.ToList();
+    _context.EquipeUtilisateurs.RemoveRange(existingAssociations); // Supprimer les anciennes associations
+
+    if (selectedUsers != null)
+    {
+        foreach (var userId in selectedUsers)
+        {
+            var equipeUtilisateur = new EquipeUtilisateur
+            {
+                EquipeId = equipeId,
+                UtilisateursId = userId
+            };
+
+            _context.EquipeUtilisateurs.Add(equipeUtilisateur);
+        }
+    }
+
+    try
+    {
+        await _context.SaveChangesAsync(); // Enregistrer toutes les modifications
+    }
+    catch (DbUpdateConcurrencyException)
+    {
+        if (!_context.Equipes.Any(e => e.EquipeId == equipeId))
+        {
+            return NotFound();
+        }
+        else
+        {
+            throw;
+        }
+    }
+
+    return RedirectToAction(nameof(Details), new { id = equipeId });
+}
+
+
 @model NotifApps.Models.Equipe
 
 @{
