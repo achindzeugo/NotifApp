@@ -1,31 +1,31 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using System.ComponentModel.DataAnnotations;
+
+#nullable disable
 
 namespace NotifApps.Models
 {
-    public class Utilisateurs
+    public partial class Equipe
     {
-        public int UtilisateursID { get; set; }
-        public string NomUtilisateurs { get; set; }
-        public string PrenomUtilisateurs { get; set; }
-        public string Email { get; set; }
-        public string AG { get; set; }
-        [Display(Name = "Date d'activation")]
+        public Equipe()
+        {
+            EquipeApplicatifs = new HashSet<EquipeApplicatif>();
+            EquipeUtilisateurs = new HashSet<EquipeUtilisateur>();
+        }
+
+        public int EquipeId { get; set; }
+        public string NomEquipe { get; set; }
+        public string CriticiteNom { get; set; }
+        public string Descriptions { get; set; }
         public DateTime? DateCreation { get; set; } = DateTime.Now;
-        [Display(Name = "Date de désactivation")]
         public DateTime? DateDesactivation { get; set; }
-        [Display(Name = "Statut")]
-        public string Statut { get; set; } = "Actif";
+        public string Statut { get; set; } ="Actif";
 
-
-        // Navigation property
-        public virtual ICollection<EquipeUtilisateur> EquipeUtilisateur { get; set; }
+        public virtual ICollection<EquipeApplicatif> EquipeApplicatifs { get; set; }
+        public virtual ICollection<EquipeUtilisateur> EquipeUtilisateurs { get; set; }
     }
+}
 
-} 
 
 // GET: Equipes/Edit/5
         public async Task<IActionResult> Edit(int id)
