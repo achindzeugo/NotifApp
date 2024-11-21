@@ -1,26 +1,204 @@
-//Create Origine
+ProcessUpload
 [HttpPost]
 [ValidateAntiForgeryToken]
-public async Task<IActionResult> CreateOrigine(Origine origine)
+public async Task<IActionResult> ProcessUpload(IFormFile ExcelFile)
 {
-    if (ModelState.IsValid)
+    ExcelPackage.LicenseContext = LicenseContext.NonCommercial; // Setting non-commercial license for usage.
+
+    if (ExcelFile != null && ExcelFile.Length > 0)
     {
-        origine.Statut = "Actif"; // Par défaut
-        origine.DateCreation = DateTime.Now; // Date de création
-        origine.DateDesactivation = null; // Pas encore désactivée
-        _context.Add(origine);
-        await _context.SaveChangesAsync();
+        using (var stream = new MemoryStream())
+        {
+            await ExcelFile.CopyToAsync(stream);
+            using (var package = new ExcelPackage(stream))
+            {
+                var worksheet = package.Workbook.Worksheets.FirstOrDefault();
+                if (worksheet != null)
+                {
+                    for (int row = 2; row <= worksheet.Dimension.End.Row; row++) // Skip header row
+                    {
+                        var nom = worksheet.Cells[row, 1].Text;
+                        var prenom = worksheet.Cells[row, 2].Text;
+                        var email = worksheet.Cells[row, 3].Text;
+                        var ag = worksheet.Cells[row, 4].Text;
+
+                        // Check if the user already exists
+                        var existingUser = await _context.Utilisateurs
+                            .FirstOrDefaultAsync(u => u.Email == email);
+
+                        if (existingUser == null) // Only add if the user does not exist
+                        {
+                            var utilisateur = new Utilisateurs
+                            {
+                                NomUtilisateurs = nom,
+                                PrenomUtilisateurs = prenom,
+                                Email = email,
+                                AG = ag,
+                                DateCreation = DateTime.Now, // Automatically set creation date
+                                Statut = "Actif" // Automatically set status to "Actif"
+                            };
+
+                            _context.Add(utilisateur);
+                        }
+                        // Optional: You can handle cases where the user already exists here.
+                    }
+                    await _context.SaveChangesAsync();
+                }
+            }
+        }
         return RedirectToAction(nameof(Index));
     }
-    return View(origine);
+    return View();
 }
 
-//Edit Origine
+============================================
+public class Utilisateurs
+{
+    public int UtilisateursID { get; set; }
+    public string NomUtilisateurs { get; set; }
+    public string PrenomUtilisateurs { get; set; }
+    public string Email { get; set; }
+    public string AG { get; set; }
+
+    [Display(Name = "Date de création")]
+    public DateTime? DateCreation { get; set; } = DateTime.Now; // Default to current date
+
+    [Display(Name = "Date de désactivation")]
+    public DateTime? DateDesactivation { get; set; }
+
+    [Display(Name = "Statut")]
+    public string Statut { get; set; } = "Actif"; // Default to "Actif"
+
+    // Navigation property
+    public virtual ICollection<EquipeUtilisateur> EquipeUtilisateur { get; set; }
+}
+
+===================
+entity.Property(e => e.DateCreation)
+    .HasColumnType("datetime")
+    .HasColumnName("Date_Creation")
+    .HasDefaultValueSql("GETDATE()"); // Default value for SQL Server
+
+entity.Property(e => e.Statut)
+    .HasMaxLength(10)
+    .IsUnicode(false)
+    .HasDefaultValue("Actif"); // Default value for "Statut"
+=====================================================================================================
+<table class="table table">
+    <thead>
+        <tr>
+            <th class="bg-black text-white">MATRICULE</th>
+            <th class="bg-black text-white">Nom</th>
+            <th class="bg-black text-white">Prénom</th>
+            <th class="bg-black text-white">Email</th>
+            <th class="bg-black text-white">Équipes Associées</th>
+            <th class="bg-black text-white">Statut</th>
+            <th class="bg-black text-white">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var utilisateur in Model)
+        {
+        <tr>
+            <td>@utilisateur.AG</td>
+            <td>@utilisateur.NomUtilisateurs</td>
+            <td>@utilisateur.PrenomUtilisateurs</td>
+            <td>@utilisateur.Email</td>
+            <td>
+                @foreach (var equipeUtilisateur in utilisateur.EquipeUtilisateur)
+                {
+                    <span>@equipeUtilisateur.Equipe.NomEquipe</span><br />
+                }
+            </td>
+            <td>@utilisateur.Statut</td> <!-- Nouvelle colonne pour le statut -->
+            <td>
+                <a asp-action="Details" asp-route-id="@utilisateur.UtilisateursID" class="btn btn-black ms-3" title="Détails" style="width: 50px;">
+                    <i class="fas fa-list-alt"></i>
+                </a>
+                <a asp-action="AttachEquipe" asp-route-id="@utilisateur.UtilisateursID" class="btn btn-primary ms-3" title="Attacher une équipe" style="width: 50px;">
+                    <i class="fas fa-user-plus"></i>
+                </a>
+            </td>
+        </tr>
+        }
+    </tbody>
+</table>
+
+
+==========================
+@model NotifApps.Models.Utilisateurs
+
+@{
+    ViewData["Title"] = "Détails de l'Utilisateur";
+}
+
+<div class="container mt-5">
+    <div class="card card">
+        <div class="card-header bg-black text-white">
+            <h4>Détails de l'Utilisateur</h4>
+        </div>
+        <div class="card-body">
+            <h5>@Model.NomUtilisateurs @Model.PrenomUtilisateurs</h5>
+            <p><strong>Matricule:</strong> @Model.AG</p>
+            <p><strong>Email:</strong> @Model.Email</p>
+            <p><strong>Statut:</strong> @Model.Statut</p>
+            <p><strong>Date de Création:</strong> @Model.DateCreation?.ToString("dd/MM/yyyy")</p>
+            <p><strong>Date de Désactivation:</strong> @(Model.DateDesactivation.HasValue ? Model.DateDesactivation.Value.ToString("dd/MM/yyyy") : "Non désactivé")</p>
+
+            <h6>Équipes Associées</h6>
+            <ul>
+                @foreach (var equipeUtilisateur in Model.EquipeUtilisateur)
+                {
+                    <li>@equipeUtilisateur.Equipe.NomEquipe</li>
+                }
+            </ul>
+
+            <div class="d-flex justify-content-center mt-4">
+                <a asp-action="Index" class="btn btn-black mx-2" title="Retour à la liste">
+                    <i class="fas fa-arrow-alt-circle-left"></i>
+                </a>
+                <a asp-action="Edit" asp-route-id="@Model.UtilisateursID" class="btn btn-warning mx-2" title="Modifier">
+                    <i class="fas fa-edit"></i>
+                </a>
+                <form asp-action="Delete" asp-route-id="@Model.UtilisateursID" method="post" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur ?');" class="mx-2">
+                    <button type="submit" class="btn btn-danger" title="Supprimer">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Include Font Awesome for icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+<style>
+    .card {
+        border-top-color: red;
+        border-top-style: solid;
+        border-top-width: 5px;
+        border-top-left-radius: 5px;
+        border-top-right-radius: 5px;
+    }
+</style>
+
+=================================EDIT==========================
+<div class="form-group">
+    <label asp-for="Statut"></label>
+    <select asp-for="Statut" class="form-control">
+        <option value="Actif" selected>Actif</option>
+        <option value="Inactif">Inactif</option>
+    </select>
+</div>
+<input type="hidden" asp-for="DateDesactivation" />
+=======================================================
+
 [HttpPost]
 [ValidateAntiForgeryToken]
-public async Task<IActionResult> EditOrigine(int id, Origine origine)
+public async Task<IActionResult> Edit(int id, Utilisateurs utilisateur)
 {
-    if (id != origine.OrigineId)
+    if (id != utilisateur.UtilisateursID)
     {
         return NotFound();
     }
@@ -29,118 +207,43 @@ public async Task<IActionResult> EditOrigine(int id, Origine origine)
     {
         try
         {
-            var existingOrigine = await _context.Origines.FindAsync(id);
-            if (existingOrigine == null)
+            // Vérifiez si l'utilisateur est désactivé
+            if (utilisateur.Statut == "Inactif" && utilisateur.DateDesactivation == null)
             {
-                return NotFound();
+                utilisateur.DateDesactivation = DateTime.Now;
+            }
+            else if (utilisateur.Statut == "Actif")
+            {
+                utilisateur.DateDesactivation = null; // Réinitialisez la date de désactivation si réactivé
             }
 
-            // Mise à jour des propriétés
-            existingOrigine.OrigineNom = origine.OrigineNom;
-
-            // Si le statut change, gérer les dates
-            if (existingOrigine.Statut != origine.Statut)
-            {
-                existingOrigine.Statut = origine.Statut;
-
-                if (origine.Statut == "Inactif")
-                {
-                    existingOrigine.DateDesactivation = DateTime.Now;
-                }
-                else
-                {
-                    existingOrigine.DateDesactivation = null; // Réactivation
-                }
-            }
-
-            _context.Update(existingOrigine);
+            _context.Update(utilisateur);
             await _context.SaveChangesAsync();
         }
         catch (DbUpdateConcurrencyException)
         {
-            if (!OrigineExists(origine.OrigineId))
+            if (!UtilisateurExists(utilisateur.UtilisateursID))
             {
                 return NotFound();
             }
-            throw;
+            else
+            {
+                throw;
+            }
         }
         return RedirectToAction(nameof(Index));
     }
-    return View(origine);
+    return View(utilisateur);
+}
+===========================
+public class Utilisateurs
+{
+    public int UtilisateursID { get; set; }
+    public string NomUtilisateurs { get; set; }
+    public string PrenomUtilisateurs { get; set; }
+    public string Email { get; set; }
+    public string AG { get; set; }
+    public string Statut { get; set; } = "Actif"; // Par défaut Actif
+    public DateTime? DateDesactivation { get; set; } // Nullable
 }
 
-//Vue Edit Origine 
-@model NotifApps.Models.Origine
-
-@{
-    ViewData["Title"] = "Modifier Origine";
-}
-
-<h2>Modifier l'origine</h2>
-<hr />
-
-<div class="container mt-5">
-    <form asp-action="EditOrigine">
-        <input type="hidden" asp-for="OrigineId" />
-        <div class="form-group">
-            <label asp-for="OrigineNom"></label>
-            <input asp-for="OrigineNom" class="form-control" />
-            <span asp-validation-for="OrigineNom" class="text-danger"></span>
-        </div>
-        <div class="form-group">
-            <label asp-for="Statut"></label>
-            <select asp-for="Statut" class="form-control">
-                <option value="Actif" @(Model.Statut == "Actif" ? "selected" : "")>Actif</option>
-                <option value="Inactif" @(Model.Statut == "Inactif" ? "selected" : "")>Inactif</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label>Date de création : @Model.DateCreation.ToString("dd/MM/yyyy HH:mm")</label>
-        </div>
-        <div class="form-group">
-            <label>Date de désactivation : 
-                @(Model.DateDesactivation.HasValue ? Model.DateDesactivation.Value.ToString("dd/MM/yyyy HH:mm") : "N/A")
-            </label>
-        </div>
-        <div class="text-center mt-4">
-            <button type="submit" class="btn btn-warning">Enregistrer</button>
-            <a asp-action="Index" class="btn btn-secondary">Annuler</a>
-        </div>
-    </form>
-</div>
-
-//Vue Index 
-@model IEnumerable<NotifApps.Models.Origine>
-
-<h2>Liste des origines</h2>
-<hr />
-<p>
-    <a asp-action="CreateOrigine" class="btn btn-primary">Ajouter une origine</a>
-</p>
-
-<table class="table table-bordered">
-    <thead>
-        <tr>
-            <th>Nom de l'origine</th>
-            <th>Statut</th>
-            <th>Date de création</th>
-            <th>Date de désactivation</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var origine in Model)
-        {
-            <tr>
-                <td>@origine.OrigineNom</td>
-                <td>@origine.Statut</td>
-                <td>@origine.DateCreation.ToString("dd/MM/yyyy HH:mm")</td>
-                <td>@(origine.DateDesactivation.HasValue ? origine.DateDesactivation.Value.ToString("dd/MM/yyyy HH:mm") : "N/A")</td>
-                <td>
-                    <a asp-action="EditOrigine" asp-route-id="@origine.OrigineId" class="btn btn-warning">Modifier</a>
-                    <a asp-action="DeleteOrigine" asp-route-id="@origine.OrigineId" class="btn btn-danger">Supprimer</a>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
