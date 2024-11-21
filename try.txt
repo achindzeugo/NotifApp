@@ -1,38 +1,3 @@
-voici mon modelbuilder Utilisateurs
-
-modelBuilder.Entity<Utilisateurs>(entity =>
-            {
-                entity.HasKey(e => e.UtilisateursID)
-                    .HasName("PK__Utilisat__501F1C92E0CD5439");
-                
-                entity.ToTable("Utilisateurs");
-
-                entity.Property(e => e.UtilisateursID).HasColumnName("UtilisateursID");
-
-                entity.Property(e => e.Email)
-                    .HasMaxLength(255)
-                    .IsUnicode(false);
-
-                entity.Property(e => e.NomUtilisateurs)
-                    .HasMaxLength(255)
-                    .IsUnicode(false);
-
-                entity.Property(e => e.PrenomUtilisateurs)
-                    .HasMaxLength(255)
-                    .IsUnicode(false);
-                entity.Property(e => e.DateCreation)
-                    .HasColumnType("datetime")
-                    .HasColumnName("Date_Creation")
-                    .HasDefaultValueSql("(getdate())");
-
-                entity.Property(e => e.DateDesactivation)
-                    .HasColumnType("datetime")
-                    .HasColumnName("Date_Desactivation");
-                entity.Property(e => e.Statut)
-                    .HasMaxLength(10)
-                    .IsUnicode(false);
-            });
-mon modele utilisateurs 
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -48,434 +13,130 @@ namespace NotifApps.Models
         public string PrenomUtilisateurs { get; set; }
         public string Email { get; set; }
         public string AG { get; set; }
-
-        public DateTime? DateCreation { get; set; }
+        [Display(Name = "Date d'activation")]
+        public DateTime? DateCreation { get; set; } = DateTime.Now;
+        [Display(Name = "Date de désactivation")]
         public DateTime? DateDesactivation { get; set; }
-        public string Statut { get; set; }
+        [Display(Name = "Statut")]
+        public string Statut { get; set; } = "Actif";
 
 
         // Navigation property
         public virtual ICollection<EquipeUtilisateur> EquipeUtilisateur { get; set; }
     }
 
-}
+} 
 
-mon controller Utilisateurs 
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using NotifApps.Models;
-using OfficeOpenXml;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
-
-namespace NotifApps.Controllers
-{
-    public class UtilisateurController : Controller
-    {
-        private readonly NotifdbContext _context;
-
-        public UtilisateurController(NotifdbContext context)
-        {
-            _context = context;
-        }
-
-        // GET: Utilisateurs
-        public async Task<IActionResult> Index(string searchString)
-        {
-            var utilisateurs = from u in _context.Utilisateurs
-                               select u;
-
-            if (!string.IsNullOrEmpty(searchString))
-            {
-                utilisateurs = utilisateurs.Where(u => u.NomUtilisateurs.Contains(searchString) ||
-                                                        u.PrenomUtilisateurs.Contains(searchString) ||
-                                                u.AG.Contains(searchString));
-            }
-
-            return View(await utilisateurs.Include(u => u.EquipeUtilisateur)
-                                           .ThenInclude(eu => eu.Equipe)
-                                           .ToListAsync());
-        }
-
-        // GET: Utilisateurs/Details/5
-        public async Task<IActionResult> Details(int id)
-        {
-            var utilisateur = await _context.Utilisateurs
-                .Include(u => u.EquipeUtilisateur)
-                .ThenInclude(eu => eu.Equipe)
-                .FirstOrDefaultAsync(u => u.UtilisateursID == id);
-
-            if (utilisateur == null)
-            {
-                return NotFound();
-            }
-
-            return View(utilisateur);
-        }
-
-        //GET Equipe To rattach user to it
-        public IActionResult AttachEquipe(int id)
-        {
-            ViewBag.UtilisateurId = id; 
-            var equipes = _context.Equipes.ToList(); // Get all teams
-            return View(equipes); 
-        }
-
-        //PSOT ATTach Equipe to user
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> SaveEquipe(int utilisateurId, int equipeId)
-        {
-            if (utilisateurId > 0 && equipeId > 0)
-            {
-                var equipeUtilisateur = new EquipeUtilisateur
-                {
-                    UtilisateursId = utilisateurId,
-                    EquipeId = equipeId
-                };
-
-                _context.Add(equipeUtilisateur);
-                await _context.SaveChangesAsync();
-
-                return RedirectToAction(nameof(Index));
-            }
-
-            return View(); 
-        }
-
-        //Upload Users
-        public IActionResult UploadUsers()
-        {
-            return View();
-        }
-        //POST : UPLOAD USERS
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> ProcessUpload(IFormFile ExcelFile)
-        {
-            ExcelPackage.LicenseContext = LicenseContext.NonCommercial; // setting nonCommercial license for usage 
-
-            if (ExcelFile != null && ExcelFile.Length > 0)
-            {
-                using (var stream = new MemoryStream())
-                {
-                    await ExcelFile.CopyToAsync(stream);
-                    using (var package = new ExcelPackage(stream))
-                    {
-                        var worksheet = package.Workbook.Worksheets.FirstOrDefault();
-                        if (worksheet != null)
-                        {
-                            for (int row = 2; row <= worksheet.Dimension.End.Row; row++) // first row is header
-                            {
-                                var nom = worksheet.Cells[row, 1].Text;
-                                var prenom = worksheet.Cells[row, 2].Text;
-                                var email = worksheet.Cells[row, 3].Text;
-                                var ag = worksheet.Cells[row, 4].Text;
-
-
-                                // Check if the user already exists
-                                var existingUser = await _context.Utilisateurs
-                                    .FirstOrDefaultAsync(u => u.Email == email);
-
-                                if (existingUser == null) // Only add if the user does not exist
-                                {
-                                    var utilisateur = new Utilisateurs
-                                    {
-                                        NomUtilisateurs = nom,
-                                        PrenomUtilisateurs = prenom,
-                                        Email = email,
-                                        AG = ag
-
-
-                                    };
-
-                                    _context.Add(utilisateur);
-                                }
-                                else
-                                {
-                                    
-                                }
-                            }
-                            await _context.SaveChangesAsync();
-                        }
-                    }
-                }
-                return RedirectToAction(nameof(Index));
-            }
-            return View();
-        }
-
-        // GET: Utilisateurs/Edit/5
+// GET: Equipes/Edit/5
         public async Task<IActionResult> Edit(int id)
         {
-            var utilisateur = await _context.Utilisateurs.FindAsync(id);
-            if (utilisateur == null)
+            var equipe = await _context.Equipes
+                .Include(e => e.EquipeUtilisateurs)
+                .ThenInclude(eu => eu.Utilisateurs)
+                .FirstOrDefaultAsync(e => e.EquipeId == id);
+
+            if (equipe == null)
             {
                 return NotFound();
             }
 
-            return View(utilisateur);
+            // Get all users
+            var utilisateurs = await _context.Utilisateurs.ToListAsync();
+
+            // Get the IDs of users already associated with the team
+            var existingUserIds = equipe.EquipeUtilisateurs.Select(eu => eu.UtilisateursId).ToList();
+
+            ViewBag.Utilisateurs = utilisateurs;
+            ViewBag.ExistingUserIds = existingUserIds;
+
+            return View(equipe);
         }
-        // POST: Utilisateurs/Edit/5
+
+
+
+        //POST : EDit
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, Utilisateurs utilisateur)
+        public async Task<IActionResult> SaveEdit(int equipeId, int[] selectedUsers)
         {
-            if (id != utilisateur.UtilisateursID)
-            {
-                return NotFound();
-            }
+            // Remove existing associations
+            var existingAssociations = await _context.EquipeUtilisateurs
+                .Where(eu => eu.EquipeId == equipeId)
+                .ToListAsync();
 
-            if (ModelState.IsValid)
+            _context.EquipeUtilisateurs.RemoveRange(existingAssociations);
+
+            // Add new associations
+            if (selectedUsers != null)
             {
-                try
+                foreach (var userId in selectedUsers)
                 {
-                    _context.Update(utilisateur);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!UtilisateurExists(utilisateur.UtilisateursID))
+                    var equipeUtilisateur = new EquipeUtilisateur
                     {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
+                        EquipeId = equipeId,
+                        UtilisateursId = userId
+                    };
+
+                    _context.Add(equipeUtilisateur);
                 }
-                return RedirectToAction(nameof(Index));
-            }
-            return View(utilisateur);
-        }
-
-        // Méthode pour vérifier l'existence de l'utilisateur
-        private bool UtilisateurExists(int id)
-        {
-            return _context.Utilisateurs.Any(e => e.UtilisateursID == id);
-        }
-
-
-        // GET: Utilisateurs/Delete/5
-        public async Task<IActionResult> Delete(int id)
-        {
-            var utilisateur = await _context.Utilisateurs.FindAsync(id);
-            if (utilisateur == null)
-            {
-                return NotFound();
             }
 
-            return View(utilisateur);
+            await _context.SaveChangesAsync();
+            return RedirectToAction(nameof(Details), new { id = equipeId });
         }
-
-        // POST: Utilisateurs/Delete/5
-        [HttpPost, ActionName("Delete")]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(int id)
-        {
-            // Récupérer l'utilisateur avec ses équipes associées
-            var utilisateur = await _context.Utilisateurs
-                .Include(u => u.EquipeUtilisateur) // Inclure les équipes associées
-                .FirstOrDefaultAsync(u => u.UtilisateursID == id);
-
-            if (utilisateur != null)
-            {
-                // Supprimer les relations avec les équipes
-                _context.EquipeUtilisateurs.RemoveRange(utilisateur.EquipeUtilisateur);
-
-                // Supprimer l'utilisateur
-                _context.Utilisateurs.Remove(utilisateur);
-                await _context.SaveChangesAsync();
-            }
-
-            return RedirectToAction(nameof(Index));
-        }
-
-    }
-}
-
-ma vue Détails 
-@model NotifApps.Models.Utilisateurs
+ma vue Edit 
+@model NotifApps.Models.Equipe
 
 @{
-    ViewData["Title"] = "Détails de l'Utilisateur";
+    ViewData["Title"] = "Modifier Équipe";
 }
 
 <div class="container mt-5">
+    <h2 class="text-center mb-4">Modifier Équipe</h2>
+
     <div class="card card">
         <div class="card-header bg-black text-white">
-            <h4>Détails de l'Utilisateur</h4>
+            <h4>Utilisateurs Associés à @Model.NomEquipe</h4>
         </div>
         <div class="card-body">
-            <h5>@Model.NomUtilisateurs @Model.PrenomUtilisateurs</h5>
-            <p>Matricule: @Model.AG</p>
+            <form asp-action="SaveEdit" method="post">
+                <input type="hidden" name="EquipeId" value="@Model.EquipeId" />
 
-            <p>Email: @Model.Email</p>
+                <div id="userList" class="mb-4">
+                    @foreach (var utilisateur in ViewBag.Utilisateurs)
+                    {
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input"
+                                   name="selectedUsers"
+                                   value="@utilisateur.UtilisateursID"
+                                   id="user_@utilisateur.UtilisateursID"
+                                   @(ViewBag.ExistingUserIds.Contains(utilisateur.UtilisateursID) ? "checked" : "") />
+                            <label class="form-check-label" for="user_@utilisateur.UtilisateursID">
+                                @utilisateur.NomUtilisateurs @utilisateur.PrenomUtilisateurs
+                            </label>
+                        </div>
+                    }
+                </div>
 
-            <h6>Équipes Associées</h6>
-            <ul>
-                @foreach (var equipeUtilisateur in Model.EquipeUtilisateur)
-                {
-                    <li>@equipeUtilisateur.Equipe.NomEquipe</li>
-                }
-            </ul>
-
-            <div class="d-flex justify-content-center mt-4">
-                <a asp-action="Index" class="btn btn-black mx-2" title="Retour à la liste">
-                    <i class="fas fa-arrow-alt-circle-left"></i>
-                </a>
-                <a asp-action="Edit" asp-route-id="@Model.UtilisateursID" class="btn btn-warning mx-2" title="Modifier">
-                    <i class="fas fa-edit"></i>
-                </a>
-                <form asp-action="Delete" asp-route-id="@Model.UtilisateursID" method="post" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur ?');" class="mx-2">
-                    <button type="submit" class="btn btn-danger" title="Supprimer">
-                        <i class="fas fa-trash-alt"></i>
+                <div class="d-flex justify-content-center">
+                    <button type="submit" class="btn btn-danger mx-2" title="Enregistrer les modifications">
+                        <i class="fas fa-save"></i>
                     </button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Include Font Awesome for icons -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-
-
-<style>
-    .card {
-        border-top-color: red;
-        border-top-style: solid;
-        border-top-width: 5px;
-        border-top-left-radius: 5px;
-        border-top-right-radius: 5px;
-    }
-</style>
-
-Ma vue Edit 
-
-@model NotifApps.Models.Utilisateurs
-
-@{
-    ViewData["Title"] = "Modifier l'Utilisateur";
-}
-
-<div class="container mt-5">
-    <div class="card card">
-        <div class="card-header bg-black text-white">
-            <h4>Modifier l'Utilisateur</h4>
-        </div>
-        <div class="card-body">
-            <form asp-action="Edit">
-                <input type="hidden" asp-for="UtilisateursID" />
-
-                <div class="form-group">
-                    <label asp-for="NomUtilisateurs"></label>
-                    <input asp-for="NomUtilisateurs" class="form-control" />
-                    <span asp-validation-for="NomUtilisateurs" class="text-danger"></span>
-                </div>
-
-                <div class="form-group">
-                    <label asp-for="PrenomUtilisateurs"></label>
-                    <input asp-for="PrenomUtilisateurs" class="form-control" />
-                    <span asp-validation-for="PrenomUtilisateurs" class="text-danger"></span>
-                </div>
-
-                <div class="form-group">
-                    <label asp-for="Email"></label>
-                    <input asp-for="Email" class="form-control" />
-                    <span asp-validation-for="Email" class="text-danger"></span>
-                </div>
-                <div class="form-group">
-                    <label asp-for="AG"></label>
-                    <input asp-for="AG"class="form-control" />
-                    <span asp-validation-for="AG" class="text-danger"></span>
-                </div>
-
-                <div class="d-flex justify-content-center mt-4">
-                    <button type="submit" class="btn btn-danger ms-3" title="Enregistrer"><i class="fas fa-save"></i></button>
-                    <a asp-action="Index" class="btn btn-black ms-3" title="Annuler"><i class="fas fa-ban"></i></a>
+                    <a asp-action="Index" class="btn btn-black mx-2" title="Retour à la liste">
+                        <i class="fa fa-arrow-circle-left"></i>
+                    </a>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
+<!-- Include Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 
 
 <style>
     .card {
-        border-top-color: red;
-        border-top-style: solid;
-        border-top-width: 5px;
-        border-top-left-radius: 5px;
-        border-top-right-radius: 5px;
-    }
-</style>
-
-ma vue index 
-@model IEnumerable<NotifApps.Models.Utilisateurs>
-
-@{
-    ViewData["Title"] = "Liste des Utilisateurs";
-}
-
-<h1>Liste des Utilisateurs</h1>
-<hr />
-<div class="mb-3">
-    <a asp-action="UploadUsers" class="btn btn-black">Ajouter Utilisateur</a>
-</div>
-
-<form asp-action="Index" method="get">
-    <div class="form-group">
-        <input type="text" name="searchString" class="form-control" placeholder="Rechercher par nom ou prénom ou Matricule" />
-        <button type="submit" class="btn btn-black mt-2 fas fa-search"></button>
-    </div>
-</form>
-
-<table class="table table">
-    <thead>
-        <tr>
-            <th class="bg-black text-white">MATRICULE</th>
-            <th class="bg-black text-white">Nom</th>
-            <th class="bg-black text-white">Prénom</th>
-            <th class="bg-black text-white">Email</th>
-            <th class="bg-black text-white">Équipes Associées</th>
-            <th class="bg-black text-white">Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var utilisateur in Model)
-        {
-        <tr>
-            <td>@utilisateur.AG</td>
-            <td>@utilisateur.NomUtilisateurs</td>
-            <td>@utilisateur.PrenomUtilisateurs</td>
-            <td>@utilisateur.Email</td>
-
-            <td>
-                @foreach (var equipeUtilisateur in utilisateur.EquipeUtilisateur)
-                {
-                    <span>@equipeUtilisateur.Equipe.NomEquipe</span><br />
-                }
-            </td>
-            <td>
-                <a asp-action="Details" asp-route-id="@utilisateur.UtilisateursID" class="btn btn-black ms-3" title="Détails" style="width: 50px;">
-                    <i class="fas fa-list-alt"></i>
-                </a>
-                <a asp-action="AttachEquipe" asp-route-id="@utilisateur.UtilisateursID" class="btn btn-primary ms-3" title="Attacher une équipe" style="width: 50px;">
-                    <i class="fas fa-user-plus"></i>
-                </a>
-            </td>
-
-        </tr>
-        }
-    </tbody>
-</table>
-
-<style>
-    .table {
         border-top-color: red;
         border-top-style: solid;
         border-top-width: 5px;
