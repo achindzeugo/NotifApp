@@ -247,3 +247,58 @@ public class Utilisateurs
     public DateTime? DateDesactivation { get; set; } // Nullable
 }
 
+
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> Edit(int id, Utilisateurs utilisateur)
+{
+    if (id != utilisateur.UtilisateursID)
+    {
+        return NotFound();
+    }
+
+    if (ModelState.IsValid)
+    {
+        try
+        {
+            // Charger l'utilisateur existant depuis la base de données
+            var utilisateurExistant = await _context.Utilisateurs.AsNoTracking().FirstOrDefaultAsync(u => u.UtilisateursID == id);
+
+            if (utilisateurExistant == null)
+            {
+                return NotFound();
+            }
+
+            // Préserver les valeurs existantes
+            utilisateur.DateCreation = utilisateurExistant.DateCreation; // Conserver la date de création
+
+            // Vérifier et mettre à jour le statut et la date de désactivation
+            if (utilisateur.Statut == "Inactif" && utilisateurExistant.Statut != "Inactif")
+            {
+                utilisateur.DateDesactivation = DateTime.Now; // Ajouter la date de désactivation
+            }
+            else if (utilisateur.Statut == "Actif")
+            {
+                utilisateur.DateDesactivation = null; // Réinitialiser la date de désactivation si réactivé
+            }
+
+            // Mettre à jour l'utilisateur
+            _context.Update(utilisateur);
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!UtilisateurExists(utilisateur.UtilisateursID))
+            {
+                return NotFound();
+            }
+            else
+            {
+                throw;
+            }
+        }
+        return RedirectToAction(nameof(Index));
+    }
+    return View(utilisateur);
+}
+
