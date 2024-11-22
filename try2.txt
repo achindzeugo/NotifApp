@@ -1,224 +1,210 @@
-[HttpPost]
-[ValidateAntiForgeryToken]
-public async Task<IActionResult> Edit(int id, Applicatif applicatif, List<Address> addresses)
-{
-    if (id != applicatif.AppId)
-    {
-        return NotFound();
-    }
+voici ma methode GET et CREATE pour incident
 
-    if (ModelState.IsValid)
-    {
-        using (var transaction = await _context.Database.BeginTransactionAsync())
+// GET: Incident/Create
+        public IActionResult Create()
         {
-            try
+            // Remplir les ViewBag pour les sélections
+            ViewBag.EquipeId = _context.Equipes.Select(e => new SelectListItem
             {
-                // Mise à jour de l'applicatif
-                _context.Update(applicatif);
-                await _context.SaveChangesAsync();
+                Value = e.EquipeId.ToString(),
+                Text = e.NomEquipe
+            }).ToList();
 
-                // Vérifier les types valides
-                var validTypes = await _context.AddressTypes.Select(t => t.TypeName).ToListAsync();
-                foreach (var address in addresses)
+            ViewBag.AppId = _context.Applicatifs.Select(a => new SelectListItem
+            {
+                Value = a.AppId.ToString(),
+                Text = a.AppNom
+            }).ToList();
+
+            ViewBag.CriticiteId = _context.Criticites.Select(c => new SelectListItem
+            {
+                Value = c.CriticiteId.ToString(),
+                Text = c.CriticiteNom
+            }).ToList();
+
+            ViewBag.StatutId = _context.Statuts.Select(s => new SelectListItem
+            {
+                Value = s.StatutId.ToString(),
+                Text = s.StatutNom
+            }).ToList();
+
+            ViewBag.OrigineId = _context.Origines
+                .Where(o => o.OrigineNom != null) // Filtrer les valeurs NULL
+                .Select(o => new SelectListItem
                 {
-                    if (!validTypes.Contains(address.Type))
-                    {
-                        ModelState.AddModelError("", $"Le type d'adresse '{address.Type}' n'est pas valide.");
-                        return View(applicatif);
-                    }
-                }
+                    Value = o.OrigineId.ToString(),
+                    Text = o.OrigineNom
+                }).ToList();
 
-                // Récupérer les adresses existantes
-                var existingAddresses = await _context.Addresses
-                    .Where(a => a.AppId == applicatif.AppId)
-                    .ToListAsync();
+            return View();
+        }
 
-                // Mettre à jour ou ajouter les adresses
-                foreach (var address in addresses)
+        // POST: Incident/Create
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create([Bind("IncidentId,Description,DestinataireSup,CriticiteId,StatutId,AppId,Titre,Pec,RefTicket,LienTicket,Debutdimpact,Datepriseencharge,Impact,EquipeId")] Incident incident, string OrigineNom)
+        {
+            if (ModelState.IsValid)
+            {
+                // Normaliser le nom de l'origine pour la comparaison
+                var normalizedOrigineNom = OrigineNom.Trim().ToUpper(); // Convert to capital lettrs
+
+                // Vérifiez si une origine similaire existe déjà
+                var existingOrigine = await _context.Origines
+                    .FirstOrDefaultAsync(o => o.OrigineNom.ToUpper() == normalizedOrigineNom);
+
+                if (existingOrigine == null)
                 {
-                    if (address.Id > 0)
+                    // Vérifiez les origines existantes pour des correspondances similaires
+                    var similarOrigines = await _context.Origines
+                        .Where(o => o.OrigineNom.ToUpper().Contains(normalizedOrigineNom) ||
+                                     normalizedOrigineNom.Contains(o.OrigineNom.ToUpper()))
+                        .ToListAsync();
+
+                    if (similarOrigines.Any())
                     {
-                        // Mettre à jour l'adresse existante
-                        var existingAddress = existingAddresses.FirstOrDefault(a => a.Id == address.Id);
-                        if (existingAddress != null)
-                        {
-                            existingAddress.Type = address.Type;
-                            existingAddress.Value = address.Value;
-                        }
+                        // Utilisez l'origine existante si une correspondance similaire est trouvée
+                        incident.OrigineId = similarOrigines.First().OrigineId;
                     }
                     else
                     {
-                        // Ajouter une nouvelle adresse
-                        address.AppId = applicatif.AppId;
-                        _context.Addresses.Add(address);
+                        // Si aucune origine similaire, ajoutez une nouvelle origine
+                        var newOrigine = new Origine { OrigineNom = normalizedOrigineNom }; // Utiliser le nom normalisé
+                        _context.Origines.Add(newOrigine);
+                        await _context.SaveChangesAsync();
+                        incident.OrigineId = newOrigine.OrigineId;
                     }
                 }
-
-                // Supprimer les adresses obsolètes
-                var addressesToRemove = existingAddresses
-                    .Where(e => !addresses.Any(a => a.Id == e.Id))
-                    .ToList();
-                _context.Addresses.RemoveRange(addressesToRemove);
-
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
-
-                return RedirectToAction(nameof(Index));
-            }
-            catch (Exception)
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
-        }
-    }
-
-    // Recharge les types en cas d'erreur
-    ViewBag.AddressTypes = await _context.AddressTypes.ToListAsync();
-    return View(applicatif);
-}
-
-
-@for (int i = 0; i < addressList.Count; i++)
-{
-    <div class="form-group d-flex align-items-center justify-content-between">
-        <!-- Inclure l'Id de l'adresse -->
-        <input type="hidden" name="addresses[@i].Id" value="@addressList[i].Id" />
-        
-        <div class="flex-fill me-2">
-            <label class="text-black me-2">Type d'adresse</label>
-            <select name="addresses[@i].Type" class="form-control">
-                <option value="" disabled>Sélectionnez...</option>
-                @foreach (var type in addressTypes)
+                else
                 {
-                    <option value="@type.TypeName" @(addressList[i].Type == type.TypeName ? "selected" : "")>
-                        @type.TypeName
-                    </option>
+                    // Si une origine exacte existe, utilisez son ID
+                    incident.OrigineId = existingOrigine.OrigineId;
                 }
-            </select>
-        </div>
-        <div class="flex-fill me-2">
-            <label class="text-black me-2">Adresse</label>
-            <input type="text" name="addresses[@i].Value"
-                   class="form-control"
-                   value="@addressList[i].Value"
-                   placeholder="Saisissez une adresse" />
-        </div>
-    </div>
-}
 
+                using (var transaction = await _context.Database.BeginTransactionAsync())
+                {
+                    try
+                    {
+                        _context.Add(incident);
+                        await _context.SaveChangesAsync(); 
 
+                        await _context.SaveChangesAsync(); 
+                        await transaction.CommitAsync();
+                        return RedirectToAction(nameof(Index));
+                    }
+                    catch (Exception ex)
+                    {
+                        await transaction.RollbackAsync();
+                        throw;
+                    }
+                }
+            }
 
+            ViewBag.EquipeId = _context.Equipes.Select(e => new SelectListItem
+            {
+                Value = e.EquipeId.ToString(),
+                Text = e.NomEquipe
+            }).ToList();
 
+            ViewBag.AppId = _context.Applicatifs.Select(a => new SelectListItem
+            {
+                Value = a.AppId.ToString(),
+                Text = a.AppNom
+            }).ToList();
 
+            ViewBag.CriticiteId = _context.Criticites.Select(c => new SelectListItem
+            {
+                Value = c.CriticiteId.ToString(),
+                Text = c.CriticiteNom
+            }).ToList();
 
+            ViewBag.StatutId = _context.Statuts.Select(s => new SelectListItem
+            {
+                Value = s.StatutId.ToString(),
+                Text = s.StatutNom
+            }).ToList();
 
+            ViewBag.OrigineId = _context.Origines.Select(o => new SelectListItem
+            {
+                Value = o.OrigineId.ToString(),
+                Text = o.OrigineNom
+            }).ToList();
 
+            return View(incident);
+        }
 
+voici mon modele pour INCIDENT 
+using System;
+using System.Collections.Generic;
 
+#nullable disable
 
-
-
-[HttpPost]
-[ValidateAntiForgeryToken]
-public async Task<IActionResult> Edit(int id, Applicatif applicatif, List<Address> addresses)
+namespace NotifApps.Models
 {
-    if (id != applicatif.AppId)
-    {
-        return NotFound();
-    }
 
-    if (ModelState.IsValid)
+    public partial class Incident
     {
-        using (var transaction = await _context.Database.BeginTransactionAsync())
+        public Incident()
         {
-            try
-            {
-                // Mise à jour de l'applicatif
-                _context.Update(applicatif);
-                await _context.SaveChangesAsync();
-
-                // Vérifier les types valides
-                var validTypes = await _context.AddressTypes.Select(t => t.TypeName).ToListAsync();
-                foreach (var address in addresses)
-                {
-                    if (!validTypes.Contains(address.Type))
-                    {
-                        ModelState.AddModelError("", $"Le type d'adresse '{address.Type}' n'est pas valide.");
-                        return View(applicatif);
-                    }
-                }
-
-                // Récupérer les adresses existantes
-                var existingAddresses = await _context.Addresses
-                    .Where(a => a.AppId == applicatif.AppId)
-                    .ToListAsync();
-
-                // Mettre à jour ou ajouter les adresses
-                foreach (var address in addresses)
-                {
-                    var existingAddress = existingAddresses.FirstOrDefault(a => a.Id == address.Id);
-                    if (existingAddress != null)
-                    {
-                        // Mettre à jour l'adresse existante
-                        existingAddress.Type = address.Type;
-                        existingAddress.Value = address.Value;
-                    }
-                    else
-                    {
-                        // Ajouter une nouvelle adresse
-                        address.AppId = applicatif.AppId;
-                        _context.Addresses.Add(address);
-                    }
-                }
-
-                // Supprimer les adresses obsolètes
-                var addressesToRemove = existingAddresses
-                    .Where(e => !addresses.Any(a => a.Id == e.Id))
-                    .ToList();
-                _context.Addresses.RemoveRange(addressesToRemove);
-
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
-
-                return RedirectToAction(nameof(Index));
-            }
-            catch (Exception)
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
-        }
+            ApplicationIncidents = new HashSet<ApplicationIncident>();
+            PlanDactions = new List<PlanDaction>();
     }
 
-    // Recharge les types en cas d'erreur
-    ViewBag.AddressTypes = await _context.AddressTypes.ToListAsync();
-    return View(applicatif);
+        public int IncidentId { get; set; }
+        public string Description { get; set; }
+        public string DestinataireSup { get; set; }
+        public int? OrigineId { get; set; }
+        public int? CriticiteId { get; set; }
+        public int? StatutId { get; set; }
+        public int? AppId { get; set; }
+        public string Titre { get; set; }
+        public string Pec { get; set; }
+        public string RefTicket { get; set; }
+        public string LienTicket { get; set; }
+        public DateTime? Debutdimpact { get; set; }
+        public DateTime? Datepriseencharge { get; set; }
+        public string Impact { get; set; }
+        public int? PecId { get; set; }
+        public int? EquipeId { get; set; }
+        public virtual Equipe Equipe { get; set; }
+        public virtual Applicatif App { get; set; }
+        public virtual Criticite Criticite { get; set; }
+        public virtual Origine Origine { get; set; }
+        public virtual Statut Statut { get; set; }
+        public virtual ICollection<ApplicationIncident> ApplicationIncidents { get; set; }
+        public virtual ICollection<PlanDaction> PlanDactions { get; set; }
+
+    }
+
 }
 
-@for (int i = 0; i < addressList.Count; i++)
+voici mon modele criticite 
+using System;
+using System.Collections.Generic;
+
+#nullable disable
+
+namespace NotifApps.Models
 {
-    <div class="form-group d-flex align-items-center justify-content-between">
-        <input type="hidden" name="addresses[@i].Id" value="@addressList[i].Id" />
-        <div class="flex-fill me-2">
-            <label class="text-black me-2">Type d'adresse</label>
-            <select name="addresses[@i].Type" class="form-control">
-                <option value="" disabled>Sélectionnez...</option>
-                @foreach (var type in addressTypes)
-                {
-                    <option value="@type.TypeName" @(addressList[i].Type == type.TypeName ? "selected" : "")>
-                        @type.TypeName
-                    </option>
-                }
-            </select>
-        </div>
-        <div class="flex-fill me-2">
-            <label class="text-black me-2">Adresse</label>
-            <input type="text" name="addresses[@i].Value"
-                   class="form-control"
-                   value="@addressList[i].Value"
-                   placeholder="Saisissez une adresse" />
-        </div>
-    </div>
+    public partial class Criticite
+    {
+        public Criticite()
+        {
+            Incidents = new HashSet<Incident>(); //type specification
+        }
+
+        public int CriticiteId { get; set; }
+        public string CriticiteNom { get; set; }
+        public string? Couleur { get; set; }
+        public string? Descriptions { get; set; }
+
+        // new properties
+        public DateTime DateCreation { get; set; } = DateTime.Now; // defaultvalue system actual date
+        public DateTime? DateDesactivation { get; set; } // Nullable
+        public string Statut { get; set; } // Peut être "Actif" ou "Inactif"
+        public virtual ICollection<Incident> Incidents { get; set; }
+    }
 }
 
+j'aimerais que quand je declare un incident, j'aimerais que la criticite dont le statut est "Inactif" ne s'affiche pas dans le viewbag de selection 
+ca affiche juste ceux dont le statut est "Actif"
