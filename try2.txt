@@ -1,264 +1,4 @@
-<div id="address-container">
-    @{
-        var addressList = Model.Addresses.ToList(); // Conversion explicite en List
-        var addressTypes = ViewBag.AddressTypes as List<NotifApps.Models.AddressType>; // Types possibles
-    }
-
-    @for (int i = 0; i < addressList.Count; i++)
-    {
-        <div class="form-group d-flex align-items-center justify-content-between">
-            <div class="flex-fill me-2">
-                <label class="text-black me-2">Type d'adresse</label>
-                <select name="addresses[@i].Type" class="form-control">
-                    <option value="" disabled>Sélectionnez...</option>
-                    @foreach (var type in addressTypes)
-                    {
-                        if (addressList[i].Type == type.TypeName)
-                        {
-                            <option value="@type.TypeName" selected>@type.TypeName</option>
-                        }
-                        else
-                        {
-                            <option value="@type.TypeName">@type.TypeName</option>
-                        }
-                    }
-                </select>
-            </div>
-            <div class="flex-fill me-2">
-                <label class="text-black me-2">Adresse</label>
-                <input type="text" name="addresses[@i].Value" 
-                       class="form-control" 
-                       value="@addressList[i].Value" 
-                       placeholder="Saisissez une adresse" />
-            </div>
-            <div class="flex-fill me-2">
-                <i type="button" class="fas fa-plus m-md-3 mx-5"></i>
-            </div>
-        </div>
-    }
-</div>
-
-
-
-<div id="address-container">
-    @if (Model.Addresses != null && ViewBag.AddressTypes != null)
-    {
-        var addressTypes = ViewBag.AddressTypes as List<NotifApps.Models.AddressType>; // Les types possibles
-
-        for (int i = 0; i < Model.Addresses.Count; i++)
-        {
-            <div class="form-group d-flex align-items-center justify-content-between">
-                <div class="flex-fill me-2">
-                    <label class="text-black me-2">Type d'adresse</label>
-                    <select name="addresses[@i].Type" class="form-control">
-                        <option value="" disabled>Sélectionnez...</option>
-                        @foreach (var type in addressTypes)
-                        {
-                            if (Model.Addresses[i].Type == type.TypeName)
-                            {
-                                <option value="@type.TypeName" selected>@type.TypeName</option>
-                            }
-                            else
-                            {
-                                <option value="@type.TypeName">@type.TypeName</option>
-                            }
-                        }
-                    </select>
-                </div>
-                <div class="flex-fill me-2">
-                    <label class="text-black me-2">Adresse</label>
-                    <input type="text" name="addresses[@i].Value" 
-                           class="form-control" 
-                           value="@Model.Addresses[i].Value" 
-                           placeholder="Saisissez une adresse" />
-                </div>
-                <div class="flex-fill me-2">
-                    <i type="button" class="fas fa-plus m-md-3 mx-5"></i>
-                </div>
-            </div>
-        }
-    }
-</div>
-
-
-
-
-
-
-
-
-
-
-
-<div id="address-container">
-    @if (Model.Addresses != null && ViewBag.AddressTypes != null)
-    {
-        var addressesList = Model.Addresses.ToList();
-        var addressTypes = ViewBag.AddressTypes as List<NotifApps.Models.AddressType>; // Ensure type casting
-
-        for (int i = 0; i < addressesList.Count; i++)
-        {
-            <div class="form-group mb-3">
-                <label for="addressType">Type d'adresse</label>
-                <select name="addresses[@i].Type" class="form-control">
-                    @foreach (var type in addressTypes)
-                    {
-                        var isSelected = addressesList[i].Type == type.Type ? "selected" : ""; // Determine selection
-                        <option value="@type.Type" @isSelected>@type.Type</option>
-                    }
-                </select>
-
-                <label for="addressValue">Adresse</label>
-                <input type="text" name="addresses[@i].Value" class="form-control" value="@addressesList[i].Value" />
-            </div>
-        }
-    }
-</div>
-
-
-
-<div id="address-container">
-    @{
-        var addressesList = Model.Addresses.ToList();
-        var addressTypes = ViewBag.AddressTypes as List<NotifApps.Models.AddressType>; // Types possibles
-    }
-    @for (int i = 0; i < addressesList.Count; i++)
-    {
-        <div class="form-group mb-3">
-            <label for="addressType">Type d'adresse</label>
-            <select name="addresses[@i].Type" class="form-control">
-                @foreach (var type in addressTypes)
-                {
-                    <option value="@type.Type"
-                            @(addressesList[i].Type == type.Type ? "selected" : "")>
-                        @type.Type
-                    </option>
-                }
-            </select>
-
-            <label for="addressValue">Adresse</label>
-            <input type="text" name="addresses[@i].Value" class="form-control" value="@addressesList[i].Value" />
-        </div>
-    }
-</div>
-
-
-
-
-
-
-
-
-
-
-
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
-using NotifApps.Models;
-using OfficeOpenXml;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
-
-namespace NotifApps.Controllers
-{
-    public class ApplicatifController : Controller
-    {
-        private readonly NotifdbContext _context;
-
-        public ApplicatifController(NotifdbContext context)
-        {
-            _context = context;
-        }
-
-        // INDEX: List of all applicatifs
-        public async Task<IActionResult> Index()
-        {
-            var applicatifs = await _context.Applicatifs
-                .Include(a => a.Addresses)
-                .ToListAsync();
-
-            return View(applicatifs);
-        }
-
-        // GEET POST
-        public IActionResult Create()
-        {
-            ViewBag.AddressTypes = _context.AddressTypes.ToList();
-            return View();
-        }
-
-        // CREATE POST
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(Applicatif applicatif, List<Address> addresses)
-        {
-            if (ModelState.IsValid)
-            {
-                using (var transaction = await _context.Database.BeginTransactionAsync())
-                {
-                    try
-                    {
-                        _context.Add(applicatif);
-                        await _context.SaveChangesAsync();
-
-                        // Handle addresses
-                        foreach (var address in addresses)
-                        {
-                            var existingAddress = await _context.Addresses
-                                .FirstOrDefaultAsync(a => a.Type == address.Type && a.Value == address.Value && a.AppId == applicatif.AppId);
-
-                            if (existingAddress == null)
-                            {
-                                address.AppId = applicatif.AppId; 
-                                _context.Addresses.Add(address);
-                            }
-                        }
-                        await _context.SaveChangesAsync();
-
-                        // Commit the transaction
-                        await transaction.CommitAsync();
-
-                        return RedirectToAction(nameof(Index));
-                    }
-                    catch (Exception)
-                    {
-                        await transaction.RollbackAsync();
-                        throw; 
-                    }
-                }
-            }
-
-            ViewBag.AddressTypes = _context.AddressTypes.ToList();
-           return View(applicatif);
-        }
-
-        // GET: Applicatifs/Edit/5
-        public async Task<IActionResult> Edit(int? id)
-        {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var applicatif = await _context.Applicatifs
-                .Include(a => a.Addresses)
-                .FirstOrDefaultAsync(m => m.AppId == id);
-
-            if (applicatif == null)
-            {
-                return NotFound();
-            }
-
-            // Charger les types d'adresse pour la liste déroulante
-            ViewBag.AddressTypes = await _context.AddressTypes.ToListAsync();
-
-            return View(applicatif);
-        }
-
+pourquoi quand je modifie un truc dans la vue Edit et quand j'enregistre ca dupliques les addresses ???
         // POST: Applicatifs/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -280,7 +20,7 @@ namespace NotifApps.Controllers
                         await _context.SaveChangesAsync();
 
                         // Vérifier que les types d'adresse sont valides
-                        var validTypes = await _context.AddressTypes.Select(t => t.Type).ToListAsync();
+                        var validTypes = await _context.AddressTypes.Select(t => t.TypeName).ToListAsync();
 
                         foreach (var address in addresses)
                         {
@@ -302,7 +42,6 @@ namespace NotifApps.Controllers
                             .ToList();
                         _context.Addresses.RemoveRange(addressesToRemove);
 
-                        // Ajouter ou mettre à jour les adresses
                         foreach (var address in addresses)
                         {
                             var existingAddress = existingAddresses
@@ -340,244 +79,139 @@ namespace NotifApps.Controllers
             return View(applicatif);
         }
 
+ma vue 
 
-        private bool ApplicatifExists(int id)
-        {
-            return _context.Applicatifs.Any(e => e.AppId == id);
-        }
+@model NotifApps.Models.Applicatif
 
-        // DETAILS: GET method
-        public async Task<IActionResult> Details(int id)
-        {
-            var applicatif = await _context.Applicatifs
-                .Include(a => a.Addresses)
-
-                .Include(a => a.EquipeApplicatifs) 
-                .ThenInclude(ea => ea.Equipe) 
-                .FirstOrDefaultAsync(a => a.AppId == id);
-
-            if (applicatif == null)
-            {
-                return NotFound();
-            }
-
-            return View(applicatif);
-        }
-
-        // RATTACHER EQUIPE A APPLICATIF
-        public IActionResult AttacheEquipe(int id)
-        {
-            var applicatif = _context.Applicatifs.Find(id);
-            var equipes = _context.Equipes.ToList(); // Get all teams
-            ViewBag.ApplicatifId = id;
-
-            // Define criticality options
-            ViewBag.CriticiteOptions = new List<string> { "P0", "P1", "P2", "P3" };
-
-            return View(equipes);
-        }
-
-        //POST ATTACH
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> SaveEquipe(int applicatifId, int equipeId, string criticiteNom)
-        {
-            var applicatif = await _context.Applicatifs.FindAsync(applicatifId);
-            var equipe = await _context.Equipes.FindAsync(equipeId);
-
-            if (applicatif != null && equipe != null)// check si equipe est null ou pas 
-            {
-                var equipeApplicatif = new EquipeApplicatif
-                {
-                    AppId = applicatifId,
-                    EquipeId = equipeId,
-                    CriticiteNom = criticiteNom 
-                };
-
-                _context.Add(equipeApplicatif);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Details), new { id = applicatifId });
-            }
-
-            return NotFound();
-        }
-        // GET: Applicatif/EditCriticite
-        [HttpGet]
-        public async Task<IActionResult> EditCriticite(int applicatifId, int equipeId)
-        {
-            var equipeApplicatif = await _context.EquipeApplicatifs
-                .FirstOrDefaultAsync(ea => ea.AppId == applicatifId && ea.EquipeId == equipeId);
-
-            if (equipeApplicatif == null)
-            {
-                return NotFound();
-            }
-
-            ViewBag.CriticiteOptions = new List<string> { "P0", "P1", "P2", "P3" };
-            return View(equipeApplicatif);
-        }
-        // POST: Applicatif/EditCriticite
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> EditCriticite(int applicatifId, int equipeId, string criticiteNom)
-        {
-            var equipeApplicatif = await _context.EquipeApplicatifs
-                .FirstOrDefaultAsync(ea => ea.AppId == applicatifId && ea.EquipeId == equipeId);
-
-            if (equipeApplicatif == null)
-            {
-                
-                return NotFound();
-            }
-            equipeApplicatif.CriticiteNom = criticiteNom;
-
-            if (ModelState.IsValid)
-            {
-                try
-                {
-                    _context.Update(equipeApplicatif);
-                    await _context.SaveChangesAsync();
-                    return RedirectToAction("Details", new { id = applicatifId });
-                }
-                catch (DbUpdateConcurrencyException)
-                {                    if (!EquipeApplicatifExists(applicatifId, equipeId))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
-            }
-            ViewBag.CriticiteOptions = new List<string> { "P0", "P1", "P2", "P3" };
-            return View(equipeApplicatif);
-        }
-
-        // Méthode pour vérifier l'existence de l'association équipe-applicatif
-        private bool EquipeApplicatifExists(int applicatifId, int equipeId)
-        {
-            return _context.EquipeApplicatifs.Any(e => e.AppId == applicatifId && e.EquipeId == equipeId);
-        }
-
-        // GET: Delete
-        public async Task<IActionResult> Delete(int? id)
-        {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var applicatif = await _context.Applicatifs
-                .Include(a => a.Addresses)
-                .Include(a => a.EquipeApplicatifs)
-                .FirstOrDefaultAsync(a => a.AppId == id);
-
-            if (applicatif == null)
-            {
-                return NotFound();
-            }
-
-            return View(applicatif);
-        }
-
-        // DELETE: POST method
-        [HttpPost, ActionName("Delete")]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(int id)
-        {
-            var applicatif = await _context.Applicatifs
-                .Include(a => a.Addresses)
-                .Include(a => a.EquipeApplicatifs) 
-                .FirstOrDefaultAsync(a => a.AppId == id);
-
-            if (applicatif == null) return NotFound();
-
-            _context.Addresses.RemoveRange(applicatif.Addresses);
-
-            var equipesApplicatifs = await _context.EquipeApplicatifs
-                .Where(ea => ea.AppId == id)
-                .ToListAsync();
-
-            _context.EquipeApplicatifs.RemoveRange(equipesApplicatifs);
-
-            _context.Applicatifs.Remove(applicatif);
-
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
-        }
-
-
-        // POST: Applicatifs/DetachEquipe
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DetachEquipe(int applicatifId, int equipeId)
-        {
-            var equipeApplicatif = await _context.EquipeApplicatifs
-                .FirstOrDefaultAsync(ea => ea.AppId == applicatifId && ea.EquipeId == equipeId);
-
-            if (equipeApplicatif == null)
-            {
-                return NotFound();
-            }
-
-            _context.EquipeApplicatifs.Remove(equipeApplicatif);
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Details), new { id = applicatifId });
-        }
-
-
-
-    }
-
+@{
+    ViewData["Title"] = "Edit Applicatif";
 }
 
+    <div class="container mt-5">
+        <div class="card card">
+            <div class="card-header bg-black text-white text-center">
+                <h2>Edit Applicatif</h2>
+            </div>
+            <div class="card-body">
+                <form asp-action="Edit" method="post">
+                    <input type="hidden" asp-for="AppId" />
+                    <div class="form-group mb-3">
+                        <label asp-for="AppNom" class="control-label"></label>
+                        <input asp-for="AppNom" class="form-control" />
+                    </div>
+                    <div class="form-group mb-3">
+                        <label asp-for="Descriptif" class="control-label"></label>
+                        <input asp-for="Descriptif" class="form-control" />
+                    </div>
+                    <div class="form-group mb-3">
+                        <label asp-for="LienWeb" class="control-label"></label>
+                        <input asp-for="LienWeb" class="form-control" />
+                    </div>
+                    <div class="form-group mb-3">
+                        <label asp-for="Statut" class="control-label"></label>
+                        <input asp-for="Statut" class="form-control" />
+                    </div>
 
-<div id="address-container">
+
+                    <!-- Addresses section -->
+                    <h3>Addresses</h3>
+                    <div id="address-container">
                         @{
-                            var addressesList = Model.Addresses.ToList();
-                            var addressTypes = ViewBag.AddressTypes as List<AddressType>; // Types possibles
+                            var addressList = Model.Addresses.ToList(); // Conversion explicite en List
+                            var addressTypes = ViewBag.AddressTypes as List<NotifApps.Models.AddressType>; // Types possibles
                         }
-                        @for (int i = 0; i < addressesList.Count; i++)
+
+                        @for (int i = 0; i < addressList.Count; i++)
                         {
-                            <div class="form-group mb-3">
-                                <label>Type d'adresse</label>
-                                <select name="addresses[@i].Type" class="form-control">
-                                    @foreach (var type in addressTypes)
-                                    {
-                                        <option value="@type.Type"
-                                                @(addressesList[i].Type= =type.Type ? "selected" : "" )>
-                                            @type.Type
-                                        </option>
-                                    }
-                                </select>
-                                <label>Adresse</label>
-                                <input type="text" name="addresses[@i].Value" class="form-control" value="@addressesList[i].Value" />
+                            <div class="form-group d-flex align-items-center justify-content-between">
+                                <div class="flex-fill me-2">
+                                    <label class="text-black me-2">Type d'adresse</label>
+                                    <select name="addresses[@i].Type" class="form-control">
+                                        <option value="" disabled>Sélectionnez...</option>
+                                        @foreach (var type in addressTypes)
+                                        {
+                                            if (addressList[i].Type == type.TypeName)
+                                            {
+                                                <option value="@type.TypeName" selected>@type.TypeName</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="@type.TypeName">@type.TypeName</option>
+                                            }
+                                        }
+                                    </select>
+                                </div>
+                                <div class="flex-fill me-2">
+                                    <label class="text-black me-2">Adresse</label>
+                                    <input type="text" name="addresses[@i].Value"
+                                           class="form-control"
+                                           value="@addressList[i].Value"
+                                           placeholder="Saisissez une adresse" />
+                                </div>
+                                <div class="flex-fill me-2">
+                                    <i type="button" class="fas fa-plus m-md-3 mx-5"></i>
+                                </div>
                             </div>
                         }
                     </div>
 
-Gravité	Code	Description	Projet	Fichier	Ligne	État de la suppression
-Erreur	CS1061	'AddressType' ne contient pas de définition pour 'Type' et aucune méthode d'extension accessible 'Type' acceptant un premier argument de type 'AddressType' n'a été trouvée (une directive using ou une référence d'assembly est-elle manquante ?)	NotifApps	C:\Users\AG881981\source\repos\NotifApps\NotifApps\Views\Applicatif\Edit.cshtml	47	Actif
+                    <button type="button" id="addAddressBtn" class="btn btn-black mb-3">Ajouter une addresse</button>
 
+                    <div class="form-group text-center">
+                        <input type="submit" value="Save Changes" class="btn btn-danger" />
+                    </div>
+                </form>
+            </div>
+        </div>
 
-Gravité	Code	Description	Projet	Fichier	Ligne	État de la suppression
-Erreur	CS1061	'AddressType' ne contient pas de définition pour 'Type' et aucune méthode d'extension accessible 'Type' acceptant un premier argument de type 'AddressType' n'a été trouvée (une directive using ou une référence d'assembly est-elle manquante ?)	NotifApps	C:\Users\AG881981\source\repos\NotifApps\NotifApps\Controllers\ApplicatifController.cs	130	Actif
+        <!-- Button to add users
+    <div class="card mt-4">
+        <div class="card-header bg-danger text-white">
+            <h2>Rattacher les utilisateurs à cette Applicatif</h2>
+        </div>
+        <div class="card-body">
+            <div class="card">
 
-using System;
-using System.Collections.Generic;
+                <div class="form-group mb-3 d-flex justify-content-around">
+                    <label>Par sélection</label>
+                    <a asp-action="SelectUsers" asp-route-id="@Model.AppId" class="btn btn-black">Ajouter un utilisateur</a>
+                </div>
+            </div>
+            <div class="card">
+                <div class="form-group mb-3 d-flex justify-content-around">
+                    <label>Par saisie manuelle</label>
+                    <a asp-action="AddUserManually" asp-route-id="@Model.AppId" class="btn btn-black">Ajouter un utilisateur</a>
+                </div>
+            </div>
+        </div>
+        </div> -->
+    </div>
 
-#nullable disable
-
-namespace NotifApps.Models
-{
-    public partial class Address
-    {
-        public int AddressId { get; set; }
-        public int? AppId { get; set; }
-        public string Type { get; set; }
-        public string Value { get; set; }
-
-        public virtual Applicatif App { get; set; }
-    }
+@section Scripts {
+    <script>
+        let addressIndex = @Model.Addresses.Count;
+        document.getElementById('addAddressBtn').addEventListener('click', function () {
+            const container = document.getElementById('address-container');
+            const newAddressHtml = `
+                <div class="form-group mb-3">
+                    <label>Type of Address</label>
+                    <input type="text" name="addresses[${addressIndex}].Type" class="form-control" />
+                    <label>Address Value</label>
+                    <input type="text" name="addresses[${addressIndex}].Value" class="form-control" />
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', newAddressHtml);
+            addressIndex++;
+        });
+    </script>
 }
+
+<style>
+    .card {
+        border-top-color: red;
+        border-top-style: solid;
+        border-top-width: 5px;
+        border-top-left-radius: 5px;
+        border-top-right-radius: 5px;
+    }
+</style>
