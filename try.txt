@@ -1,193 +1,274 @@
-[HttpGet]
-public async Task<IActionResult> Search(string query)
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using NotifApps.Models;
+using OfficeOpenXml;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using MailKit.Net.Smtp;
+using MimeKit;
+using System;
+
+namespace NotifApps.Controllers
 {
-    if (string.IsNullOrEmpty(query))
+    public class EquipesController : Controller
     {
-        return Json(new List<object>()); // Retourne une liste vide si aucun texte n'est saisi
-    }
+        private readonly NotifdbContext _context;
 
-    // Rechercher les utilisateurs correspondant à la requête
-    var utilisateurs = await _context.Utilisateurs
-        .Where(u => u.NomUtilisateurs.Contains(query) || u.PrenomUtilisateurs.Contains(query))
-        .Select(u => new
+        public EquipesController(NotifdbContext context)
         {
-            utilisateursId = u.UtilisateursID,
-            nomUtilisateurs = u.NomUtilisateurs,
-            prenomUtilisateurs = u.PrenomUtilisateurs
-        })
-        .ToListAsync();
-
-    return Json(utilisateurs); // Retourne les résultats sous forme de JSON
-}
-
-
-
-
-document.getElementById('search-users').addEventListener('input', function () {
-    const query = this.value.trim();
-
-    if (query.length > 0) {
-        fetch(`/Utilisateurs/Search?query=${query}`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Erreur lors de la recherche');
-                }
-                return response.json();
-            })
-            .then(data => {
-                const results = document.getElementById('search-results');
-                results.innerHTML = '';
-
-                data.forEach(user => {
-                    const div = document.createElement('div');
-                    div.className = 'form-check';
-                    div.innerHTML = `
-                        <input type="checkbox" class="form-check-input" name="selectedUsers" value="${user.utilisateursId}" />
-                        <label class="form-check-label">
-                            ${user.nomUtilisateurs} ${user.prenomUtilisateurs}
-                        </label>`;
-                    results.appendChild(div);
-                });
-            })
-            .catch(error => console.error('Erreur:', error));
-    } else {
-        document.getElementById('search-results').innerHTML = ''; // Efface les résultats si la recherche est vide
-    }
-});
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-@model NotifApps.Models.Equipe
-
-@{
-    ViewData["Title"] = "Modifier Équipe";
-}
-
-    <div class="container mt-5">
-            <h2 class="text-center mb-4">Modifier Équipe</h2>
-            <div class="card card">
-                <div class="card-header bg-black text-white">
-                    <h4>Utilisateurs Associés à @Model.NomEquipe</h4>
-                </div>
-                <div class="card-body">
-                    <form asp-action="SaveEdit" method="post">
-                        <input type="hidden" name="equipeId" value="@Model.EquipeId" />
-
-                        <!-- Champ pour modifier le nom de l'équipe -->
-                        <div class="form-group">
-                            <label asp-for="NomEquipe">Nom de l'équipe</label>
-                            <input asp-for="NomEquipe" class="form-control" />
-                            <span asp-validation-for="NomEquipe" class="text-danger"></span>
-                        </div>
-
-                        <!-- Champ pour modifier la description -->
-                        <div class="form-group">
-                            <label asp-for="Descriptions">Description</label>
-                            <input asp-for="Descriptions" class="form-control" />
-                            <span asp-validation-for="Descriptions" class="text-danger"></span>
-                        </div>
-
-                        <!-- Sélection des utilisateurs -->
-                        <div class="form-group">
-                            <label>Utilisateurs associés</label>
-                            <div id="associated-users">
-                                @foreach (var utilisateur in ViewBag.UtilisateursAssocies)
-                                {
-                                    <div class="form-check">
-                                        <input type="checkbox" class="form-check-input" name="selectedUsers"
-                                               value="@utilisateur.UtilisateursID" checked />
-                                        <label class="form-check-label">
-                                            @utilisateur.NomUtilisateurs @utilisateur.PrenomUtilisateurs
-                                        </label>
-                                    </div>
-                                }
-                            </div>
-                        </div>
-
-                        <!-- Barre de recherche pour ajouter d'autres utilisateurs -->
-                        <div class="form-group">
-                            <label>Recherche d’utilisateurs</label>
-                            <input type="text" id="search-users" class="form-control" placeholder="Rechercher un utilisateur..." />
-                            <div id="search-results" class="mt-2"></div>
-                        </div>
-
-                        <!-- Champ pour sélectionner le statut -->
-                        <div class="form-group">
-                            <label asp-for="Statut">Statut</label>
-                            <select asp-for="Statut" class="form-control">
-                                <option value="Actif" selected>Actif</option>
-                                <option value="Inactif">Inactif</option>
-                            </select>
-                        </div>
-
-                        <!-- Date de désactivation (readonly) -->
-                        <div class="form-group">
-                            <label>Date de Désactivation</label>
-                            <input type="text" class="form-control" value="@Model.DateDesactivation?.ToString("yyyy-MM-dd HH:mm:ss")" readonly />
-                        </div>
-
-                        <!-- Boutons d'action -->
-                        <div class="d-flex justify-content-center">
-                            <button type="submit" class="btn btn-danger mx-2" title="Enregistrer les modifications">
-                                <i class="fas fa-save"></i>
-                            </button>
-                            <a asp-action="Index" class="btn btn-black mx-2" title="Retour à la liste">
-                                <i class="fa fa-arrow-circle-left"></i>
-                            </a>
-                        </div>
-                    </form>
-                </div>
-            </div>
-           </div>
-
-<script>
-    // Script pour gérer la recherche
-    document.getElementById('search-users').addEventListener('input', function () {
-        const query = this.value.trim();
-
-        if (query.length > 0) {
-            fetch(`/Utilisateurs/Search?query=${query}`)
-                .then(response => response.json())
-                .then(data => {
-                    const results = document.getElementById('search-results');
-                    results.innerHTML = '';
-
-                    data.forEach(user => {
-                        const div = document.createElement('div');
-                        div.className = 'form-check';
-                        div.innerHTML = `
-                            <input type="checkbox" class="form-check-input" name="selectedUsers" value="${user.utilisateursId}" />
-                            <label class="form-check-label">
-                                ${user.nomUtilisateurs} ${user.prenomUtilisateurs}
-                            </label>`;
-                        results.appendChild(div);
-                    });
-                });
+            _context = context;
         }
-    });
-</script>
 
-
-
-Mes methodes du controller 
+        // GET: Equipes
+        public IActionResult Index()
+        {
+            var equipes = _context.Equipes.ToList();
+            if (equipes == null || !equipes.Any())
+            {
+                // Retourne une liste vide si aucune equipe n'est trouvée
+                return View(new List<Equipe>());
+            }
+            return View(equipes); 
+        }
  
-// GET: Equipes/Edit/5
+    // GET: Equipes/Create
+    public IActionResult Create()
+        {
+            ViewBag.Utilisateurs = _context.Utilisateurs.ToList(); // Récupérer tous les utilisateurs
+            return View();
+        }
+
+        // POST: Equipes/Create
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create([Bind("NomEquipe,Descriptions")] Equipe equipe, int[] selectedUsers)
+        {
+            if (ModelState.IsValid)
+            {
+                equipe.Statut = "Actif";
+
+                // Check if Descriptions is null or empty, and set it to "RAS" if so
+                if (string.IsNullOrEmpty(equipe.Descriptions))
+                {
+                    equipe.Descriptions = "RAS";
+                }
+
+                _context.Add(equipe);
+                await _context.SaveChangesAsync();
+
+                // Rattacher les utilisateurs sélectionnés
+                if (selectedUsers != null)
+                {
+                    foreach (var userId in selectedUsers)
+                    {
+                        var equipeUtilisateur = new EquipeUtilisateur
+                        {
+                            EquipeId = equipe.EquipeId,
+                            UtilisateursId = userId
+                        };
+                        _context.Add(equipeUtilisateur);
+                    }
+                    await _context.SaveChangesAsync();
+                }
+
+                return RedirectToAction(nameof(Index));
+            }
+
+            ViewBag.Utilisateurs = _context.Utilisateurs.ToList(); // Récupérer à nouveau les utilisateurs en cas d'erreur
+            return View(equipe);
+        }
+
+
+
+        //GET : Vue de rattachement par selection
+        public IActionResult AttachUtilisateur(int id)
+        {
+            ViewBag.EquipeId = id;
+            var utilisateurs = _context.Utilisateurs
+                .Include(u => u.EquipeUtilisateur)
+                .ThenInclude(eu => eu.Equipe)
+                .ToList();
+
+            // Get the IDs of users already associated with the team and remain marked
+            var existingUserIds = _context.EquipeUtilisateurs
+                .Where(eu => eu.EquipeId == id)
+                .Select(eu => eu.UtilisateursId)
+                .ToList();
+
+            ViewBag.ExistingUserIds = existingUserIds;
+
+            return View(utilisateurs);
+        }
+
+        // POST : RATTACHEMENT PAR SELECCTION
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SaveUtilisateurs(int equipeId, int[] selectedUsers)
+        {
+            if (selectedUsers != null)
+            {
+                foreach (var userId in selectedUsers)
+                {
+                    // Check if the association already exists
+                    var existingAssociation = await _context.EquipeUtilisateurs
+                        .FirstOrDefaultAsync(eu => eu.EquipeId == equipeId && eu.UtilisateursId == userId);
+
+                    if (existingAssociation == null) // Only add if the association does not exist
+                    {
+                        var equipeUtilisateur = new EquipeUtilisateur
+                        {
+                            EquipeId = equipeId,
+                            UtilisateursId = userId
+                        };
+
+                        _context.Add(equipeUtilisateur);
+                    }
+                }
+                await _context.SaveChangesAsync();
+            }
+
+            return RedirectToAction(nameof(Details), new { id = equipeId });
+        }
+
+        //Details EQUIPES
+        public async Task<IActionResult> Details(int id)
+        {
+            var equipe = await _context.Equipes
+                .Include(e => e.EquipeUtilisateurs) 
+                .ThenInclude(eu => eu.Utilisateurs) 
+                .FirstOrDefaultAsync(e => e.EquipeId == id);
+
+            if (equipe == null)
+            {
+                return NotFound();
+            }
+
+            return View(equipe);
+        }
+
+        // Creéation POST Utilisateur 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SaveUtilisateur(int equipeId, [Bind("NomUtilisateurs,PrenomUtilisateurs,Email,AG")] Utilisateurs utilisateur)
+        {
+            if (ModelState.IsValid)
+            {
+                _context.Add(utilisateur);
+                await _context.SaveChangesAsync();
+
+                // Create the association
+                var equipeUtilisateur = new EquipeUtilisateur
+                {
+                    EquipeId = equipeId,
+                    UtilisateursId = utilisateur.UtilisateursID 
+                };
+
+                _context.Add(equipeUtilisateur);
+                await _context.SaveChangesAsync();
+
+                return RedirectToAction(nameof(Details), new { id = equipeId });
+            }
+
+            return View(utilisateur);
+        }
+        // Action pour afficher le formulaire d'upload
+        public IActionResult UploadTemplate(int equipeId)
+        {
+            if (equipeId == 0)
+            {
+                return NotFound("L'équipe spécifiée est introuvable.");
+            }
+
+            // Transmettre l'ID de l'équipe à la vue via ViewBag
+            ViewBag.EquipeId = equipeId;
+            return View();
+        }
+
+        // Action POST pour traiter l'upload
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ProcessUpload(int equipeId, IFormFile ExcelFile)
+        {
+            // Vérification si l'ID de l'équipe est valide
+            if (equipeId == 0)
+            {
+                return BadRequest("L'ID de l'équipe est manquant ou invalide.");
+            }
+
+            // Vérifiez si l'équipe existe dans la base de données
+            var equipeExists = await _context.Equipes.AnyAsync(e => e.EquipeId == equipeId);
+            if (!equipeExists)
+            {
+                return NotFound("L'équipe spécifiée est introuvable.");
+            }
+
+            if (ExcelFile != null && ExcelFile.Length > 0)
+            {
+                // Utilisation de EPPlus pour traiter le fichier Excel
+                ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+
+                using (var stream = new MemoryStream())
+                {
+                    await ExcelFile.CopyToAsync(stream);
+
+                    using (var package = new ExcelPackage(stream))
+                    {
+                        var worksheet = package.Workbook.Worksheets.FirstOrDefault();
+
+                        if (worksheet != null)
+                        {
+                            // Lecture des données du fichier Excel
+                            for (int row = 2; row <= worksheet.Dimension.End.Row; row++) // Ignorer la première ligne (en-têtes)
+                            {
+                                var nom = worksheet.Cells[row, 1].Text?.Trim();
+                                var prenom = worksheet.Cells[row, 2].Text?.Trim();
+                                var email = worksheet.Cells[row, 3].Text?.Trim();
+                                var ag = worksheet.Cells[row, 4].Text?.Trim();
+
+                                if (string.IsNullOrWhiteSpace(nom) || string.IsNullOrWhiteSpace(email))
+                                {
+                                    continue; // Ignorez les lignes incomplètes
+                                }
+
+                                // Création d'un nouvel utilisateur
+                                var utilisateur = new Utilisateurs
+                                {
+                                    NomUtilisateurs = nom,
+                                    PrenomUtilisateurs = prenom,
+                                    Email = email,
+                                    AG = ag
+                                };
+
+                                // Ajout de l'utilisateur à la base de données
+                                _context.Add(utilisateur);
+                                await _context.SaveChangesAsync(); // Sauvegarder pour obtenir l'ID généré
+                                // Création de l'association utilisateur-équipe
+                                var equipeUtilisateur = new EquipeUtilisateur
+                                {
+                                    EquipeId = equipeId,
+                                    UtilisateursId = utilisateur.UtilisateursID
+                                };
+                                _context.Add(equipeUtilisateur);
+                            }
+
+                            await _context.SaveChangesAsync();
+                        }
+                    }
+                }
+
+                // Redirection vers la page de détails ou confirmation
+                return RedirectToAction(nameof(Details), new { id = equipeId });
+            }
+
+            // Si le fichier n'est pas valide, renvoyez la vue avec une erreur
+            ModelState.AddModelError("ExcelFile", "Veuillez sélectionner un fichier Excel valide.");
+            return View();
+        }
+
+        // GET: Equipes/Edit/5
         public async Task<IActionResult> Edit(int id)
         {
             var equipe = await _context.Equipes
@@ -200,26 +281,21 @@ Mes methodes du controller
                 return NotFound();
             }
 
-            // Get all users
-            var utilisateurs = await _context.Utilisateurs.ToListAsync();
+            // Obtenez uniquement les utilisateurs déjà associés
+            var utilisateursAssocies = equipe.EquipeUtilisateurs.Select(eu => eu.Utilisateurs).ToList();
 
-            // Get the IDs of users already associated with the team
-            var existingUserIds = equipe.EquipeUtilisateurs.Select(eu => eu.UtilisateursId).ToList();
-
-            ViewBag.Utilisateurs = utilisateurs;
-            ViewBag.ExistingUserIds = existingUserIds;
+            // Enregistrez les utilisateurs associés dans ViewBag pour affichage initial
+            ViewBag.UtilisateursAssocies = utilisateursAssocies;
 
             return View(equipe);
         }
 
 
-
         //POST : EDit
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> SaveEdit(int equipeId, int[] selectedUsers, string statut, string description)
+        public async Task<IActionResult> SaveEdit(int equipeId, int[] selectedUsers, string statut, string Descriptions, string NomEquipe)
         {
-            // Charger l'équipe existante depuis la base
             var equipe = await _context.Equipes
                 .Include(e => e.EquipeUtilisateurs)
                 .FirstOrDefaultAsync(e => e.EquipeId == equipeId);
@@ -229,44 +305,43 @@ Mes methodes du controller
                 return NotFound();
             }
 
+            // Mise à jour du nom de l'équipe
+            equipe.NomEquipe = NomEquipe;
+
             // Mise à jour de la description
-            
+            equipe.Descriptions = Descriptions;
 
             // Mise à jour du statut et de la date de désactivation
             if (statut == "Inactif" && equipe.Statut != "Inactif")
             {
                 equipe.Statut = "Inactif";
-                equipe.DateDesactivation = DateTime.Now; // Ajouter la date de désactivation
+                equipe.DateDesactivation = DateTime.Now;
             }
             else if (statut == "Actif" && equipe.Statut != "Actif")
             {
                 equipe.Statut = "Actif";
-                equipe.DateDesactivation = null; // Supprimer la date de désactivation
+                equipe.DateDesactivation = null;
             }
-            equipe.Descriptions = description;
 
-            // Mise à jour des utilisateurs associés à l'équipe
+            // Mise à jour des utilisateurs associés
             var existingAssociations = equipe.EquipeUtilisateurs.ToList();
-            _context.EquipeUtilisateurs.RemoveRange(existingAssociations); // Supprimer les anciennes associations
+            _context.EquipeUtilisateurs.RemoveRange(existingAssociations);
 
             if (selectedUsers != null)
             {
                 foreach (var userId in selectedUsers)
                 {
-                    var equipeUtilisateur = new EquipeUtilisateur
+                    _context.EquipeUtilisateurs.Add(new EquipeUtilisateur
                     {
                         EquipeId = equipeId,
                         UtilisateursId = userId
-                    };
-
-                    _context.EquipeUtilisateurs.Add(equipeUtilisateur);
+                    });
                 }
             }
 
             try
             {
-
-                await _context.SaveChangesAsync(); // Enregistrer toutes les modifications
+                await _context.SaveChangesAsync();
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -274,16 +349,112 @@ Mes methodes du controller
                 {
                     return NotFound();
                 }
-                else
-                {
-                    throw;
-                }
+                throw;
             }
 
             return RedirectToAction(nameof(Details), new { id = equipeId });
         }
 
-Ma vue 
+        [HttpGet]
+        public async Task<IActionResult> Search(string query)
+        {
+            if (string.IsNullOrEmpty(query))
+            {
+                return Json(new List<object>()); // Retourne une liste vide si aucun texte n'est saisi
+            }
+
+            // Rechercher les utilisateurs correspondant à la requête
+            var utilisateurs = await _context.Utilisateurs
+                .Where(u => u.NomUtilisateurs.Contains(query) || u.PrenomUtilisateurs.Contains(query))
+                .Select(u => new
+                {
+                    utilisateursId = u.UtilisateursID,
+                    nomUtilisateurs = u.NomUtilisateurs,
+                    prenomUtilisateurs = u.PrenomUtilisateurs
+                })
+                .ToListAsync();
+
+            return Json(utilisateurs); // Retourne les résultats sous forme de JSON
+        }
+
+        // GET: Equipes/Delete/5
+        public async Task<IActionResult> Delete(int id)
+        {
+            var equipe = await _context.Equipes
+                .Include(e => e.EquipeUtilisateurs) // Include associations
+                .FirstOrDefaultAsync(e => e.EquipeId == id);
+
+            if (equipe == null)
+            {
+                return NotFound();
+            }
+
+            return View(equipe);
+        }
+
+        // POST: Equipes/Delete/5
+        [HttpPost, ActionName("Delete")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            // Get the associations to remove
+            var associations = await _context.EquipeUtilisateurs
+                .Where(eu => eu.EquipeId == id)
+                .ToListAsync();
+
+            // Remove associations
+            _context.EquipeUtilisateurs.RemoveRange(associations);
+
+            // Remove the team
+            var equipe = await _context.Equipes.FindAsync(id);
+            if (equipe != null)
+            {
+                _context.Equipes.Remove(equipe);
+            }
+
+            await _context.SaveChangesAsync();
+            return RedirectToAction(nameof(Index));
+        }
+
+
+
+        /*public void EnvoyerEmail(string destinataire, string sujet, string message)
+            {
+                var email = new MimeMessage();
+                email.From.Add(new MailboxAddress("Zeugo Junior", "achind.zeugo@2026.ucac-ical.com"));
+                email.To.Add(new MailboxAddress("", destinataire));
+                email.Subject = sujet;
+
+                email.Body = new TextPart("plain")
+                {
+                    Text = message
+                };
+
+                using (var client = new SmtpClient())
+                {
+                    client.Connect("smtp.gmail.com", 587, MailKit.Security.SecureSocketOptions.StartTls);
+                    client.Authenticate("achind.zeugo@2026.ucac-icam.com", "Gapps!Cam603");
+
+                    client.Send(email);
+                    client.Disconnect(true);
+                }
+            }
+
+                // POST: Equipes/EnvoyerEmail
+                [HttpPost]
+                [ValidateAntiForgeryToken]
+                public IActionResult EnvoyerEmail(string destinataire)
+                {
+                    if (!string.IsNullOrEmpty(destinataire))
+                    {
+                        EnvoyerEmail(destinataire, "Bonjour", "Ceci est un message de test.");
+                    }
+                    return RedirectToAction(nameof(Index));
+                }*/
+
+    }
+}
+
 
 @model NotifApps.Models.Equipe
 
@@ -293,48 +464,64 @@ Ma vue
 
 <div class="container mt-5">
     <h2 class="text-center mb-4">Modifier Équipe</h2>
-
     <div class="card card">
         <div class="card-header bg-black text-white">
-            <h4>Utilisateurs Associés à @Model.NomEquipe</h4>
+            <h4>Modifier @Model.NomEquipe</h4>
         </div>
         <div class="card-body">
             <form asp-action="SaveEdit" method="post">
-                <input type="hidden" name="EquipeId" value="@Model.EquipeId" />
+                <input type="hidden" name="equipeId" value="@Model.EquipeId" />
 
-                <div id="userList" class="mb-4">
-                    @foreach (var utilisateur in ViewBag.Utilisateurs)
-                    {
-                        <div class="form-check">
-                            <input type="checkbox" class="form-check-input"
-                                   name="selectedUsers"
-                                   value="@utilisateur.UtilisateursID"
-                                   id="user_@utilisateur.UtilisateursID"
-                                   @(ViewBag.ExistingUserIds.Contains(utilisateur.UtilisateursID) ? "checked" : "") />
-                            <label class="form-check-label" for="user_@utilisateur.UtilisateursID">
-                                @utilisateur.NomUtilisateurs @utilisateur.PrenomUtilisateurs
-                            </label>
-                        </div>
-                    }
-                </div>
+                <!-- Champ pour modifier le nom de l'équipe -->
                 <div class="form-group">
-                    <label asp-for="Descriptions"></label>
+                    <label asp-for="NomEquipe">Nom de l'équipe</label>
+                    <input asp-for="NomEquipe" class="form-control" />
+                    <span asp-validation-for="NomEquipe" class="text-danger"></span>
+                </div>
+
+                <!-- Champ pour modifier la description -->
+                <div class="form-group">
+                    <label asp-for="Descriptions">Description</label>
                     <input asp-for="Descriptions" class="form-control" />
                     <span asp-validation-for="Descriptions" class="text-danger"></span>
                 </div>
+
+                <!-- Sélection des utilisateurs -->
+                <div class="form-group">
+                    <h4>Utilisateurs Associés à @Model.NomEquipe</h4>
+                    <div id="associated-users">
+                        @foreach (var utilisateur in ViewBag.UtilisateursAssocies)
+                        {
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" name="selectedUsers"
+                                       value="@utilisateur.UtilisateursID" checked />
+                                <label class="form-check-label">
+                                    @utilisateur.NomUtilisateurs @utilisateur.PrenomUtilisateurs
+                                </label>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Barre de recherche pour ajouter d'autres utilisateurs -->
+                
+
+                <!-- Champ pour sélectionner le statut -->
                 <div class="form-group">
                     <label asp-for="Statut">Statut</label>
                     <select asp-for="Statut" class="form-control">
                         <option value="Actif" selected>Actif</option>
                         <option value="Inactif">Inactif</option>
                     </select>
-                    <span asp-validation-for="Statut" class="text-danger"></span>
                 </div>
+
+                <!-- Date de désactivation (readonly) -->
                 <div class="form-group">
                     <label>Date de Désactivation</label>
                     <input type="text" class="form-control" value="@Model.DateDesactivation?.ToString("yyyy-MM-dd HH:mm:ss")" readonly />
                 </div>
-               
+
+                <!-- Boutons d'action -->
                 <div class="d-flex justify-content-center">
                     <button type="submit" class="btn btn-danger mx-2" title="Enregistrer les modifications">
                         <i class="fas fa-save"></i>
@@ -348,17 +535,10 @@ Ma vue
     </div>
 </div>
 
-<!-- Include Font Awesome -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 
 
-<style>
-    .card {
-        border-top-color: red;
-        border-top-style: solid;
-        border-top-width: 5px;
-        border-top-left-radius: 5px;
-        border-top-right-radius: 5px;
-    }
-</style>
 
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
