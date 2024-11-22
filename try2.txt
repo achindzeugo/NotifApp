@@ -1,3 +1,37 @@
+<div id="address-container">
+    @{
+        var addressesList = Model.Addresses.ToList();
+        var addressTypes = ViewBag.AddressTypes as List<NotifApps.Models.AddressType>; // Types possibles
+    }
+    @for (int i = 0; i < addressesList.Count; i++)
+    {
+        <div class="form-group mb-3">
+            <label for="addressType">Type d'adresse</label>
+            <select name="addresses[@i].Type" class="form-control">
+                @foreach (var type in addressTypes)
+                {
+                    <option value="@type.Type"
+                            @(addressesList[i].Type == type.Type ? "selected" : "")>
+                        @type.Type
+                    </option>
+                }
+            </select>
+
+            <label for="addressValue">Adresse</label>
+            <input type="text" name="addresses[@i].Value" class="form-control" value="@addressesList[i].Value" />
+        </div>
+    }
+</div>
+
+
+
+
+
+
+
+
+
+
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
