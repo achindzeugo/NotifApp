@@ -1,217 +1,103 @@
-pourquoi quand je modifie un truc dans la vue Edit et quand j'enregistre ca dupliques les addresses ???
-        // POST: Applicatifs/Edit/5
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, Applicatif applicatif, List<Address> addresses)
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> Edit(int id, Applicatif applicatif, List<Address> addresses)
+{
+    if (id != applicatif.AppId)
+    {
+        return NotFound();
+    }
+
+    if (ModelState.IsValid)
+    {
+        using (var transaction = await _context.Database.BeginTransactionAsync())
         {
-            if (id != applicatif.AppId)
+            try
             {
-                return NotFound();
-            }
+                // Mise à jour de l'applicatif
+                _context.Update(applicatif);
+                await _context.SaveChangesAsync();
 
-            if (ModelState.IsValid)
-            {
-                using (var transaction = await _context.Database.BeginTransactionAsync())
+                // Vérifier les types valides
+                var validTypes = await _context.AddressTypes.Select(t => t.TypeName).ToListAsync();
+                foreach (var address in addresses)
                 {
-                    try
+                    if (!validTypes.Contains(address.Type))
                     {
-                        // Mise à jour de l'applicatif
-                        _context.Update(applicatif);
-                        await _context.SaveChangesAsync();
-
-                        // Vérifier que les types d'adresse sont valides
-                        var validTypes = await _context.AddressTypes.Select(t => t.TypeName).ToListAsync();
-
-                        foreach (var address in addresses)
-                        {
-                            if (!validTypes.Contains(address.Type))
-                            {
-                                ModelState.AddModelError("", $"Le type d'adresse '{address.Type}' n'est pas valide.");
-                                return View(applicatif);
-                            }
-                        }
-
-                        // Récupérer les adresses existantes
-                        var existingAddresses = await _context.Addresses
-                            .Where(a => a.AppId == applicatif.AppId)
-                            .ToListAsync();
-
-                        // Supprimer les adresses obsolètes
-                        var addressesToRemove = existingAddresses
-                            .Where(existing => !addresses.Any(a => a.Type == existing.Type && a.Value == existing.Value))
-                            .ToList();
-                        _context.Addresses.RemoveRange(addressesToRemove);
-
-                        foreach (var address in addresses)
-                        {
-                            var existingAddress = existingAddresses
-                                .FirstOrDefault(a => a.Type == address.Type && a.Value == address.Value);
-
-                            if (existingAddress == null)
-                            {
-                                // Nouvelle adresse
-                                address.AppId = applicatif.AppId;
-                                _context.Addresses.Add(address);
-                            }
-                            else
-                            {
-                                // Mettre à jour si nécessaire
-                                existingAddress.Value = address.Value;
-                            }
-                        }
-
-                        await _context.SaveChangesAsync();
-
-                        await transaction.CommitAsync();
-
-                        return RedirectToAction(nameof(Index));
-                    }
-                    catch (Exception)
-                    {
-                        await transaction.RollbackAsync();
-                        throw;
+                        ModelState.AddModelError("", $"Le type d'adresse '{address.Type}' n'est pas valide.");
+                        return View(applicatif);
                     }
                 }
+
+                // Récupérer les adresses existantes
+                var existingAddresses = await _context.Addresses
+                    .Where(a => a.AppId == applicatif.AppId)
+                    .ToListAsync();
+
+                // Mettre à jour ou ajouter les adresses
+                foreach (var address in addresses)
+                {
+                    var existingAddress = existingAddresses.FirstOrDefault(a => a.Id == address.Id);
+                    if (existingAddress != null)
+                    {
+                        // Mettre à jour l'adresse existante
+                        existingAddress.Type = address.Type;
+                        existingAddress.Value = address.Value;
+                    }
+                    else
+                    {
+                        // Ajouter une nouvelle adresse
+                        address.AppId = applicatif.AppId;
+                        _context.Addresses.Add(address);
+                    }
+                }
+
+                // Supprimer les adresses obsolètes
+                var addressesToRemove = existingAddresses
+                    .Where(e => !addresses.Any(a => a.Id == e.Id))
+                    .ToList();
+                _context.Addresses.RemoveRange(addressesToRemove);
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return RedirectToAction(nameof(Index));
             }
-
-            // Recharge les types en cas d'erreur
-            ViewBag.AddressTypes = await _context.AddressTypes.ToListAsync();
-            return View(applicatif);
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
-
-ma vue 
-
-@model NotifApps.Models.Applicatif
-
-@{
-    ViewData["Title"] = "Edit Applicatif";
-}
-
-    <div class="container mt-5">
-        <div class="card card">
-            <div class="card-header bg-black text-white text-center">
-                <h2>Edit Applicatif</h2>
-            </div>
-            <div class="card-body">
-                <form asp-action="Edit" method="post">
-                    <input type="hidden" asp-for="AppId" />
-                    <div class="form-group mb-3">
-                        <label asp-for="AppNom" class="control-label"></label>
-                        <input asp-for="AppNom" class="form-control" />
-                    </div>
-                    <div class="form-group mb-3">
-                        <label asp-for="Descriptif" class="control-label"></label>
-                        <input asp-for="Descriptif" class="form-control" />
-                    </div>
-                    <div class="form-group mb-3">
-                        <label asp-for="LienWeb" class="control-label"></label>
-                        <input asp-for="LienWeb" class="form-control" />
-                    </div>
-                    <div class="form-group mb-3">
-                        <label asp-for="Statut" class="control-label"></label>
-                        <input asp-for="Statut" class="form-control" />
-                    </div>
-
-
-                    <!-- Addresses section -->
-                    <h3>Addresses</h3>
-                    <div id="address-container">
-                        @{
-                            var addressList = Model.Addresses.ToList(); // Conversion explicite en List
-                            var addressTypes = ViewBag.AddressTypes as List<NotifApps.Models.AddressType>; // Types possibles
-                        }
-
-                        @for (int i = 0; i < addressList.Count; i++)
-                        {
-                            <div class="form-group d-flex align-items-center justify-content-between">
-                                <div class="flex-fill me-2">
-                                    <label class="text-black me-2">Type d'adresse</label>
-                                    <select name="addresses[@i].Type" class="form-control">
-                                        <option value="" disabled>Sélectionnez...</option>
-                                        @foreach (var type in addressTypes)
-                                        {
-                                            if (addressList[i].Type == type.TypeName)
-                                            {
-                                                <option value="@type.TypeName" selected>@type.TypeName</option>
-                                            }
-                                            else
-                                            {
-                                                <option value="@type.TypeName">@type.TypeName</option>
-                                            }
-                                        }
-                                    </select>
-                                </div>
-                                <div class="flex-fill me-2">
-                                    <label class="text-black me-2">Adresse</label>
-                                    <input type="text" name="addresses[@i].Value"
-                                           class="form-control"
-                                           value="@addressList[i].Value"
-                                           placeholder="Saisissez une adresse" />
-                                </div>
-                                <div class="flex-fill me-2">
-                                    <i type="button" class="fas fa-plus m-md-3 mx-5"></i>
-                                </div>
-                            </div>
-                        }
-                    </div>
-
-                    <button type="button" id="addAddressBtn" class="btn btn-black mb-3">Ajouter une addresse</button>
-
-                    <div class="form-group text-center">
-                        <input type="submit" value="Save Changes" class="btn btn-danger" />
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- Button to add users
-    <div class="card mt-4">
-        <div class="card-header bg-danger text-white">
-            <h2>Rattacher les utilisateurs à cette Applicatif</h2>
-        </div>
-        <div class="card-body">
-            <div class="card">
-
-                <div class="form-group mb-3 d-flex justify-content-around">
-                    <label>Par sélection</label>
-                    <a asp-action="SelectUsers" asp-route-id="@Model.AppId" class="btn btn-black">Ajouter un utilisateur</a>
-                </div>
-            </div>
-            <div class="card">
-                <div class="form-group mb-3 d-flex justify-content-around">
-                    <label>Par saisie manuelle</label>
-                    <a asp-action="AddUserManually" asp-route-id="@Model.AppId" class="btn btn-black">Ajouter un utilisateur</a>
-                </div>
-            </div>
-        </div>
-        </div> -->
-    </div>
-
-@section Scripts {
-    <script>
-        let addressIndex = @Model.Addresses.Count;
-        document.getElementById('addAddressBtn').addEventListener('click', function () {
-            const container = document.getElementById('address-container');
-            const newAddressHtml = `
-                <div class="form-group mb-3">
-                    <label>Type of Address</label>
-                    <input type="text" name="addresses[${addressIndex}].Type" class="form-control" />
-                    <label>Address Value</label>
-                    <input type="text" name="addresses[${addressIndex}].Value" class="form-control" />
-                </div>
-            `;
-            container.insertAdjacentHTML('beforeend', newAddressHtml);
-            addressIndex++;
-        });
-    </script>
-}
-
-<style>
-    .card {
-        border-top-color: red;
-        border-top-style: solid;
-        border-top-width: 5px;
-        border-top-left-radius: 5px;
-        border-top-right-radius: 5px;
     }
-</style>
+
+    // Recharge les types en cas d'erreur
+    ViewBag.AddressTypes = await _context.AddressTypes.ToListAsync();
+    return View(applicatif);
+}
+
+@for (int i = 0; i < addressList.Count; i++)
+{
+    <div class="form-group d-flex align-items-center justify-content-between">
+        <input type="hidden" name="addresses[@i].Id" value="@addressList[i].Id" />
+        <div class="flex-fill me-2">
+            <label class="text-black me-2">Type d'adresse</label>
+            <select name="addresses[@i].Type" class="form-control">
+                <option value="" disabled>Sélectionnez...</option>
+                @foreach (var type in addressTypes)
+                {
+                    <option value="@type.TypeName" @(addressList[i].Type == type.TypeName ? "selected" : "")>
+                        @type.TypeName
+                    </option>
+                }
+            </select>
+        </div>
+        <div class="flex-fill me-2">
+            <label class="text-black me-2">Adresse</label>
+            <input type="text" name="addresses[@i].Value"
+                   class="form-control"
+                   value="@addressList[i].Value"
+                   placeholder="Saisissez une adresse" />
+        </div>
+    </div>
+}
+
