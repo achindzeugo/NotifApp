@@ -36,6 +36,127 @@ public async Task<IActionResult> Edit(int id, Applicatif applicatif, List<Addres
                 // Mettre à jour ou ajouter les adresses
                 foreach (var address in addresses)
                 {
+                    if (address.Id > 0)
+                    {
+                        // Mettre à jour l'adresse existante
+                        var existingAddress = existingAddresses.FirstOrDefault(a => a.Id == address.Id);
+                        if (existingAddress != null)
+                        {
+                            existingAddress.Type = address.Type;
+                            existingAddress.Value = address.Value;
+                        }
+                    }
+                    else
+                    {
+                        // Ajouter une nouvelle adresse
+                        address.AppId = applicatif.AppId;
+                        _context.Addresses.Add(address);
+                    }
+                }
+
+                // Supprimer les adresses obsolètes
+                var addressesToRemove = existingAddresses
+                    .Where(e => !addresses.Any(a => a.Id == e.Id))
+                    .ToList();
+                _context.Addresses.RemoveRange(addressesToRemove);
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return RedirectToAction(nameof(Index));
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
+    }
+
+    // Recharge les types en cas d'erreur
+    ViewBag.AddressTypes = await _context.AddressTypes.ToListAsync();
+    return View(applicatif);
+}
+
+
+@for (int i = 0; i < addressList.Count; i++)
+{
+    <div class="form-group d-flex align-items-center justify-content-between">
+        <!-- Inclure l'Id de l'adresse -->
+        <input type="hidden" name="addresses[@i].Id" value="@addressList[i].Id" />
+        
+        <div class="flex-fill me-2">
+            <label class="text-black me-2">Type d'adresse</label>
+            <select name="addresses[@i].Type" class="form-control">
+                <option value="" disabled>Sélectionnez...</option>
+                @foreach (var type in addressTypes)
+                {
+                    <option value="@type.TypeName" @(addressList[i].Type == type.TypeName ? "selected" : "")>
+                        @type.TypeName
+                    </option>
+                }
+            </select>
+        </div>
+        <div class="flex-fill me-2">
+            <label class="text-black me-2">Adresse</label>
+            <input type="text" name="addresses[@i].Value"
+                   class="form-control"
+                   value="@addressList[i].Value"
+                   placeholder="Saisissez une adresse" />
+        </div>
+    </div>
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> Edit(int id, Applicatif applicatif, List<Address> addresses)
+{
+    if (id != applicatif.AppId)
+    {
+        return NotFound();
+    }
+
+    if (ModelState.IsValid)
+    {
+        using (var transaction = await _context.Database.BeginTransactionAsync())
+        {
+            try
+            {
+                // Mise à jour de l'applicatif
+                _context.Update(applicatif);
+                await _context.SaveChangesAsync();
+
+                // Vérifier les types valides
+                var validTypes = await _context.AddressTypes.Select(t => t.TypeName).ToListAsync();
+                foreach (var address in addresses)
+                {
+                    if (!validTypes.Contains(address.Type))
+                    {
+                        ModelState.AddModelError("", $"Le type d'adresse '{address.Type}' n'est pas valide.");
+                        return View(applicatif);
+                    }
+                }
+
+                // Récupérer les adresses existantes
+                var existingAddresses = await _context.Addresses
+                    .Where(a => a.AppId == applicatif.AppId)
+                    .ToListAsync();
+
+                // Mettre à jour ou ajouter les adresses
+                foreach (var address in addresses)
+                {
                     var existingAddress = existingAddresses.FirstOrDefault(a => a.Id == address.Id);
                     if (existingAddress != null)
                     {
