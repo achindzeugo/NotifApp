@@ -1,3 +1,42 @@
+voici comment ils se font creer 
+on peut bien voir la selection du type d'addres
+faites de meme que je puisse aussi selectionner pour modifier 
+ <!-- Address input (you can dynamically add multiple addresses) -->
+                <div id="address-container">
+                    <div class="form-group d-flex align-items-center justify-content-between">
+                        <div class="flex-fill me-2">
+                            <label class="text-black me-2">Type d'adresse</label>
+                            <select name="addresses[0].Type" class="form-control">
+                                <option value="" disabled selected>Sélectionnez....</option>
+                                @foreach (var type in ViewBag.AddressTypes)
+                                {
+                                    <option value="@type.TypeName">@type.TypeName</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="flex-fill me-2">
+                            <label class="text-black me-2">Adresse</label>
+                            <input type="text" name="addresses[0].Value" class="form-control" placeholder="Saisissez une addresse" />
+                        </div>
+                        <div class="flex-fill me-2">
+                            <i type="button" id="addAddressBtn" class="fas fa-plus m-md-3 mx-5"></i>
+                        </div>
+                    </div>
+                </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 <div id="address-container">
     @if (Model.Addresses != null && ViewBag.AddressTypes != null)
     {
