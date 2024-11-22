@@ -1,4 +1,46 @@
 <div id="address-container">
+    @{
+        var addressList = Model.Addresses.ToList(); // Conversion explicite en List
+        var addressTypes = ViewBag.AddressTypes as List<NotifApps.Models.AddressType>; // Types possibles
+    }
+
+    @for (int i = 0; i < addressList.Count; i++)
+    {
+        <div class="form-group d-flex align-items-center justify-content-between">
+            <div class="flex-fill me-2">
+                <label class="text-black me-2">Type d'adresse</label>
+                <select name="addresses[@i].Type" class="form-control">
+                    <option value="" disabled>Sélectionnez...</option>
+                    @foreach (var type in addressTypes)
+                    {
+                        if (addressList[i].Type == type.TypeName)
+                        {
+                            <option value="@type.TypeName" selected>@type.TypeName</option>
+                        }
+                        else
+                        {
+                            <option value="@type.TypeName">@type.TypeName</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="flex-fill me-2">
+                <label class="text-black me-2">Adresse</label>
+                <input type="text" name="addresses[@i].Value" 
+                       class="form-control" 
+                       value="@addressList[i].Value" 
+                       placeholder="Saisissez une adresse" />
+            </div>
+            <div class="flex-fill me-2">
+                <i type="button" class="fas fa-plus m-md-3 mx-5"></i>
+            </div>
+        </div>
+    }
+</div>
+
+
+
+<div id="address-container">
     @if (Model.Addresses != null && ViewBag.AddressTypes != null)
     {
         var addressTypes = ViewBag.AddressTypes as List<NotifApps.Models.AddressType>; // Les types possibles
