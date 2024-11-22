@@ -1,132 +1,55 @@
-<div id="address-container">
-    @{
-        var addressesList = Model.Addresses.ToList();
-        var addressTypes = ViewBag.AddressTypes as List<AddressType>; // Types possibles
-    }
-    @for (int i = 0; i < addressesList.Count; i++)
-    {
-        <div class="form-group mb-3">
-            <label>Type d'adresse</label>
-            <select name="addresses[@i].Type" class="form-control">
-                @foreach (var type in addressTypes)
-                {
-                    <option value="@type.Type"
-                        @(addressesList[i].Type == type.Type ? "selected" : "")>
-                        @type.Type
-                    </option>
-                }
-            </select>
-            <label>Adresse</label>
-            <input type="text" name="addresses[@i].Value" class="form-control" value="@addressesList[i].Value" />
-        </div>
-    }
-</div>
-
-public async Task<IActionResult> Edit(int? id)
+// GET: Incident/Create
+public IActionResult Create()
 {
-    if (id == null)
+    // Remplir les ViewBag pour les sélections
+    ViewBag.EquipeId = _context.Equipes.Select(e => new SelectListItem
     {
-        return NotFound();
-    }
+        Value = e.EquipeId.ToString(),
+        Text = e.NomEquipe
+    }).ToList();
 
-    var applicatif = await _context.Applicatifs
-        .Include(a => a.Addresses)
-        .FirstOrDefaultAsync(m => m.AppId == id);
-
-    if (applicatif == null)
+    ViewBag.AppId = _context.Applicatifs.Select(a => new SelectListItem
     {
-        return NotFound();
-    }
+        Value = a.AppId.ToString(),
+        Text = a.AppNom
+    }).ToList();
 
-    // Charger les types d'adresse pour la liste déroulante
-    ViewBag.AddressTypes = await _context.AddressTypes.ToListAsync();
-
-    return View(applicatif);
-}
-
-
-
-[HttpPost]
-[ValidateAntiForgeryToken]
-public async Task<IActionResult> Edit(int id, Applicatif applicatif, List<Address> addresses)
-{
-    if (id != applicatif.AppId)
-    {
-        return NotFound();
-    }
-
-    if (ModelState.IsValid)
-    {
-        using (var transaction = await _context.Database.BeginTransactionAsync())
+    // Filtrer les criticités dont le statut est "Actif"
+    ViewBag.CriticiteId = _context.Criticites
+        .Where(c => c.Statut == "Actif") // Filtrer uniquement les criticités actives
+        .Select(c => new SelectListItem
         {
-            try
-            {
-                // Mise à jour de l'applicatif
-                _context.Update(applicatif);
-                await _context.SaveChangesAsync();
+            Value = c.CriticiteId.ToString(),
+            Text = c.CriticiteNom
+        }).ToList();
 
-                // Vérifier que les types d'adresse sont valides
-                var validTypes = await _context.AddressTypes.Select(t => t.Type).ToListAsync();
+    ViewBag.StatutId = _context.Statuts.Select(s => new SelectListItem
+    {
+        Value = s.StatutId.ToString(),
+        Text = s.StatutNom
+    }).ToList();
 
-                foreach (var address in addresses)
-                {
-                    if (!validTypes.Contains(address.Type))
-                    {
-                        ModelState.AddModelError("", $"Le type d'adresse '{address.Type}' n'est pas valide.");
-                        return View(applicatif);
-                    }
-                }
+    ViewBag.OrigineId = _context.Origines
+        .Where(o => o.OrigineNom != null) // Filtrer les valeurs NULL
+        .Select(o => new SelectListItem
+        {
+            Value = o.OrigineId.ToString(),
+            Text = o.OrigineNom
+        }).ToList();
 
-                // Récupérer les adresses existantes
-                var existingAddresses = await _context.Addresses
-                    .Where(a => a.AppId == applicatif.AppId)
-                    .ToListAsync();
-
-                // Supprimer les adresses obsolètes
-                var addressesToRemove = existingAddresses
-                    .Where(existing => !addresses.Any(a => a.Type == existing.Type && a.Value == existing.Value))
-                    .ToList();
-                _context.Addresses.RemoveRange(addressesToRemove);
-
-                // Ajouter ou mettre à jour les adresses
-                foreach (var address in addresses)
-                {
-                    var existingAddress = existingAddresses
-                        .FirstOrDefault(a => a.Type == address.Type && a.Value == address.Value);
-
-                    if (existingAddress == null)
-                    {
-                        // Nouvelle adresse
-                        address.AppId = applicatif.AppId;
-                        _context.Addresses.Add(address);
-                    }
-                    else
-                    {
-                        // Mettre à jour si nécessaire
-                        existingAddress.Value = address.Value;
-                    }
-                }
-
-                await _context.SaveChangesAsync();
-
-                await transaction.CommitAsync();
-
-                return RedirectToAction(nameof(Index));
-            }
-            catch (Exception)
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
-        }
-    }
-
-    // Recharge les types en cas d'erreur
-    ViewBag.AddressTypes = await _context.AddressTypes.ToListAsync();
-    return View(applicatif);
+    return View();
 }
 
 
 
 
-
+<div class="form-group">
+    <label for="CriticiteId">Criticité</label>
+    <select id="CriticiteId" name="CriticiteId" class="form-control">
+        <option value="">-- Sélectionnez une criticité --</option>
+        @foreach (var item in ViewBag.CriticiteId as List<SelectListItem>)
+        {
+            <option value="@item.Value">@item.Text</option>
+        }
+    </select>
+</div>
