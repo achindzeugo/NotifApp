@@ -1,3 +1,42 @@
+@if (Model.PlanDactions != null && Model.PlanDactions.Any()) 
+{
+    foreach (var plan in Model.PlanDactions.OrderByDescending(p => p.DateReelle))
+    {
+        <div class="alert alert-black d-flex justify-content-between align-items-center">
+            <div>
+                <strong>Plan:</strong> @plan.PlanDescription
+                <br />
+                <strong>Date et heure:</strong> @plan.DateReelle?.ToString("g")
+            </div>
+            <div>
+                <a href="@Url.Action("EditPlanDaction", new { id = plan.PlanId })" class="text-black me-2" title="Modifier">
+                    <i class="fas fa-edit"></i>
+                </a>
+                <form asp-action="DeletePlanDaction" method="post" style="display:inline;">
+                    <input type="hidden" name="id" value="@plan.PlanId" />
+                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce plan d\'action ?');">
+                        <i class="fas fa-trash text-bg-danger"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    }
+}
+else
+{
+    <p>Aucun plan d'action ajouté.</p>
+}
+
+
+
+
+
+
+
+
+
+
+
 @if (Model.PlanDactions != null && Model.PlanDactions.Any())
             {
                 foreach (var plan in Model.PlanDactions)
