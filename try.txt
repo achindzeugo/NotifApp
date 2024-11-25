@@ -1,3 +1,19 @@
+ajustez la position de ces elements svp 
+j'aimerais que le card header soit au milieu et le statut soit a la fin a droite 
+le titre de l'incident reste EN gras au centre du card 
+Applicatif doit commencer en left et criticite au milieu, ces deux doivent etre en flex sur une meme ligne 
+reference du ticket a gauche aissi et lien du ticket au milieu, sur une meme ligne 
+prise en charge par, doit ertre a gauche, seul dans sa ligne 
+
+dans le deuxieme card pout description, le card header doit rester au centre et on doit juste ajouter une icon a la droite 
+la description doit commencer au debut de la ligne a gauche sur une seule ligne, 
+pour origine aussi; doit commencer au debut a gauche 
+
+pour le troisieme card, le card header reste au cenrtre, avec une icone aussi a la fin a droite
+l'impacte doit commencer au debut a gauche sur une seule ligne 
+le debut d'impacte doit etre en flex avec date de prise en charge sur une meme ligne, un commence au debut a gauche et l'autre se positionne au milieu
+
+
 @model NotifApps.Models.Incident
 
 @{
