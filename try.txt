@@ -1,138 +1,191 @@
-using Microsoft.AspNetCore.Mvc;
-using System.Linq;
-
-namespace NotifApps.Controllers
-{
-    public class HomesController : Controller
-    {
-        private readonly MyDbContext _context;
-
-        public HomesController(MyDbContext context)
-        {
-            _context = context;
-        }
-
-        public IActionResult Index()
-        {
-            var totalIncidents = _context.Incidents.Count();
-            var enCoursCount = _context.Incidents.Count(i => i.Statut.StatutNom == "En cours");
-            var criticiteP0Count = _context.Incidents.Count(i => i.Criticite.CriticiteNom == "P0");
-            var incidentsClosCount = _context.Incidents.Count(i => i.Statut.StatutNom == "Clos");
-
-            ViewBag.TotalIncidents = totalIncidents;
-            ViewBag.EnCoursCount = enCoursCount;
-            ViewBag.CriticiteP0Count = criticiteP0Count;
-            ViewBag.IncidentsClosCount = incidentsClosCount;
-
-            return View();
-        }
-    }
-}
-
+@model NotifApps.Models.Incident
 
 @{
-    ViewData["Title"] = "Dashboard";
+    string statutColor = Model.Statut?.StatutNom switch
+    {
+        "En cours" => "bg-en-cours",
+        "Résolu" => "bg-resolu",
+        "Clos" => "bg-clos",
+        _ => "bg-default"
+    };
 }
 
-<h1 class="text-center my-4">Tableau de Bord</h1>
+<h1 class="text-center text-black">Détails de l'Incident</h1>
 
-<div class="container">
-    <!-- Cards Section -->
-    <div class="d-flex justify-content-between flex-wrap">
-        <!-- Total Incidents -->
-        <div class="card text-white bg-primary mb-3" style="width: 18rem;">
-            <div class="card-header">Total Incidents</div>
-            <div class="card-body">
-                <h5 class="card-title text-center">@ViewBag.TotalIncidents</h5>
+<hr />
+
+<div class="container mt-4">
+    <div class="card mb-4">
+        <!-- Premier segment: Statut de l'incident -->
+        <div class="card-header @statutColor text-white d-flex justify-content-between align-items-center">
+            <h1 class="text-center w-100">Incident @Model.Statut?.StatutNom</h1>
+            <span class="badge @statutColor">@Model.Statut?.StatutNom</span>
+        </div>
+        <div class="card-body">
+            <h1 class="text-center font-weight-bold">@Model.Titre</h1>
+
+            <!-- Applicatif et Criticité -->
+            <div class="d-flex justify-content-between align-items-center">
+                <p class="w-50"><strong>Applicatif:</strong> @Model.App?.AppNom</p>
+                <p class=" w-100">
+                    <strong>Criticité:</strong>
+                    <span class="badge text-black" style="background-color: @(Model.Criticite?.Couleur ?? "gray");">
+                        @(Model.Criticite?.CriticiteNom?.ToUpper() ?? "N/A")
+                    </span>
+                </p>
             </div>
+
+            <!-- Référence du ticket et lien -->
+            <div class="d-flex justify-content-between align-items-center">
+                <p class="w-50"><strong>Référence du ticket:</strong> @Model.RefTicket</p>
+                <p class=" w-100"><strong>Lien du ticket:</strong> <a href="@Model.LienTicket" target="_blank">@Model.LienTicket</a></p>
+            </div>
+
+            <!-- Prise en charge -->
+            <p class="text-start"><strong>Prise en charge par:</strong> @Model.Equipe?.NomEquipe</p>
         </div>
 
-        <!-- Incidents En Cours -->
-        <div class="card text-white bg-warning mb-3" style="width: 18rem;">
-            <div class="card-header">Incidents En Cours</div>
-            <div class="card-body">
-                <h5 class="card-title text-center">@ViewBag.EnCoursCount</h5>
+        <!-- Deuxième segment: Resumé -->
+        <div class="card-header @statutColor text-white d-flex justify-content-between align-items-center">
+            <h1 class="w-100 text-center">Resumé</h1>
+            <i class="fa fa-sticky-note m-md-2"></i>
+        </div>
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center text-black">
+                <p class=""><strong>Début d'impact:</strong> @Model.Debutdimpact?.ToString("g")</p>
+                <p class=""><strong>Date de prise en charge:</strong> @Model.Datepriseencharge?.ToString("g")</p>
+                <p>
+                    <strong>Date de Résolution :</strong>
+                    @(Model.Dateresolution.HasValue
+                        ? Model.Dateresolution?.ToString("dd MMMM yyyy HH:mm:ss")
+                        : "Non résolu")
+                </p>
+
             </div>
+            <p class="text-start"><strong>Description:</strong> @Model.Description</p>
+            <p class="text-start"><strong>Origine:</strong> @Model.Origine?.OrigineNom</p>
         </div>
 
-        <!-- Criticité P0 -->
-        <div class="card text-white bg-danger mb-3" style="width: 18rem;">
-            <div class="card-header">Criticité P0</div>
-            <div class="card-body">
-                <h5 class="card-title text-center">@ViewBag.CriticiteP0Count</h5>
-            </div>
+        <!-- Troisième segment: Impact -->
+        <div class="card-header @statutColor text-white d-flex justify-content-between align-items-center">
+            <h1 class="w-100 text-center">Impact</h1>
+            <i class="fas fa-exclamation-circle mx-5"></i>
+        </div>
+        <div class="card-body">
+            <br />
+            <p class="text-start"><strong>Impact:</strong> @Model.Impact</p>
+            <br />
         </div>
 
-        <!-- Incidents Clos -->
-        <div class="card text-white bg-success mb-3" style="width: 18rem;">
-            <div class="card-header">Incidents Clos</div>
-            <div class="card-body">
-                <h5 class="card-title text-center">@ViewBag.IncidentsClosCount</h5>
+        <!-- Plans d'actions section -->
+        <div class="card-header @statutColor text-white d-flex justify-content-between align-items-center">
+            <h1 class="w-100 text-center">Plan d'action</h1>
+            <i class="fa fa-puzzle-piece"></i>
+        </div>
+        
+        <div class="card-body">
+            <div id="planForm" style="display:none;">
+                <form asp-action="AddPlanDaction" method="post">
+                    <input type="hidden" name="IncidentId" value="@Model.IncidentId" />
+                    <div class="form-group">
+                        <label for="PlanDescription">Plan d'Action:</label>
+                        <textarea type="text" class="form-control" name="PlanDescription" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="DateReelle">Date et Heure Réelle:</label>
+                        <input type="datetime-local" class="form-control" name="DateReelle" />
+                    </div>
+                    <div class="d-flex justify-content-center">
+                        <button type="submit" class="btn btn-danger ms-2 mt-2"><i class="fas fa-save"></i></button>
+                        <button type="button" class="btn btn-black ms-2 mt-2" id="closePlanForm"><i class="fas fa-ban"></i></button>
+                    </div>
+                </form>
+            </div>
+            <hr />
+            <div class="d-flex justify-content-between align-items-center">
+                <button id="togglePlanForm" class="btn btn-black" readonly><i class="fas fa-plus "></i> Plan d'Action</button>
+            </div>
+
+            <hr />
+
+            @if (Model.PlanDactions != null && Model.PlanDactions.Any()) 
+{
+    foreach (var plan in Model.PlanDactions.OrderByDescending(p => p.DateReelle))
+    {
+        <div class="alert alert-black d-flex justify-content-between align-items-center">
+            <div>
+                <strong>Plan:</strong> @plan.PlanDescription
+                <br />
+                <strong>Date et heure:</strong> @plan.DateReelle?.ToString("g")
+            </div>
+            <div>
+                <a href="@Url.Action("EditPlanDaction", new { id = plan.PlanId })" class="text-black me-2" title="Modifier">
+                    <i class="fas fa-edit"></i>
+                </a>
+                <form asp-action="DeletePlanDaction" method="post" style="display:inline;">
+                    <input type="hidden" name="id" value="@plan.PlanId" />
+                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce plan d\'action ?');">
+                        <i class="fas fa-trash text-bg-danger"></i>
+                    </button>
+                </form>
             </div>
         </div>
-    </div>
+    }
+}
+else
+{
+    <p>Aucun plan d'action ajouté.</p>
+}
 
-    <!-- Graphiques Section -->
-    <div class="mt-5">
-        <h2 class="text-center">Graphiques</h2>
-        <div class="row">
-            <!-- Placeholder for Graphs -->
-            <div class="col-md-6">
-                <div class="chart-container">
-                    <canvas id="chart1"></canvas>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="chart-container">
-                    <canvas id="chart2"></canvas>
-                </div>
-            </div>
+            <hr />
+        </div>
+
+        <div class="d-flex justify-content-center">
+            <button type="submit" class="btn @statutColor text-white"><i class="fas fa-paper-plane text-white"></i> Envoyer</button>
         </div>
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    .bg-en-cours {
+        background-color: orange !important;
+    }
+
+    .bg-resolu {
+        background-color: green !important;
+    }
+
+    .bg-clos {
+        background-color: blue !important;
+    }
+
+    .bg-default {
+        background-color: gray !important;
+    }
+
+    .font-weight-bold {
+        font-weight: bold;
+    }
+
+    .h4 {
+        font-size: 1.5rem;
+    }
+</style>
 <script>
-    // Exemple de graphique
-    const ctx1 = document.getElementById('chart1').getContext('2d');
-    new Chart(ctx1, {
-        type: 'bar',
-        data: {
-            labels: ['Incidents Totaux', 'En Cours', 'Criticité P0', 'Clos'],
-            datasets: [{
-                label: 'Statistiques des Incidents',
-                data: [@ViewBag.TotalIncidents, @ViewBag.EnCoursCount, @ViewBag.CriticiteP0Count, @ViewBag.IncidentsClosCount],
-                backgroundColor: ['blue', 'orange', 'red', 'green']
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: { display: false },
-                tooltip: { enabled: true }
-            }
-        }
+    document.getElementById('togglePlanForm').addEventListener('click', function () {
+        const form = document.getElementById('planForm');
+        form.style.display = form.style.display === 'none' ? 'block' : 'none';
     });
 
-    // Deuxième graphique à personnaliser
-    const ctx2 = document.getElementById('chart2').getContext('2d');
-    new Chart(ctx2, {
-        type: 'pie',
-        data: {
-            labels: ['En Cours', 'Clos'],
-            datasets: [{
-                data: [@ViewBag.EnCoursCount, @ViewBag.IncidentsClosCount],
-                backgroundColor: ['orange', 'green']
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: { display: true },
-                tooltip: { enabled: true }
-            }
-        }
+    document.getElementById('closePlanForm').addEventListener('click', function () {
+        document.getElementById('planForm').style.display = 'none';
     });
+    
 </script>
 
 
+j'aimerais que ces champs puissent etre modifiés directement dans la page details, 
+lorsquon passe le curseur sur une zone, une petite icone de modification apparait, et si on clique sur cette modification ca ouvre le champ pour effectuer la modification
+j'aimerais qu'il soit appliqué pour 
+descriptions, Origine, Impact 
+ 
