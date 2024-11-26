@@ -1,66 +1,138 @@
-voici mon controller 
-
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-
+using System.Linq;
 
 namespace NotifApps.Controllers
 {
     public class HomesController : Controller
     {
-        // GET: /<controller>/
+        private readonly MyDbContext _context;
+
+        public HomesController(MyDbContext context)
+        {
+            _context = context;
+        }
+
         public IActionResult Index()
         {
+            var totalIncidents = _context.Incidents.Count();
+            var enCoursCount = _context.Incidents.Count(i => i.Statut.StatutNom == "En cours");
+            var criticiteP0Count = _context.Incidents.Count(i => i.Criticite.CriticiteNom == "P0");
+            var incidentsClosCount = _context.Incidents.Count(i => i.Statut.StatutNom == "Clos");
+
+            ViewBag.TotalIncidents = totalIncidents;
+            ViewBag.EnCoursCount = enCoursCount;
+            ViewBag.CriticiteP0Count = criticiteP0Count;
+            ViewBag.IncidentsClosCount = incidentsClosCount;
+
             return View();
         }
     }
 }
 
 
-
-namespace NotifApps.Models
-{
-
-    public partial class Incident
-    {
-        public Incident()
-        {
-            ApplicationIncidents = new HashSet<ApplicationIncident>();
-            PlanDactions = new List<PlanDaction>();
-    }
-
-        public int IncidentId { get; set; }
-        public string Description { get; set; }
-        public string DestinataireSup { get; set; }
-        public int? OrigineId { get; set; }
-        public int? CriticiteId { get; set; }
-        public int? StatutId { get; set; }
-        public int? AppId { get; set; }
-        public string Titre { get; set; }
-        public string Pec { get; set; }
-        public string RefTicket { get; set; }
-        public string LienTicket { get; set; }
-        public DateTime? Debutdimpact { get; set; }
-        public DateTime? Datepriseencharge { get; set; }
-        public DateTime? Dateresolution { get; set; }
-        public string Impact { get; set; }
-        public int? PecId { get; set; }
-        public int? EquipeId { get; set; }
-        public virtual Equipe Equipe { get; set; }
-        public virtual Applicatif App { get; set; }
-        public virtual Criticite Criticite { get; set; }
-        public virtual Origine Origine { get; set; }
-        public virtual Statut Statut { get; set; }
-        public virtual ICollection<ApplicationIncident> ApplicationIncidents { get; set; }
-        public virtual ICollection<PlanDaction> PlanDactions { get; set; }
-
-    }
-
+@{
+    ViewData["Title"] = "Dashboard";
 }
-voici mon modele pour incident, j'aimerais avoir des cards qui vont montrer des insights, vous les aligner en flex, je vais les mettre en haut 
-et en bas je vais mettre mes graphiques 
-le premier doit resortir le ,ombre d'incidents dans la bd, le deuxieme doit afficher le nombre d'incidents avec statut En cours, le troisieme le nombre d'incidents avec criticité P0, et le dernier 
-le nombre d'incidents clos 
+
+<h1 class="text-center my-4">Tableau de Bord</h1>
+
+<div class="container">
+    <!-- Cards Section -->
+    <div class="d-flex justify-content-between flex-wrap">
+        <!-- Total Incidents -->
+        <div class="card text-white bg-primary mb-3" style="width: 18rem;">
+            <div class="card-header">Total Incidents</div>
+            <div class="card-body">
+                <h5 class="card-title text-center">@ViewBag.TotalIncidents</h5>
+            </div>
+        </div>
+
+        <!-- Incidents En Cours -->
+        <div class="card text-white bg-warning mb-3" style="width: 18rem;">
+            <div class="card-header">Incidents En Cours</div>
+            <div class="card-body">
+                <h5 class="card-title text-center">@ViewBag.EnCoursCount</h5>
+            </div>
+        </div>
+
+        <!-- Criticité P0 -->
+        <div class="card text-white bg-danger mb-3" style="width: 18rem;">
+            <div class="card-header">Criticité P0</div>
+            <div class="card-body">
+                <h5 class="card-title text-center">@ViewBag.CriticiteP0Count</h5>
+            </div>
+        </div>
+
+        <!-- Incidents Clos -->
+        <div class="card text-white bg-success mb-3" style="width: 18rem;">
+            <div class="card-header">Incidents Clos</div>
+            <div class="card-body">
+                <h5 class="card-title text-center">@ViewBag.IncidentsClosCount</h5>
+            </div>
+        </div>
+    </div>
+
+    <!-- Graphiques Section -->
+    <div class="mt-5">
+        <h2 class="text-center">Graphiques</h2>
+        <div class="row">
+            <!-- Placeholder for Graphs -->
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <canvas id="chart1"></canvas>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <canvas id="chart2"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Exemple de graphique
+    const ctx1 = document.getElementById('chart1').getContext('2d');
+    new Chart(ctx1, {
+        type: 'bar',
+        data: {
+            labels: ['Incidents Totaux', 'En Cours', 'Criticité P0', 'Clos'],
+            datasets: [{
+                label: 'Statistiques des Incidents',
+                data: [@ViewBag.TotalIncidents, @ViewBag.EnCoursCount, @ViewBag.CriticiteP0Count, @ViewBag.IncidentsClosCount],
+                backgroundColor: ['blue', 'orange', 'red', 'green']
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false },
+                tooltip: { enabled: true }
+            }
+        }
+    });
+
+    // Deuxième graphique à personnaliser
+    const ctx2 = document.getElementById('chart2').getContext('2d');
+    new Chart(ctx2, {
+        type: 'pie',
+        data: {
+            labels: ['En Cours', 'Clos'],
+            datasets: [{
+                data: [@ViewBag.EnCoursCount, @ViewBag.IncidentsClosCount],
+                backgroundColor: ['orange', 'green']
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: true },
+                tooltip: { enabled: true }
+            }
+        }
+    });
+</script>
+
+
