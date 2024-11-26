@@ -1,213 +1,66 @@
-@if (Model.PlanDactions != null && Model.PlanDactions.Any()) 
+voici mon controller 
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+
+
+namespace NotifApps.Controllers
 {
-    foreach (var plan in Model.PlanDactions.OrderByDescending(p => p.DateReelle))
+    public class HomesController : Controller
     {
-        <div class="alert alert-black d-flex justify-content-between align-items-center">
-            <div>
-                <strong>Plan:</strong> @plan.PlanDescription
-                <br />
-                <strong>Date et heure:</strong> @plan.DateReelle?.ToString("g")
-            </div>
-            <div>
-                <a href="@Url.Action("EditPlanDaction", new { id = plan.PlanId })" class="text-black me-2" title="Modifier">
-                    <i class="fas fa-edit"></i>
-                </a>
-                <form asp-action="DeletePlanDaction" method="post" style="display:inline;">
-                    <input type="hidden" name="id" value="@plan.PlanId" />
-                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce plan d\'action ?');">
-                        <i class="fas fa-trash text-bg-danger"></i>
-                    </button>
-                </form>
-            </div>
-        </div>
+        // GET: /<controller>/
+        public IActionResult Index()
+        {
+            return View();
+        }
     }
 }
-else
+
+
+
+namespace NotifApps.Models
 {
-    <p>Aucun plan d'action ajouté.</p>
-}
 
-
-
-
-
-
-
-
-
-
-
-@if (Model.PlanDactions != null && Model.PlanDactions.Any())
-            {
-                foreach (var plan in Model.PlanDactions)
-                {
-                    <div class="alert alert-black d-flex justify-content-between align-items-center">
-                        <div>
-                            <strong>Plan:</strong> @plan.PlanDescription
-                            <br />
-                            <strong>Date et heure:</strong> @plan.DateReelle?.ToString("g")
-                        </div>
-                        <div>
-                            <a href="@Url.Action("EditPlanDaction", new { id = plan.PlanId })" class="text-black me-2" title="Modifier">
-                                <i class="fas fa-edit"></i>
-                            </a>
-                            <form asp-action="DeletePlanDaction" method="post" style="display:inline;">
-                                <input type="hidden" name="id" value="@plan.PlanId" />
-                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce plan d\'action ?');"><i class="fas fa-trash text-bg-danger"></i></button>
-                            </form>
-                        </div>
-                    </div>
-                }
-            }
-            else
-            {
-                <p>Aucun plan d'action ajouté.</p>
-            }
-
-
-
-
-ajustez la position de ces elements svp 
-j'aimerais que le card header soit au milieu et le statut soit a la fin a droite 
-le titre de l'incident reste EN gras au centre du card 
-Applicatif doit commencer en left et criticite au milieu, ces deux doivent etre en flex sur une meme ligne 
-reference du ticket a gauche aissi et lien du ticket au milieu, sur une meme ligne 
-prise en charge par, doit ertre a gauche, seul dans sa ligne 
-
-dans le deuxieme card pout description, le card header doit rester au centre et on doit juste ajouter une icon a la droite 
-la description doit commencer au debut de la ligne a gauche sur une seule ligne, 
-pour origine aussi; doit commencer au debut a gauche 
-
-pour le troisieme card, le card header reste au cenrtre, avec une icone aussi a la fin a droite
-l'impacte doit commencer au debut a gauche sur une seule ligne 
-le debut d'impacte doit etre en flex avec date de prise en charge sur une meme ligne, un commence au debut a gauche et l'autre se positionne au milieu
-
-
-@model NotifApps.Models.Incident
-
-@{
-    string statutColor = Model.Statut?.StatutNom switch
+    public partial class Incident
     {
-        "En cours" => "bg-en-cours",
-        "Résolu" => "bg-resolu",
-        "Clos" => "bg-clos",
-        _ => "bg-default"
-    };
+        public Incident()
+        {
+            ApplicationIncidents = new HashSet<ApplicationIncident>();
+            PlanDactions = new List<PlanDaction>();
+    }
+
+        public int IncidentId { get; set; }
+        public string Description { get; set; }
+        public string DestinataireSup { get; set; }
+        public int? OrigineId { get; set; }
+        public int? CriticiteId { get; set; }
+        public int? StatutId { get; set; }
+        public int? AppId { get; set; }
+        public string Titre { get; set; }
+        public string Pec { get; set; }
+        public string RefTicket { get; set; }
+        public string LienTicket { get; set; }
+        public DateTime? Debutdimpact { get; set; }
+        public DateTime? Datepriseencharge { get; set; }
+        public DateTime? Dateresolution { get; set; }
+        public string Impact { get; set; }
+        public int? PecId { get; set; }
+        public int? EquipeId { get; set; }
+        public virtual Equipe Equipe { get; set; }
+        public virtual Applicatif App { get; set; }
+        public virtual Criticite Criticite { get; set; }
+        public virtual Origine Origine { get; set; }
+        public virtual Statut Statut { get; set; }
+        public virtual ICollection<ApplicationIncident> ApplicationIncidents { get; set; }
+        public virtual ICollection<PlanDaction> PlanDactions { get; set; }
+
+    }
+
 }
-
-<h1 class="text-center text-black">Détails de l'Incident</h1>
-
-<hr />
-
-<div class="container mt-4">
-    <div class="card mb-4">
-        <!-- Premier segment: Statut de l'incident -->
-        <div class="card-header @statutColor text-white d-flex text-center">
-            <h1 class=" text-center text-center">Incident @Model.Statut?.StatutNom</h1>
-            <span class="badge @statutColor align-self-end">@Model.Statut?.StatutNom</span>
-        </div>
-        <div class="card-body">
-            <h1 class="text-center"><strong>@Model.Titre</strong> </h1>
-
-            <div class="d-flex flex-column">
-                <p class="align-self-start"><strong>Applicatif:</strong> @Model.App?.AppNom</p>
-                <p class="align-self-center">
-                    <strong>Criticité:</strong>
-                    <span class="badge text-black" style="background-color: @(Model.Criticite?.Couleur ?? "gray");">
-                        @(Model.Criticite?.CriticiteNom?.ToUpper() ?? "N/A")
-                    </span>
-                </p>
-            </div>
-            <div class="d-flex flex-column">
-                <p class="justify-content-start"><strong>Référence du ticket:</strong> @Model.RefTicket</p>
-                <p class="align-self-center"><strong>Lien du ticket:</strong> <a href="@Model.LienTicket" target="_blank">@Model.LienTicket</a></p>
-            </div>
-            <h5 class="text-center"><strong>Prise en charge par:</strong> @Model.Equipe?.NomEquipe</h5>
-
-        </div>
-
-        <!-- Deuxième segment: Description -->
-        <div class="card-header @statutColor text-white text-center">
-            <h4>Description</h4>
-        </div>
-        <div class="card-body text-center">
-            <p><strong>Description:</strong> @Model.Description</p>
-
-            <p><strong>Origine:</strong> @Model.Origine?.OrigineNom</p>
-        </div>
-
-        <!-- Troisième segment: Impact -->
-        <div class="card-header @statutColor text-white text-center">
-            <h4>Impact</h4>
-        </div>
-        <div class="card-body text-center">
-            <h4>Impact</h4>
-            <p>@Model.Impact</p>
-        </div>
-        <div class="d-flex justify-content-evenly">
-            <p><strong>Début d'impact:</strong> @Model.Debutdimpact?.ToString("g") </p>
-            <p><strong>Date de prise en charge:</strong> @Model.Datepriseencharge?.ToString("g") </p>
-        </div>
-
-        <!-- Plans d'actions section -->
-        <div class="card-header @statutColor text-white text-center">
-            <h4>Plans d'Actions</h4>
-        </div>
-        <div class="card-body">
-            <div id="planForm" style="display:none;">
-                <form asp-action="AddPlanDaction" method="post">
-                    <input type="hidden" name="IncidentId" value="@Model.IncidentId" />
-                    <div class="form-group">
-                        <label for="PlanDescription">Plan d'Action:</label>
-                        <textarea type="text" class="form-control" name="PlanDescription" required></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="DateReelle">Date et Heure Réelle:</label>
-                        <input type="datetime-local" class="form-control" name="DateReelle" />
-                    </div>
-                    <div class="d-flex justify-content-center">
-                        <button type="submit" class="btn btn-danger ms-2 mt-2"><i class="fas fa-save"></i></button>
-                        <button type="button" class="btn btn-black ms-2 mt-2" id="closePlanForm"><i class="fas fa-ban"></i></button>
-                    </div>
-                </form>
-            </div>
-            <hr />
-            <button id="togglePlanForm" class="btn btn-black"><i class="fas fa-plus"></i> Plan d'Action</button>
-
-            <hr />
-
-            @if (Model.PlanDactions != null && Model.PlanDactions.Any())
-            {
-                foreach (var plan in Model.PlanDactions)
-                {
-                    <div class="alert alert-black d-flex justify-content-between align-items-center">
-                        <div>
-                            <strong>Plan:</strong> @plan.PlanDescription
-                            <br />
-                            <strong>Date et heure:</strong> @plan.DateReelle?.ToString("g")
-                        </div>
-                        <div>
-                            <a href="@Url.Action("EditPlanDaction", new { id = plan.PlanId })" class="text-black me-2" title="Modifier">
-                                <i class="fas fa-edit"></i>
-                            </a>
-                            <form asp-action="DeletePlanDaction" method="post" style="display:inline;">
-                                <input type="hidden" name="id" value="@plan.PlanId" />
-                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce plan d\'action ?');"><i class="fas fa-trash text-bg-danger"></i></button>
-                            </form>
-                        </div>
-                    </div>
-                }
-            }
-            else
-            {
-                <p>Aucun plan d'action ajouté.</p>
-            }
-            <hr />
-
-        </div>
-        <div class=" d-flex justify-content-center">
-            <button type="submit" class="btn @statutColor text-white"><i class="fas fa-paper-plane text-white "></i> Envoyer</button>
-
-        </div>
-    </div>
-</div>
+voici mon modele pour incident, j'aimerais avoir des cards qui vont montrer des insights, vous les aligner en flex, je vais les mettre en haut 
+et en bas je vais mettre mes graphiques 
+le premier doit resortir le ,ombre d'incidents dans la bd, le deuxieme doit afficher le nombre d'incidents avec statut En cours, le troisieme le nombre d'incidents avec criticité P0, et le dernier 
+le nombre d'incidents clos 
