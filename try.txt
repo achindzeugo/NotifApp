@@ -288,3 +288,55 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 
+@model NotifApps.Models.Incident
+
+<div>
+    <h2>Détails de l'incident</h2>
+
+    <div>
+        <label>Description :</label>
+        <span id="description-display">@Model.Description</span>
+        <textarea id="description-edit" class="d-none">@Model.Description</textarea>
+        <i class="fa fa-edit" id="edit-description"></i>
+        <button id="save-description" class="btn btn-primary d-none">Enregistrer</button>
+    </div>
+
+    <div>
+        <label>Impact :</label>
+        <span id="impact-display">@Model.Impact</span>
+        <textarea id="impact-edit" class="d-none">@Model.Impact</textarea>
+        <i class="fa fa-edit" id="edit-impact"></i>
+        <button id="save-impact" class="btn btn-primary d-none">Enregistrer</button>
+    </div>
+
+    <div>
+        <label>Statut :</label>
+        <span id="statut-display">@Model.Statut?.StatutNom</span>
+        <select id="statut-edit" class="d-none">
+            @foreach (var statut in ViewBag.Statuts as IEnumerable<SelectListItem>)
+            {
+                <option value="@statut.Value" @(statut.Value == Model.StatutId.ToString() ? "selected" : "")>
+                    @statut.Text
+                </option>
+            }
+        </select>
+        <i class="fa fa-edit" id="edit-statut"></i>
+        <button id="save-statut" class="btn btn-primary d-none">Enregistrer</button>
+    </div>
+
+    <div>
+        <label>Référence du ticket :</label>
+        <span id="refticket-display">@Model.RefTicket</span>
+        <input id="refticket-edit" class="d-none" value="@Model.RefTicket" />
+        <i class="fa fa-edit" id="edit-refticket"></i>
+        <button id="save-refticket" class="btn btn-primary d-none">Enregistrer</button>
+    </div>
+
+    <div>
+        <label>Lien du ticket :</label>
+        <span id="lienticket-display">@Model.LienTicket</span>
+        <input id="lienticket-edit" class="d-none" value="@Model.LienTicket" />
+        <i class="fa fa-edit" id="edit-lienticket"></i>
+        <button id="save-lienticket" class="btn btn-primary d-none">Enregistrer</button>
+    </div>
+</div>
