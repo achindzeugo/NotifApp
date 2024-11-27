@@ -1,3 +1,8 @@
+
+je veux que vous recomenciez, voici mon controller, servez vous de ca pour que les modofications soient enregistrés et ajoutez un bouton save
+je precise que c'est lorsque je defile avec la souris sur l'élément que l'icone de modification se montre 
+et quand j'appuie sa ouvre le champs de modification en textArea avec un bouton pour enregistrer les modifications 
+
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
