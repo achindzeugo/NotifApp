@@ -184,8 +184,107 @@ else
 </script>
 
 
-j'aimerais que ces champs puissent etre modifiés directement dans la page details, 
-lorsquon passe le curseur sur une zone, une petite icone de modification apparait, et si on clique sur cette modification ca ouvre le champ pour effectuer la modification
-j'aimerais qu'il soit appliqué pour 
-descriptions, Origine, Impact 
- 
+
+je veux que vous recomenciez, voici mon controller, servez vous de ca pour que les modofications soient enregistrés et ajoutez un bouton save
+je precise que c'est lorsque je defile avec la souris sur l'élément que l'icone de modification se montre 
+et quand j'appuie sa ouvre le champs de modification en textArea avec un bouton pour enregistrer les modifications 
+====================================================================================================================================================================================
+
+[HttpPost]
+public async Task<IActionResult> UpdateField(int id, string field, string value)
+{
+    var incident = await _context.Incidents.FindAsync(id);
+    if (incident == null) return NotFound();
+
+    switch (field)
+    {
+        case "description":
+            incident.Description = value;
+            break;
+        case "impact":
+            incident.Impact = value;
+            break;
+        case "statut":
+            if (int.TryParse(value, out var statutId))
+                incident.StatutId = statutId;
+            else
+                return BadRequest("Invalid statut ID");
+            break;
+        case "refticket":
+            incident.RefTicket = value;
+            break;
+        case "lienticket":
+            incident.LienTicket = value;
+            break;
+        default:
+            return BadRequest();
+    }
+
+    await _context.SaveChangesAsync();
+    return Ok();
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    const setupEditableField = (fieldId) => {
+        const display = document.getElementById(`${fieldId}-display`);
+        const edit = document.getElementById(`${fieldId}-edit`);
+        const editIcon = document.getElementById(`edit-${fieldId}`);
+        const saveButton = document.getElementById(`save-${fieldId}`);
+
+        editIcon.addEventListener("click", () => {
+            display.classList.add("d-none");
+            edit.classList.remove("d-none");
+            saveButton.classList.remove("d-none");
+        });
+
+        saveButton.addEventListener("click", () => {
+            const value = edit.value || edit.options?.[edit.selectedIndex]?.value;
+            fetch(`/Incident/UpdateField`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "RequestVerificationToken": document.querySelector('input[name="__RequestVerificationToken"]').value,
+                },
+                body: JSON.stringify({ id: @Model.IncidentId, field: fieldId, value }),
+            })
+                .then((response) => {
+                    if (response.ok) {
+                        display.textContent = value;
+                        edit.classList.add("d-none");
+                        saveButton.classList.add("d-none");
+                        display.classList.remove("d-none");
+                    } else {
+                        alert("Erreur lors de la sauvegarde.");
+                    }
+                });
+        });
+    };
+
+    setupEditableField("description");
+    setupEditableField("impact");
+    setupEditableField("statut");
+    setupEditableField("refticket");
+    setupEditableField("lienticket");
+});
+
+
+@foreach (var statut in ViewBag.Statuts)
+{
+    <option value="@statut.Value" @(statut.Value == Model.StatutId.ToString() ? "selected" : "")>
+        @statut.Text
+    </option>
+}
+
+<option value="@statut.Value" @(int.Parse(statut.Value) == Model.StatutId ? "selected" : "")>
+    @statut.Text
+</option>
+
+
+<option value="@statut.Value" @(statut.Value == Model.StatutId.ToString() ? "selected" : "")>
+    @statut.Text
+</option>
+
+
+
+
+
