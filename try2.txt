@@ -1,567 +1,124 @@
+<div class="card-body">
+    <h1 class="text-center font-weight-bold">@Model.Titre</h1>
 
-je veux que vous recomenciez, voici mon controller, servez vous de ca pour que les modofications soient enregistrés et ajoutez un bouton save
-je precise que c'est lorsque je defile avec la souris sur l'élément que l'icone de modification se montre 
-et quand j'appuie sa ouvre le champs de modification en textArea avec un bouton pour enregistrer les modifications 
+    <!-- Statut -->
+    <div class="d-flex justify-content-between align-items-center">
+        <p class="w-50"><strong>Statut:</strong> 
+            <span id="statutDisplay">@Model.Statut?.StatutNom</span>
+            <button class="btn btn-sm btn-link text-black" id="editStatutBtn"><i class="fas fa-edit"></i></button>
+        </p>
+        <form id="statutForm" style="display: none;" method="post" asp-action="UpdateStatut">
+            <input type="hidden" name="IncidentId" value="@Model.IncidentId" />
+            <select name="StatutId" class="form-control d-inline-block w-75" asp-items="ViewBag.StatutId">
+                <option value="">Sélectionnez un statut</option>
+            </select>
+            <button type="submit" class="btn btn-success btn-sm"><i class="fas fa-save"></i></button>
+            <button type="button" class="btn btn-danger btn-sm" id="cancelStatutEdit"><i class="fas fa-ban"></i></button>
+        </form>
+    </div>
 
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
-using NotifApps.Models;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
+    <!-- Description -->
+    <div class="d-flex justify-content-between align-items-center">
+        <p class="w-50"><strong>Description:</strong> 
+            <span id="descriptionDisplay">@Model.Description</span>
+            <button class="btn btn-sm btn-link text-black" id="editDescriptionBtn"><i class="fas fa-edit"></i></button>
+        </p>
+        <form id="descriptionForm" style="display: none;" method="post" asp-action="UpdateDescription">
+            <input type="hidden" name="IncidentId" value="@Model.IncidentId" />
+            <textarea name="Description" class="form-control d-inline-block w-75">@Model.Description</textarea>
+            <button type="submit" class="btn btn-success btn-sm"><i class="fas fa-save"></i></button>
+            <button type="button" class="btn btn-danger btn-sm" id="cancelDescriptionEdit"><i class="fas fa-ban"></i></button>
+        </form>
+    </div>
 
-namespace NotifApps.Controllers
+    <!-- Impact -->
+    <div class="d-flex justify-content-between align-items-center">
+        <p class="w-50"><strong>Impact:</strong> 
+            <span id="impactDisplay">@Model.Impact</span>
+            <button class="btn btn-sm btn-link text-black" id="editImpactBtn"><i class="fas fa-edit"></i></button>
+        </p>
+        <form id="impactForm" style="display: none;" method="post" asp-action="UpdateImpact">
+            <input type="hidden" name="IncidentId" value="@Model.IncidentId" />
+            <textarea name="Impact" class="form-control d-inline-block w-75">@Model.Impact</textarea>
+            <button type="submit" class="btn btn-success btn-sm"><i class="fas fa-save"></i></button>
+            <button type="button" class="btn btn-danger btn-sm" id="cancelImpactEdit"><i class="fas fa-ban"></i></button>
+        </form>
+    </div>
+</div>
+
+
+<script>
+    // Statut
+    document.getElementById('editStatutBtn').addEventListener('click', function () {
+        document.getElementById('statutDisplay').style.display = 'none';
+        document.getElementById('editStatutBtn').style.display = 'none';
+        document.getElementById('statutForm').style.display = 'block';
+    });
+    document.getElementById('cancelStatutEdit').addEventListener('click', function () {
+        document.getElementById('statutDisplay').style.display = 'inline';
+        document.getElementById('editStatutBtn').style.display = 'inline';
+        document.getElementById('statutForm').style.display = 'none';
+    });
+
+    // Description
+    document.getElementById('editDescriptionBtn').addEventListener('click', function () {
+        document.getElementById('descriptionDisplay').style.display = 'none';
+        document.getElementById('editDescriptionBtn').style.display = 'none';
+        document.getElementById('descriptionForm').style.display = 'block';
+    });
+    document.getElementById('cancelDescriptionEdit').addEventListener('click', function () {
+        document.getElementById('descriptionDisplay').style.display = 'inline';
+        document.getElementById('editDescriptionBtn').style.display = 'inline';
+        document.getElementById('descriptionForm').style.display = 'none';
+    });
+
+    // Impact
+    document.getElementById('editImpactBtn').addEventListener('click', function () {
+        document.getElementById('impactDisplay').style.display = 'none';
+        document.getElementById('editImpactBtn').style.display = 'none';
+        document.getElementById('impactForm').style.display = 'block';
+    });
+    document.getElementById('cancelImpactEdit').addEventListener('click', function () {
+        document.getElementById('impactDisplay').style.display = 'inline';
+        document.getElementById('editImpactBtn').style.display = 'inline';
+        document.getElementById('impactForm').style.display = 'none';
+    });
+</script>
+
+
+[HttpPost]
+public IActionResult UpdateStatut(int IncidentId, int StatutId)
 {
-    public class IncidentController : Controller
+    var incident = _context.Incidents.Find(IncidentId);
+    if (incident != null)
     {
-        private readonly NotifdbContext _context;
-
-        public IncidentController(NotifdbContext context)
-        {
-            _context = context;
-        }
-   
-        public async Task<IActionResult> Index()
-        {
-            var incidents = await _context.Incidents
-                .Include(i => i.App)
-                .Include(i => i.Criticite)
-                .Include(i => i.Statut)
-                .Include(i => i.Origine)
-                .ToListAsync();
-
-            // Handle NULL values if necessary
-            foreach (var incident in incidents)
-            {
-                incident.App = incident.App ?? new Applicatif();
-                incident.Criticite = incident.Criticite ?? new Criticite();
-                incident.Statut = incident.Statut ?? new Statut();
-                incident.Origine = incident.Origine ?? new Origine();
-            }
-
-            return View(incidents);
-        }
-
-
-        // GET: Incident/Create
-        // GET: Incident/Create
-        public IActionResult Create()
-        {
-            // Remplir les ViewBag pour les sélections
-            ViewBag.EquipeId = _context.Equipes.Select(e => new SelectListItem
-            {
-                Value = e.EquipeId.ToString(),
-                Text = e.NomEquipe
-            }).ToList();
-
-            ViewBag.AppId = _context.Applicatifs.Select(a => new SelectListItem
-            {
-                Value = a.AppId.ToString(),
-                Text = a.AppNom
-            }).ToList();
-
-            // Filtrer les criticités dont le statut est "Actif"
-            ViewBag.CriticiteId = _context.Criticites
-                .Where(c => c.Statut == "Actif") // Filtrer uniquement les criticités actives
-                .Select(c => new SelectListItem
-                {
-                    Value = c.CriticiteId.ToString(),
-                    Text = c.CriticiteNom
-                }).ToList();
-
-            ViewBag.StatutId = _context.Statuts
-                .Where(s => s.Statut1 == "Actif")
-                .Select(s => new SelectListItem
-            {
-                Value = s.StatutId.ToString(),
-                Text = s.StatutNom
-            }).ToList();
-
-            ViewBag.OrigineId = _context.Origines
-                .Where(o => o.OrigineNom != null) // Filtrer les valeurs NULL
-                .Where(o => o.Statut =="Actif")
-                .Select(o => new SelectListItem
-                {
-                    Value = o.OrigineId.ToString(),
-                    Text = o.OrigineNom
-                }).ToList();
-
-            return View();
-        }
-
-
-        // POST: Incident/Create
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("IncidentId,Description,DestinataireSup,CriticiteId,StatutId,AppId,Titre,Pec,RefTicket,LienTicket,Debutdimpact,Datepriseencharge,Impact,EquipeId")] Incident incident, string OrigineNom)
-        {
-            if (ModelState.IsValid)
-            {
-                // Normaliser le nom de l'origine pour la comparaison
-                var normalizedOrigineNom = OrigineNom.Trim().ToUpper(); // Convert to capital lettrs
-
-                // Vérifiez si une origine similaire existe déjà
-                var existingOrigine = await _context.Origines
-                    .FirstOrDefaultAsync(o => o.OrigineNom.ToUpper() == normalizedOrigineNom);
-
-                if (existingOrigine == null)
-                {
-                    // Vérifiez les origines existantes pour des correspondances similaires
-                    var similarOrigines = await _context.Origines
-                        .Where(o => o.OrigineNom.ToUpper().Contains(normalizedOrigineNom) ||
-                                     normalizedOrigineNom.Contains(o.OrigineNom.ToUpper()))
-                        .ToListAsync();
-
-                    if (similarOrigines.Any())
-                    {
-                        // Utilisez l'origine existante si une correspondance similaire est trouvée
-                        incident.OrigineId = similarOrigines.First().OrigineId;
-                    }
-                    else
-                    {
-                        // Si aucune origine similaire, ajoutez une nouvelle origine
-                        var newOrigine = new Origine { OrigineNom = normalizedOrigineNom }; // Utiliser le nom normalisé
-                        _context.Origines.Add(newOrigine);
-                        await _context.SaveChangesAsync();
-                        incident.OrigineId = newOrigine.OrigineId;
-                    }
-                }
-                else
-                {
-                    // Si une origine exacte existe, utilisez son ID
-                    incident.OrigineId = existingOrigine.OrigineId;
-                }
-
-                using (var transaction = await _context.Database.BeginTransactionAsync())
-                {
-                    try
-                    {
-                        _context.Add(incident);
-                        await _context.SaveChangesAsync(); 
-
-                        await _context.SaveChangesAsync(); 
-                        await transaction.CommitAsync();
-                        return RedirectToAction(nameof(Index));
-                    }
-                    catch (Exception)
-                    {
-                        await transaction.RollbackAsync();
-                        throw;
-                    }
-                }
-            }
-
-            ViewBag.EquipeId = _context.Equipes.Select(e => new SelectListItem
-            {
-                Value = e.EquipeId.ToString(),
-                Text = e.NomEquipe
-            }).ToList();
-
-            ViewBag.AppId = _context.Applicatifs.Select(a => new SelectListItem
-            {
-                Value = a.AppId.ToString(),
-                Text = a.AppNom
-            }).ToList();
-
-            ViewBag.CriticiteId = _context.Criticites.Select(c => new SelectListItem
-            {
-                Value = c.CriticiteId.ToString(),
-                Text = c.CriticiteNom
-            }).ToList();
-
-            ViewBag.StatutId = _context.Statuts.Select(s => new SelectListItem
-            {
-                Value = s.StatutId.ToString(),
-                Text = s.StatutNom
-            }).ToList();
-
-            ViewBag.OrigineId = _context.Origines.Select(o => new SelectListItem
-            {
-                Value = o.OrigineId.ToString(),
-                Text = o.OrigineNom
-            }).ToList();
-
-            return View(incident);
-        }
-
-
-
-        // GET: Incident/Details/5
-        public async Task<IActionResult> Details(int? id)
-        {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var incident = await _context.Incidents
-                .Include(i => i.App)
-                .Include(i => i.App)
-               .Include(i => i.Criticite)
-                .Include(i => i.Statut)
-                .Include(i => i.Origine)
-                .Include(i => i.Equipe)
-                .Include(i=>i.PlanDactions)
-                .FirstOrDefaultAsync(m => m.IncidentId == id);
-
-            if (incident == null)
-            {
-                return NotFound();
-            }
-
-            return View(incident);
-        }
-
-
-        /* // GET: Incident/Edit/5
-         public async Task<IActionResult> Edit(int? id)
-         {
-             if (id == null)
-             {
-                 return NotFound();
-             }
-
-             var incident = await _context.Incidents
-                 .Include(i => i.App)
-                 .Include(i => i.Criticite)
-                 .Include(i => i.Statut)
-                 .Include(i => i.Origine)
-                 .FirstOrDefaultAsync(m => m.IncidentId == id);
-             if (incident == null)
-             {
-                 return NotFound();
-             }
-             PopulateDropDownLists(incident);
-             return View(incident);
-         }
-
-         // POST: Incident/Edit/5
-         [HttpPost]
-         [ValidateAntiForgeryToken]
-         public async Task<IActionResult> Edit(int id, [Bind("IncidentId,Description,DestinataireSup,OrigineId,CriticiteId,StatutId,AppId")] Incident incident)
-         {
-             if (id != incident.IncidentId)
-             {
-                 return NotFound();
-             }
-
-             if (ModelState.IsValid)
-             {
-                 try
-                 {
-                     _context.Update(incident);
-                     await _context.SaveChangesAsync();
-                 }
-                 catch (DbUpdateConcurrencyException)
-                 {
-                     if (!IncidentExists(incident.IncidentId))
-                     {
-                         return NotFound();
-                     }
-                     else
-                     {
-                         throw;
-                     }
-                 }
-                 return RedirectToAction(nameof(Index));
-             }
-             PopulateDropDownLists(incident);
-             return View(incident);
-         }*/
-
-        //POST:AJOUTER PLANDACTION
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AddPlanDaction(int incidentId, string planDescription, DateTime? dateReelle)
-        {
-            if (string.IsNullOrWhiteSpace(planDescription))
-            {
-                return BadRequest("Plan description cannot be empty.");
-            }
-
-            var incident = await _context.Incidents.FindAsync(incidentId);
-            if (incident == null)
-            {
-                return NotFound();
-            }
-
-            if (string.IsNullOrWhiteSpace(planDescription))
-            {
-                planDescription = "Default Plan Description"; // customizable message
-                dateReelle = DateTime.Now; // Set the current date and time
-            }
-
-            var planDaction = new PlanDaction
-            {
-                PlanDescription = planDescription,
-                DateReelle = dateReelle ?? DateTime.Now, // Ensure this captures the correct date and time
-                IncidentId = incidentId
-            };
-
-            _context.PlanDactions.Add(planDaction);
-            await _context.SaveChangesAsync();
-
-            return RedirectToAction(nameof(Details), new { id = incidentId });
-        }
-
-        // GET: Edit Plan Daction
-        public async Task<IActionResult> EditPlanDaction(int id)
-        {
-            var planDaction = await _context.PlanDactions.FindAsync(id);
-            if (planDaction == null)
-            {
-                return NotFound();
-            }
-            return View(planDaction);
-        }
-
-        // POST: Edit Plan Daction
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> EditPlanDaction(PlanDaction planDaction)
-        {
-            if (ModelState.IsValid)
-            {
-                if (planDaction.IncidentId == null)
-                {
-                    ModelState.AddModelError("", "L'ID de l'incident est requis.");
-                    return View(planDaction);
-                }
-
-                _context.Update(planDaction);
-                await _context.SaveChangesAsync();
-                return RedirectToAction("Details", new { id = planDaction.IncidentId });
-            }
-            return View(planDaction);
-        }
-
-
-        // Details EDIT 
-        [HttpPost]
-        public async Task<IActionResult> UpdateField(int id, string field, string value)
-        {
-            var incident = await _context.Incidents.FindAsync(id);
-            if (incident == null) return NotFound();
-
-            switch (field)
-            {
-                case "description":
-                    incident.Description = value;
-                    break;
-                case "origine":
-                    incident.OrigineId = int.TryParse(value, out var origineId) ? origineId : (int?)null;
-                    break;
-                case "impact":
-                    incident.Impact = value;
-                    break;
-                default:
-                    return BadRequest();
-            }
-
-            await _context.SaveChangesAsync();
-            return Ok();
-        }
-
-
-        // POST: Delete Plan Daction
-        [HttpPost]
-[ValidateAntiForgeryToken]
-public async Task<IActionResult> DeletePlanDaction(int id)
-{
-    var planDaction = await _context.PlanDactions.FindAsync(id);
-    if (planDaction != null)
-    {
-        _context.PlanDactions.Remove(planDaction);
-        await _context.SaveChangesAsync();
+        incident.StatutId = StatutId;
+        _context.SaveChanges();
     }
-    return RedirectToAction("Details", new { id = planDaction.IncidentId });
+    return RedirectToAction("Details", new { id = IncidentId });
 }
 
-
-
-        // GET: Incident/Edit/5
-        public async Task<IActionResult> Edit(int? id)
-        {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var incident = await _context.Incidents
-                .Include(i => i.App)
-                .Include(i => i.Criticite)
-                .Include(i => i.Statut)
-                .Include(i => i.Origine)
-                                .Include(i => i.Equipe)
-
-                .FirstOrDefaultAsync(m => m.IncidentId == id);
-            if (incident == null)
-            {
-                return NotFound();
-            }
-
-            ViewBag.EquipeId = _context.Equipes
-                .Where(e => e.Statut == "Actif")
-                .Select(e => new SelectListItem
-            {
-                Value = e.EquipeId.ToString(),
-                Text = e.NomEquipe
-            }).ToList();
-
-            ViewBag.AppId = _context.Applicatifs.Select(a => new SelectListItem
-            {
-                Value = a.AppId.ToString(),
-                Text = a.AppNom
-            }).ToList();
-
-            ViewBag.CriticiteId = _context.Criticites
-                .Where(e => e.Statut == "Actif")
-                .Select(c => new SelectListItem
-            {
-                Value = c.CriticiteId.ToString(),
-                Text = c.CriticiteNom
-            }).ToList();
-
-            ViewBag.StatutId = _context.Statuts
-                .Where(e => e.Statut1 == "Actif")
-                .Select(s => new SelectListItem
-            {
-                Value = s.StatutId.ToString(),
-                Text = s.StatutNom
-            }).ToList();
-
-            ViewBag.OrigineId = _context.Origines
-                .Where(e => e.Statut == "Actif")
-                .Select(o => new SelectListItem
-            {
-                Value = o.OrigineId.ToString(),
-                Text = o.OrigineNom
-            }).ToList();
-
-         
-
-            return View(incident);
-        }
-
-
-
-        // POST: Incident/Edit/5
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("IncidentId,Description,DestinataireSup,OrigineId,CriticiteId,StatutId,AppId,Titre,RefTicket,LienTicket,Debutdimpact,Datepriseencharge,Impact,EquipeId,Dateresolution")] Incident incident)
-        {
-            if (id != incident.IncidentId)
-            {
-                return NotFound();
-            }
-
-            if (ModelState.IsValid)
-            {
-                try
-                {
-                    _context.Update(incident);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!IncidentExists(incident.IncidentId))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
-                return RedirectToAction(nameof(Index));
-            }
-
-
-            ViewBag.EquipeId = _context.Equipes.Select(e => new SelectListItem
-            {
-                Value = e.EquipeId.ToString(),
-                Text = e.NomEquipe
-            }).ToList();
-            ViewBag.AppId = _context.Applicatifs.Select(a => new SelectListItem
-            {
-                Value = a.AppId.ToString(),
-                Text = a.AppNom
-            }).ToList();
-
-            ViewBag.CriticiteId = _context.Criticites.Select(c => new SelectListItem
-            {
-                Value = c.CriticiteId.ToString(),
-                Text = c.CriticiteNom
-            }).ToList();
-
-            ViewBag.StatutId = _context.Statuts.Select(s => new SelectListItem
-            {
-                Value = s.StatutId.ToString(),
-                Text = s.StatutNom
-            }).ToList();
-
-            ViewBag.OrigineId = _context.Origines.Select(o => new SelectListItem
-            {
-                Value = o.OrigineId.ToString(),
-                Text = o.OrigineNom
-            }).ToList();
-
-          
-
-            return View(incident);
-        }
-
-
-
-        // GET: Incident/Delete/5
-        public async Task<IActionResult> Delete(int? id)
-        {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var incident = await _context.Incidents
-                .Include(i => i.App)
-              .Include(i => i.App)
-                .Include(i => i.Criticite)
-                .Include(i => i.Statut)
-                .Include(i => i.Origine)
-                .Include(i=>i.Equipe)
-               .FirstOrDefaultAsync(m => m.IncidentId == id);
-            if (incident == null)
-            {
-                return NotFound();
-            }
-
-            return View(incident);
-        }
-
-        // POST: Incident/Delete/5
-        [HttpPost, ActionName("Delete")]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(int id)
-        {
-            var incident = await _context.Incidents.FindAsync(id);
-            _context.Incidents.Remove(incident);
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
-        }
-
-        private bool IncidentExists(int id)
-        {
-            return _context.Incidents.Any(e => e.IncidentId == id);
-        }
-
-        private void PopulateDropDownLists(Incident incident = null)
-        {
-            ViewData["AppId"] = new SelectList(_context.Applicatifs, "App_ID", "App_nom", incident?.AppId);
-            ViewData["CriticiteId"] = new SelectList(_context.Criticites, "Criticite_ID", "Criticite_nom", incident?.CriticiteId);
-            ViewData["StatutId"] = new SelectList(_context.Statuts, "Statut_ID", "Statut_nom", incident?.StatutId);
-            ViewData["OrigineId"] = new SelectList(_context.Origines, "Origine_ID", "Origine_nom", incident?.OrigineId);
-            ViewData["EquipeId"] = new SelectList(_context.Equipes, "EquipeId", "NomEquipe", incident?.EquipeId);
-
-        }
+[HttpPost]
+public IActionResult UpdateDescription(int IncidentId, string Description)
+{
+    var incident = _context.Incidents.Find(IncidentId);
+    if (incident != null)
+    {
+        incident.Description = Description;
+        _context.SaveChanges();
     }
+    return RedirectToAction("Details", new { id = IncidentId });
 }
+
+[HttpPost]
+public IActionResult UpdateImpact(int IncidentId, string Impact)
+{
+    var incident = _context.Incidents.Find(IncidentId);
+    if (incident != null)
+    {
+        incident.Impact = Impact;
+        _context.SaveChanges();
+    }
+    return RedirectToAction("Details", new { id = IncidentId });
+}
+
