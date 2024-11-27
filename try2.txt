@@ -1,131 +1,116 @@
-@model NotifApps.Models.Incident
+<div class="card-body">
+    <!-- Description -->
+    <div class="d-flex justify-content-between align-items-center">
+        <p id="descriptionDisplay" class="editable-field">
+            <strong>Description:</strong> @Model.Description
+            <i class="fas fa-edit ms-2 text-primary edit-icon" data-field="description"></i>
+        </p>
+        <input type="text" id="descriptionInput" class="form-control d-none editable-input" value="@Model.Description" />
+    </div>
 
-@{
-    string statutColor = Model.Statut?.StatutNom switch
-    {
-        "En cours" => "bg-en-cours",
-        "Résolu" => "bg-resolu",
-        "Clos" => "bg-clos",
-        _ => "bg-default"
-    };
-}
-
-<h1 class="text-center text-black">Détails de l'Incident</h1>
-
-<hr />
-
-<div class="container mt-4">
-    <div class="card mb-4">
-        <!-- Premier segment: Statut de l'incident -->
-        <div class="card-header @statutColor text-white d-flex justify-content-between align-items-center">
-            <h4 class="text-center w-100">Incident</h4>
-            <span class="badge @statutColor">@Model.Statut?.StatutNom</span>
-        </div>
-        <div class="card-body">
-            <h1 class="text-center font-weight-bold">@Model.Titre</h1>
-
-            <!-- Applicatif et Criticité -->
-            <div class="d-flex justify-content-between align-items-center">
-                <p><strong>Applicatif:</strong> @Model.App?.AppNom</p>
-                <p class="text-center">
-                    <strong>Criticité:</strong>
-                    <span class="badge text-black" style="background-color: @(Model.Criticite?.Couleur ?? "gray");">
-                        @(Model.Criticite?.CriticiteNom?.ToUpper() ?? "N/A")
-                    </span>
-                </p>
-            </div>
-
-            <!-- Référence du ticket et lien -->
-            <div class="d-flex justify-content-between align-items-center">
-                <p><strong>Référence du ticket:</strong> @Model.RefTicket</p>
-                <p><strong>Lien du ticket:</strong> <a href="@Model.LienTicket" target="_blank">@Model.LienTicket</a></p>
-            </div>
-
-            <!-- Prise en charge -->
-            <p class="text-start"><strong>Prise en charge par:</strong> @Model.Equipe?.NomEquipe</p>
-        </div>
-
-        <!-- Deuxième segment: Description -->
-        <div class="card-header @statutColor text-white d-flex justify-content-between align-items-center">
-            <h4 class="w-100 text-center">Description</h4>
-            <i class="fas fa-info-circle"></i>
-        </div>
-        <div class="card-body">
-            <p class="text-start"><strong>Description:</strong> @Model.Description</p>
-            <p class="text-start"><strong>Origine:</strong> @Model.Origine?.OrigineNom</p>
-        </div>
-
-        <!-- Troisième segment: Impact -->
-        <div class="card-header @statutColor text-white d-flex justify-content-between align-items-center">
-            <h4 class="w-100 text-center">Impact</h4>
-            <i class="fas fa-exclamation-circle"></i>
-        </div>
-        <div class="card-body">
-            <p class="text-start"><strong>Impact:</strong> @Model.Impact</p>
-            <div class="d-flex justify-content-between align-items-center">
-                <p><strong>Début d'impact:</strong> @Model.Debutdimpact?.ToString("g")</p>
-                <p><strong>Date de prise en charge:</strong> @Model.Datepriseencharge?.ToString("g")</p>
-            </div>
-        </div>
-
-        <!-- Plans d'actions section -->
-        <div class="card-header @statutColor text-white text-center">
-            <h4>Plans d'Actions</h4>
-        </div>
-        <div class="card-body">
-            <div id="planForm" style="display:none;">
-                <form asp-action="AddPlanDaction" method="post">
-                    <input type="hidden" name="IncidentId" value="@Model.IncidentId" />
-                    <div class="form-group">
-                        <label for="PlanDescription">Plan d'Action:</label>
-                        <textarea type="text" class="form-control" name="PlanDescription" required></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="DateReelle">Date et Heure Réelle:</label>
-                        <input type="datetime-local" class="form-control" name="DateReelle" />
-                    </div>
-                    <div class="d-flex justify-content-center">
-                        <button type="submit" class="btn btn-danger ms-2 mt-2"><i class="fas fa-save"></i></button>
-                        <button type="button" class="btn btn-black ms-2 mt-2" id="closePlanForm"><i class="fas fa-ban"></i></button>
-                    </div>
-                </form>
-            </div>
-            <hr />
-            <button id="togglePlanForm" class="btn btn-black"><i class="fas fa-plus"></i> Plan d'Action</button>
-
-            <hr />
-
-            @if (Model.PlanDactions != null && Model.PlanDactions.Any())
+    <!-- Origine -->
+    <div class="d-flex justify-content-between align-items-center">
+        <p id="origineDisplay" class="editable-field">
+            <strong>Origine:</strong> @Model.Origine?.OrigineNom
+            <i class="fas fa-edit ms-2 text-primary edit-icon" data-field="origine"></i>
+        </p>
+        <select id="origineInput" class="form-control d-none editable-input">
+            @foreach (var origine in ViewBag.Origines as List<Origine>)
             {
-                foreach (var plan in Model.PlanDactions)
-                {
-                    <div class="alert alert-black d-flex justify-content-between align-items-center">
-                        <div>
-                            <strong>Plan:</strong> @plan.PlanDescription
-                            <br />
-                            <strong>Date et heure:</strong> @plan.DateReelle?.ToString("g")
-                        </div>
-                        <div>
-                            <a href="@Url.Action("EditPlanDaction", new { id = plan.PlanId })" class="text-black me-2" title="Modifier">
-                                <i class="fas fa-edit"></i>
-                            </a>
-                            <form asp-action="DeletePlanDaction" method="post" style="display:inline;">
-                                <input type="hidden" name="id" value="@plan.PlanId" />
-                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce plan d\'action ?');"><i class="fas fa-trash text-bg-danger"></i></button>
-                            </form>
-                        </div>
-                    </div>
-                }
+                <option value="@origine.OrigineId" @(Model.OrigineId == origine.OrigineId ? "selected" : "")>
+                    @origine.OrigineNom
+                </option>
             }
-            else
-            {
-                <p>Aucun plan d'action ajouté.</p>
-            }
-            <hr />
-        </div>
+        </select>
+    </div>
 
-        <div class="d-flex justify-content-center">
-            <button type="submit" class="btn @statutColor text-white"><i class="fas fa-paper-plane text-white"></i> Envoyer</button>
-        </div>
+    <!-- Impact -->
+    <div class="d-flex justify-content-between align-items-center">
+        <p id="impactDisplay" class="editable-field">
+            <strong>Impact:</strong> @Model.Impact
+            <i class="fas fa-edit ms-2 text-primary edit-icon" data-field="impact"></i>
+        </p>
+        <textarea id="impactInput" class="form-control d-none editable-input">@Model.Impact</textarea>
     </div>
 </div>
+
+
+
+
+<script>
+    document.querySelectorAll('.edit-icon').forEach(icon => {
+        icon.addEventListener('click', function () {
+            const field = this.dataset.field;
+
+            // Affiche le champ d'entrée
+            document.getElementById(`${field}Display`).classList.add('d-none');
+            document.getElementById(`${field}Input`).classList.remove('d-none');
+        });
+    });
+
+    // Gestion de la perte de focus pour enregistrer les modifications
+    document.querySelectorAll('.editable-input').forEach(input => {
+        input.addEventListener('blur', async function () {
+            const field = this.id.replace('Input', '');
+            const newValue = this.value;
+
+            // Cache le champ d'entrée et affiche la valeur modifiée
+            document.getElementById(`${field}Input`).classList.add('d-none');
+            document.getElementById(`${field}Display`).classList.remove('d-none');
+            document.getElementById(`${field}Display`).innerHTML = `<strong>${field.charAt(0).toUpperCase() + field.slice(1)}:</strong> ${newValue} <i class="fas fa-edit ms-2 text-primary edit-icon" data-field="${field}"></i>`;
+
+            // Envoi de la requête pour mettre à jour le champ dans la base de données
+            await fetch('/Incident/UpdateField', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ id: @Model.IncidentId, field: field, value: newValue })
+            });
+        });
+    });
+</script>
+
+
+
+
+[HttpPost]
+public async Task<IActionResult> UpdateField(int id, string field, string value)
+{
+    var incident = await _context.Incidents.FindAsync(id);
+    if (incident == null) return NotFound();
+
+    switch (field)
+    {
+        case "description":
+            incident.Description = value;
+            break;
+        case "origine":
+            incident.OrigineId = int.TryParse(value, out var origineId) ? origineId : (int?)null;
+            break;
+        case "impact":
+            incident.Impact = value;
+            break;
+        default:
+            return BadRequest();
+    }
+
+    await _context.SaveChangesAsync();
+    return Ok();
+}
+
+
+.edit-icon {
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+.edit-icon:hover {
+    color: darkblue;
+}
+.editable-input {
+    width: 100%;
+    margin-top: 0.5rem;
+}
+
+
+
