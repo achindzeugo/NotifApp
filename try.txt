@@ -80,3 +80,15 @@ voici les méthodes get & post pour creation d'applicatifs
         }
 
 pourquoi quand j'enregistre ma creation d'applicatifs c'est l'ID du statut qui s'enrgistre au lieu du nom 
+
+
+applicatif.StatutNom = _context.StatutApplicatifs
+    .Where(s => s.StatutId == applicatif.StatutId)
+    .Select(s => s.StatutNom)
+    .FirstOrDefault();
+
+applicatif.StatutId = null; // Ne pas utiliser StatutId
+applicatif.StatutNom = _context.StatutApplicatifs
+    .Where(s => s.StatutId.ToString() == applicatif.StatutId)
+    .Select(s => s.StatutNom)
+    .FirstOrDefault();
