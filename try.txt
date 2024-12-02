@@ -1,19 +1,85 @@
+using System;
+using System.Collections.Generic;
+
+#nullable disable
+
+namespace NotifApps.Models
+{
+    public partial class Criticite
+    {
+        public Criticite()
+        {
+            Incidents = new HashSet<Incident>(); //type specification
+        }
+
+        public int CriticiteId { get; set; }
+        public string CriticiteNom { get; set; }
+        public string? Couleur { get; set; }
+        public string? Descriptions { get; set; }
+
+        // new properties
+        public DateTime DateCreation { get; set; } = DateTime.Now; // defaultvalue system actual date
+        public DateTime? DateDesactivation { get; set; } // Nullable
+        public string Statut { get; set; } // Peut être "Actif" ou "Inactif"
+        public virtual ICollection<Incident> Incidents { get; set; }
+    }
+}
+ 
+
+
+// GET: Criticite/Create
+        public IActionResult CreateCriticite()
+        {
+            var breadcrumb = GetBreadcrumb("CreateCriticite");
+            ViewBag.Breadcrumb = breadcrumb;
+            return View();
+        }
+
+        // POST: Criticite/Create
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateCriticite(Criticite criticite)
+        {
+            if (ModelState.IsValid)
+            {
+
+                criticite.Statut = "Actif";
+                // Check if Descriptions is null or empty, and set it to "RAS" if so
+                if (string.IsNullOrEmpty(criticite.Descriptions))
+                {
+                    criticite.Descriptions = "RAS";
+                }
+
+                // La date de création est déjà initialisée dans le modèle, no more need adding it here
+                _context.Add(criticite);
+                await _context.SaveChangesAsync();
+                return RedirectToAction(nameof(Index));
+            }
+            return View(criticite);
+        }
+
+voici mon criticité controller en haut, j'aimerais qu'en ajoutant une nouvelle criticité 
+je n'aimerais pas que des donnees qui existent déjà soient enregistrés deux fois, 
+lorsquon insere un enregistrement et lorsquon appii sur valider j'aimerais qu'on me propose un modal window
+pour signaller que ca existe deja et vouslez vous continuer avec l'enregistrement ???
+si oui ca enregistre si non ca annule 
+
+
+
 @model NotifApps.Models.Criticite
 
 @{
-    ViewData["Title"] = "Détails de la Criticité";
+    ViewData["Title"] = "Créer Criticité";
 }
+
 
 <div class="container mt-5">
     <div class="card">
-        <div class="card-header bg-primary text-white">
-            <h4>Détails de la Criticité</h4>
+        <div class="card-header bg-black text-white">
+            <h4>Créer une Criticité</h4>
         </div>
         <div class="card-body">
-            <form asp-action="UpdateCriticite">
-                <!-- ID (Caché) -->
-                <input type="hidden" asp-for="Id" />
-
+            <form asp-action="CreateCriticite">
                 <!-- Nom de la Criticité -->
                 <div class="form-group">
                     <label asp-for="CriticiteNom" class="form-label">Nom de la Criticité</label>
@@ -44,17 +110,17 @@
                 <!-- Description -->
                 <div class="form-group">
                     <label asp-for="Descriptions" class="form-label">Description</label>
-                    <textarea asp-for="Descriptions" class="form-control" placeholder="Ajoutez une description"></textarea>
+                    <textarea asp-for="Descriptions" class="form-control" placeholder="Ajoutez une description si nécessaire"></textarea>
                     <span asp-validation-for="Descriptions" class="text-danger"></span>
                 </div>
 
                 <!-- Boutons d'action -->
                 <div class="text-center mt-4">
-                    <button type="submit" class="btn btn-primary" title="Enregistrer">
-                        <i class="fas fa-save"></i> Enregistrer les modifications
+                    <button type="submit" class="btn btn-success" title="Créer">
+                        <i class="fas fa-save"></i> Enregistrer
                     </button>
-                    <a asp-action="Index" class="btn btn-secondary mx-2" title="Retour">
-                        <i class="fas fa-arrow-left"></i> Retour
+                    <a asp-action="Index" class="btn btn-secondary mx-2" title="Annuler">
+                        <i class="fas fa-ban"></i> Annuler
                     </a>
                 </div>
             </form>
@@ -62,49 +128,9 @@
     </div>
 </div>
 
-<!-- Modal pour duplication -->
-@if (ViewBag.DuplicateCriticite != null && (bool)ViewBag.DuplicateCriticite)
-{
-    <div class="modal fade show" id="duplicateModal" tabindex="-1" aria-labelledby="duplicateModalLabel" aria-hidden="true" style="display: block;">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-warning text-white">
-                    <h5 class="modal-title" id="duplicateModalLabel">Doublon détecté</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    Une criticité avec ce nom existe déjà. Voulez-vous continuer ?
-                </div>
-                <div class="modal-footer">
-                    <form asp-action="UpdateCriticite">
-                        <input type="hidden" name="ForceSave" value="true" />
-                        <input asp-for="CriticiteNom" type="hidden" />
-                        <input asp-for="Couleur" type="hidden" />
-                        <input asp-for="Descriptions" type="hidden" />
-                        <button type="submit" class="btn btn-success">Oui, continuer</button>
-                    </form>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Non, annuler</button>
-                </div>
-            </div>
-        </div>
-    </div>
-}
-
-<script>
-    document.addEventListener("DOMContentLoaded", function () {
-        // Vérifier si une modale doit être affichée au chargement
-        const isDuplicate = @ViewBag.DuplicateCriticite?.ToString().ToLower();
-        if (isDuplicate === "true") {
-            const modal = new bootstrap.Modal(document.getElementById("duplicateModal"));
-            modal.show();
-        }
-    });
-</script>
-
-
 <style>
     .card {
-        border-top: 5px solid #007bff;
+        border-top: 5px solid red;
         border-radius: 8px;
     }
 
@@ -112,18 +138,30 @@
         font-weight: bold;
     }
 
-    .btn-primary {
-        background-color: #007bff;
-        border-color: #007bff;
+    .btn-success {
+        background-color: #28a745;
+        border-color: #28a745;
     }
 
     .btn-secondary {
         background-color: #6c757d;
         border-color: #6c757d;
     }
-
-    .modal-header {
-        border-bottom: 1px solid #dee2e6;
-    }
 </style>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+=================================================================================
 
