@@ -1,16 +1,19 @@
 @model NotifApps.Models.Criticite
 
 @{
-    ViewData["Title"] = "Créer Criticité";
+    ViewData["Title"] = "Détails de la Criticité";
 }
 
 <div class="container mt-5">
     <div class="card">
-        <div class="card-header bg-black text-white">
-            <h4>Créer une Criticité</h4>
+        <div class="card-header bg-primary text-white">
+            <h4>Détails de la Criticité</h4>
         </div>
         <div class="card-body">
-            <form asp-action="CreateCriticite">
+            <form asp-action="UpdateCriticite">
+                <!-- ID (Caché) -->
+                <input type="hidden" asp-for="Id" />
+
                 <!-- Nom de la Criticité -->
                 <div class="form-group">
                     <label asp-for="CriticiteNom" class="form-label">Nom de la Criticité</label>
@@ -41,17 +44,17 @@
                 <!-- Description -->
                 <div class="form-group">
                     <label asp-for="Descriptions" class="form-label">Description</label>
-                    <textarea asp-for="Descriptions" class="form-control" placeholder="Ajoutez une description si nécessaire"></textarea>
+                    <textarea asp-for="Descriptions" class="form-control" placeholder="Ajoutez une description"></textarea>
                     <span asp-validation-for="Descriptions" class="text-danger"></span>
                 </div>
 
                 <!-- Boutons d'action -->
                 <div class="text-center mt-4">
-                    <button type="submit" class="btn btn-success" title="Créer">
-                        <i class="fas fa-save"></i> Enregistrer
+                    <button type="submit" class="btn btn-primary" title="Enregistrer">
+                        <i class="fas fa-save"></i> Enregistrer les modifications
                     </button>
-                    <a asp-action="Index" class="btn btn-secondary mx-2" title="Annuler">
-                        <i class="fas fa-ban"></i> Annuler
+                    <a asp-action="Index" class="btn btn-secondary mx-2" title="Retour">
+                        <i class="fas fa-arrow-left"></i> Retour
                     </a>
                 </div>
             </form>
@@ -70,10 +73,10 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    Une criticité avec le même nom existe déjà. Voulez-vous continuer ?
+                    Une criticité avec ce nom existe déjà. Voulez-vous continuer ?
                 </div>
                 <div class="modal-footer">
-                    <form asp-action="CreateCriticite">
+                    <form asp-action="UpdateCriticite">
                         <input type="hidden" name="ForceSave" value="true" />
                         <input asp-for="CriticiteNom" type="hidden" />
                         <input asp-for="Couleur" type="hidden" />
@@ -87,9 +90,21 @@
     </div>
 }
 
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        // Vérifier si une modale doit être affichée au chargement
+        const isDuplicate = @ViewBag.DuplicateCriticite?.ToString().ToLower();
+        if (isDuplicate === "true") {
+            const modal = new bootstrap.Modal(document.getElementById("duplicateModal"));
+            modal.show();
+        }
+    });
+</script>
+
+
 <style>
     .card {
-        border-top: 5px solid red;
+        border-top: 5px solid #007bff;
         border-radius: 8px;
     }
 
@@ -97,13 +112,18 @@
         font-weight: bold;
     }
 
-    .btn-success {
-        background-color: #28a745;
-        border-color: #28a745;
+    .btn-primary {
+        background-color: #007bff;
+        border-color: #007bff;
     }
 
     .btn-secondary {
         background-color: #6c757d;
         border-color: #6c757d;
     }
+
+    .modal-header {
+        border-bottom: 1px solid #dee2e6;
+    }
 </style>
+
