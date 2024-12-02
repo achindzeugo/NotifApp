@@ -4,20 +4,19 @@ public async Task<IActionResult> CreateCriticite(Criticite criticite)
 {
     if (ModelState.IsValid)
     {
-        // Vérifier si une criticité avec le même nom existe déjà
+        // Vérification de l'existence d'une criticité avec le même nom
         var existingCriticite = await _context.Criticites
             .FirstOrDefaultAsync(c => c.CriticiteNom == criticite.CriticiteNom);
 
         if (existingCriticite != null)
         {
-            // Retourner une alerte via ViewBag pour afficher une fenêtre modale
-            ViewBag.DuplicateCriticite = true;
+            // Criticité existe déjà, renvoyer la vue avec une alerte
+            ViewBag.ExistingCriticite = true;
+            ViewBag.CriticiteNom = criticite.CriticiteNom;
             return View(criticite);
         }
 
-        // Initialiser les propriétés par défaut
         criticite.Statut = "Actif";
-
         if (string.IsNullOrEmpty(criticite.Descriptions))
         {
             criticite.Descriptions = "RAS";
@@ -27,16 +26,9 @@ public async Task<IActionResult> CreateCriticite(Criticite criticite)
         await _context.SaveChangesAsync();
         return RedirectToAction(nameof(Index));
     }
-
     return View(criticite);
 }
 
-
-@model NotifApps.Models.Criticite
-
-@{
-    ViewData["Title"] = "Créer Criticité";
-}
 
 <div class="container mt-5">
     <div class="card">
@@ -93,103 +85,36 @@ public async Task<IActionResult> CreateCriticite(Criticite criticite)
     </div>
 </div>
 
-<!-- Modal pour duplication -->
-@if (ViewBag.DuplicateCriticite != null && (bool)ViewBag.DuplicateCriticite)
+@if (ViewBag.ExistingCriticite != null && (bool)ViewBag.ExistingCriticite)
 {
-    <div class="modal fade show" id="duplicateModal" tabindex="-1" aria-labelledby="duplicateModalLabel" aria-hidden="true" style="display: block;">
-        <div class="modal-dialog">
+    <div class="modal fade show" tabindex="-1" role="dialog" style="display: block;" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content">
-                <div class="modal-header bg-warning text-white">
-                    <h5 class="modal-title" id="duplicateModalLabel">Doublon détecté</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <div class="modal-header">
+                    <h5 class="modal-title">Duplication détectée</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close" onclick="closeModal()">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
                 </div>
                 <div class="modal-body">
-                    Une criticité avec le même nom existe déjà. Voulez-vous continuer ?
+                    <p>La criticité avec le nom <strong>@ViewBag.CriticiteNom</strong> existe déjà. Voulez-vous continuer ?</p>
                 </div>
                 <div class="modal-footer">
-                    <form asp-action="CreateCriticite">
-                        <input type="hidden" name="ForceSave" value="true" />
-                        <input asp-for="CriticiteNom" type="hidden" />
-                        <input asp-for="Couleur" type="hidden" />
-                        <input asp-for="Descriptions" type="hidden" />
-                        <button type="submit" class="btn btn-success">Oui, continuer</button>
+                    <button type="button" class="btn btn-danger" onclick="closeModal()">Non</button>
+                    <form asp-action="CreateCriticite" method="post">
+                        <input type="hidden" name="CriticiteNom" value="@ViewBag.CriticiteNom" />
+                        <input type="hidden" name="forceCreate" value="true" />
+                        <button type="submit" class="btn btn-success">Oui</button>
                     </form>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Non, annuler</button>
                 </div>
             </div>
         </div>
     </div>
 }
 
-
-
-
-[HttpPost]
-[ValidateAntiForgeryToken]
-public async Task<IActionResult> CreateCriticite(Criticite criticite, bool? ForceSave)
-{
-    if (ModelState.IsValid)
-    {
-        var existingCriticite = await _context.Criticites
-            .FirstOrDefaultAsync(c => c.CriticiteNom == criticite.CriticiteNom);
-
-        if (existingCriticite != null && ForceSave != true)
-        {
-            ViewBag.DuplicateCriticite = true;
-            return View(criticite);
-        }
-
-        criticite.Statut = "Actif";
-
-        if (string.IsNullOrEmpty(criticite.Descriptions))
-        {
-            criticite.Descriptions = "RAS";
-        }
-
-        _context.Add(criticite);
-        await _context.SaveChangesAsync();
-        return RedirectToAction(nameof(Index));
+<script>
+    function closeModal() {
+        document.querySelector('.modal').style.display = 'none';
     }
+</script>
 
-    return View(criticite);
-}
-
-
-
-
-
-
-
-
-[HttpPost]
-[ValidateAntiForgeryToken]
-public async Task<IActionResult> CreateCriticite(Criticite criticite, bool? ForceSave)
-{
-    if (ModelState.IsValid)
-    {
-        // Vérifier si une criticité avec le même nom existe déjà
-        var existingCriticite = await _context.Criticites
-            .FirstOrDefaultAsync(c => c.CriticiteNom == criticite.CriticiteNom);
-
-        if (existingCriticite != null && ForceSave != true)
-        {
-            // Si un doublon est détecté et que l'utilisateur n'a pas confirmé
-            ViewBag.DuplicateCriticite = true;
-            return View(criticite);
-        }
-
-        // Si aucun doublon ou confirmation reçue, continuer l'enregistrement
-        criticite.Statut = "Actif";
-
-        if (string.IsNullOrEmpty(criticite.Descriptions))
-        {
-            criticite.Descriptions = "RAS";
-        }
-
-        _context.Add(criticite);
-        await _context.SaveChangesAsync();
-        return RedirectToAction(nameof(Index));
-    }
-
-    return View(criticite);
-}
