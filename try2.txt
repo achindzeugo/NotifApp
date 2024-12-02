@@ -1,124 +1,195 @@
-<div class="card-body">
-    <h1 class="text-center font-weight-bold">@Model.Titre</h1>
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> CreateCriticite(Criticite criticite)
+{
+    if (ModelState.IsValid)
+    {
+        // Vérifier si une criticité avec le même nom existe déjà
+        var existingCriticite = await _context.Criticites
+            .FirstOrDefaultAsync(c => c.CriticiteNom == criticite.CriticiteNom);
 
-    <!-- Statut -->
-    <div class="d-flex justify-content-between align-items-center">
-        <p class="w-50"><strong>Statut:</strong> 
-            <span id="statutDisplay">@Model.Statut?.StatutNom</span>
-            <button class="btn btn-sm btn-link text-black" id="editStatutBtn"><i class="fas fa-edit"></i></button>
-        </p>
-        <form id="statutForm" style="display: none;" method="post" asp-action="UpdateStatut">
-            <input type="hidden" name="IncidentId" value="@Model.IncidentId" />
-            <select name="StatutId" class="form-control d-inline-block w-75" asp-items="ViewBag.StatutId">
-                <option value="">Sélectionnez un statut</option>
-            </select>
-            <button type="submit" class="btn btn-success btn-sm"><i class="fas fa-save"></i></button>
-            <button type="button" class="btn btn-danger btn-sm" id="cancelStatutEdit"><i class="fas fa-ban"></i></button>
-        </form>
-    </div>
+        if (existingCriticite != null)
+        {
+            // Retourner une alerte via ViewBag pour afficher une fenêtre modale
+            ViewBag.DuplicateCriticite = true;
+            return View(criticite);
+        }
 
-    <!-- Description -->
-    <div class="d-flex justify-content-between align-items-center">
-        <p class="w-50"><strong>Description:</strong> 
-            <span id="descriptionDisplay">@Model.Description</span>
-            <button class="btn btn-sm btn-link text-black" id="editDescriptionBtn"><i class="fas fa-edit"></i></button>
-        </p>
-        <form id="descriptionForm" style="display: none;" method="post" asp-action="UpdateDescription">
-            <input type="hidden" name="IncidentId" value="@Model.IncidentId" />
-            <textarea name="Description" class="form-control d-inline-block w-75">@Model.Description</textarea>
-            <button type="submit" class="btn btn-success btn-sm"><i class="fas fa-save"></i></button>
-            <button type="button" class="btn btn-danger btn-sm" id="cancelDescriptionEdit"><i class="fas fa-ban"></i></button>
-        </form>
-    </div>
+        // Initialiser les propriétés par défaut
+        criticite.Statut = "Actif";
 
-    <!-- Impact -->
-    <div class="d-flex justify-content-between align-items-center">
-        <p class="w-50"><strong>Impact:</strong> 
-            <span id="impactDisplay">@Model.Impact</span>
-            <button class="btn btn-sm btn-link text-black" id="editImpactBtn"><i class="fas fa-edit"></i></button>
-        </p>
-        <form id="impactForm" style="display: none;" method="post" asp-action="UpdateImpact">
-            <input type="hidden" name="IncidentId" value="@Model.IncidentId" />
-            <textarea name="Impact" class="form-control d-inline-block w-75">@Model.Impact</textarea>
-            <button type="submit" class="btn btn-success btn-sm"><i class="fas fa-save"></i></button>
-            <button type="button" class="btn btn-danger btn-sm" id="cancelImpactEdit"><i class="fas fa-ban"></i></button>
-        </form>
+        if (string.IsNullOrEmpty(criticite.Descriptions))
+        {
+            criticite.Descriptions = "RAS";
+        }
+
+        _context.Add(criticite);
+        await _context.SaveChangesAsync();
+        return RedirectToAction(nameof(Index));
+    }
+
+    return View(criticite);
+}
+
+
+@model NotifApps.Models.Criticite
+
+@{
+    ViewData["Title"] = "Créer Criticité";
+}
+
+<div class="container mt-5">
+    <div class="card">
+        <div class="card-header bg-black text-white">
+            <h4>Créer une Criticité</h4>
+        </div>
+        <div class="card-body">
+            <form asp-action="CreateCriticite">
+                <!-- Nom de la Criticité -->
+                <div class="form-group">
+                    <label asp-for="CriticiteNom" class="form-label">Nom de la Criticité</label>
+                    <input asp-for="CriticiteNom" class="form-control" placeholder="Entrez le nom de la criticité" />
+                    <span asp-validation-for="CriticiteNom" class="text-danger"></span>
+                </div>
+
+                <!-- Couleur -->
+                <div class="form-group">
+                    <label asp-for="Couleur" class="form-label">Couleur</label>
+                    <select asp-for="Couleur" class="form-control">
+                        <option value="">-- Sélectionnez une couleur --</option>
+                        <option value="red">Rouge</option>
+                        <option value="orange">Orange</option>
+                        <option value="yellow">Jaune</option>
+                        <option value="blue">Bleu</option>
+                        <option value="green">Vert</option>
+                        <option value="purple">Violet</option>
+                        <option value="pink">Rose</option>
+                        <option value="gray">Gris</option>
+                        <option value="brown">Marron</option>
+                        <option value="cyan">Cyan</option>
+                        <option value="lime">Lime</option>
+                    </select>
+                    <span asp-validation-for="Couleur" class="text-danger"></span>
+                </div>
+
+                <!-- Description -->
+                <div class="form-group">
+                    <label asp-for="Descriptions" class="form-label">Description</label>
+                    <textarea asp-for="Descriptions" class="form-control" placeholder="Ajoutez une description si nécessaire"></textarea>
+                    <span asp-validation-for="Descriptions" class="text-danger"></span>
+                </div>
+
+                <!-- Boutons d'action -->
+                <div class="text-center mt-4">
+                    <button type="submit" class="btn btn-success" title="Créer">
+                        <i class="fas fa-save"></i> Enregistrer
+                    </button>
+                    <a asp-action="Index" class="btn btn-secondary mx-2" title="Annuler">
+                        <i class="fas fa-ban"></i> Annuler
+                    </a>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
+<!-- Modal pour duplication -->
+@if (ViewBag.DuplicateCriticite != null && (bool)ViewBag.DuplicateCriticite)
+{
+    <div class="modal fade show" id="duplicateModal" tabindex="-1" aria-labelledby="duplicateModalLabel" aria-hidden="true" style="display: block;">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-white">
+                    <h5 class="modal-title" id="duplicateModalLabel">Doublon détecté</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Une criticité avec le même nom existe déjà. Voulez-vous continuer ?
+                </div>
+                <div class="modal-footer">
+                    <form asp-action="CreateCriticite">
+                        <input type="hidden" name="ForceSave" value="true" />
+                        <input asp-for="CriticiteNom" type="hidden" />
+                        <input asp-for="Couleur" type="hidden" />
+                        <input asp-for="Descriptions" type="hidden" />
+                        <button type="submit" class="btn btn-success">Oui, continuer</button>
+                    </form>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Non, annuler</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
-<script>
-    // Statut
-    document.getElementById('editStatutBtn').addEventListener('click', function () {
-        document.getElementById('statutDisplay').style.display = 'none';
-        document.getElementById('editStatutBtn').style.display = 'none';
-        document.getElementById('statutForm').style.display = 'block';
-    });
-    document.getElementById('cancelStatutEdit').addEventListener('click', function () {
-        document.getElementById('statutDisplay').style.display = 'inline';
-        document.getElementById('editStatutBtn').style.display = 'inline';
-        document.getElementById('statutForm').style.display = 'none';
-    });
 
-    // Description
-    document.getElementById('editDescriptionBtn').addEventListener('click', function () {
-        document.getElementById('descriptionDisplay').style.display = 'none';
-        document.getElementById('editDescriptionBtn').style.display = 'none';
-        document.getElementById('descriptionForm').style.display = 'block';
-    });
-    document.getElementById('cancelDescriptionEdit').addEventListener('click', function () {
-        document.getElementById('descriptionDisplay').style.display = 'inline';
-        document.getElementById('editDescriptionBtn').style.display = 'inline';
-        document.getElementById('descriptionForm').style.display = 'none';
-    });
-
-    // Impact
-    document.getElementById('editImpactBtn').addEventListener('click', function () {
-        document.getElementById('impactDisplay').style.display = 'none';
-        document.getElementById('editImpactBtn').style.display = 'none';
-        document.getElementById('impactForm').style.display = 'block';
-    });
-    document.getElementById('cancelImpactEdit').addEventListener('click', function () {
-        document.getElementById('impactDisplay').style.display = 'inline';
-        document.getElementById('editImpactBtn').style.display = 'inline';
-        document.getElementById('impactForm').style.display = 'none';
-    });
-</script>
 
 
 [HttpPost]
-public IActionResult UpdateStatut(int IncidentId, int StatutId)
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> CreateCriticite(Criticite criticite, bool? ForceSave)
 {
-    var incident = _context.Incidents.Find(IncidentId);
-    if (incident != null)
+    if (ModelState.IsValid)
     {
-        incident.StatutId = StatutId;
-        _context.SaveChanges();
+        var existingCriticite = await _context.Criticites
+            .FirstOrDefaultAsync(c => c.CriticiteNom == criticite.CriticiteNom);
+
+        if (existingCriticite != null && ForceSave != true)
+        {
+            ViewBag.DuplicateCriticite = true;
+            return View(criticite);
+        }
+
+        criticite.Statut = "Actif";
+
+        if (string.IsNullOrEmpty(criticite.Descriptions))
+        {
+            criticite.Descriptions = "RAS";
+        }
+
+        _context.Add(criticite);
+        await _context.SaveChangesAsync();
+        return RedirectToAction(nameof(Index));
     }
-    return RedirectToAction("Details", new { id = IncidentId });
+
+    return View(criticite);
 }
+
+
+
+
+
+
+
 
 [HttpPost]
-public IActionResult UpdateDescription(int IncidentId, string Description)
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> CreateCriticite(Criticite criticite, bool? ForceSave)
 {
-    var incident = _context.Incidents.Find(IncidentId);
-    if (incident != null)
+    if (ModelState.IsValid)
     {
-        incident.Description = Description;
-        _context.SaveChanges();
-    }
-    return RedirectToAction("Details", new { id = IncidentId });
-}
+        // Vérifier si une criticité avec le même nom existe déjà
+        var existingCriticite = await _context.Criticites
+            .FirstOrDefaultAsync(c => c.CriticiteNom == criticite.CriticiteNom);
 
-[HttpPost]
-public IActionResult UpdateImpact(int IncidentId, string Impact)
-{
-    var incident = _context.Incidents.Find(IncidentId);
-    if (incident != null)
-    {
-        incident.Impact = Impact;
-        _context.SaveChanges();
-    }
-    return RedirectToAction("Details", new { id = IncidentId });
-}
+        if (existingCriticite != null && ForceSave != true)
+        {
+            // Si un doublon est détecté et que l'utilisateur n'a pas confirmé
+            ViewBag.DuplicateCriticite = true;
+            return View(criticite);
+        }
 
+        // Si aucun doublon ou confirmation reçue, continuer l'enregistrement
+        criticite.Statut = "Actif";
+
+        if (string.IsNullOrEmpty(criticite.Descriptions))
+        {
+            criticite.Descriptions = "RAS";
+        }
+
+        _context.Add(criticite);
+        await _context.SaveChangesAsync();
+        return RedirectToAction(nameof(Index));
+    }
+
+    return View(criticite);
+}
