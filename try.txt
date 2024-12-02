@@ -1,127 +1,8 @@
-<!-- Modal -->
-<div class="modal fade" id="duplicateModal" tabindex="-1" aria-labelledby="duplicateModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="duplicateModalLabel">Doublon détecté</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                Une criticité avec ce nom existe déjà. Voulez-vous continuer avec l'enregistrement ?
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <form asp-action="CreateCriticite" method="post">
-                    <input type="hidden" name="ForceSave" value="true" />
-                    <button type="submit" class="btn btn-primary">Continuer</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
-
-<script>
-    document.addEventListener("DOMContentLoaded", function () {
-        // Vérifier si le backend a signalé un doublon
-        const isDuplicate = @ViewBag.DuplicateCriticite.ToString().ToLower();
-        if (isDuplicate === "true") {
-            // Afficher la modale
-            const duplicateModal = new bootstrap.Modal(document.getElementById('duplicateModal'));
-            duplicateModal.show();
-        }
-    });
-</script>
-
-
-<!-- Bootstrap CSS -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
-<!-- Bootstrap JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-
-
-
-
-
-
-
-
-
-using System;
-using System.Collections.Generic;
-
-#nullable disable
-
-namespace NotifApps.Models
-{
-    public partial class Criticite
-    {
-        public Criticite()
-        {
-            Incidents = new HashSet<Incident>(); //type specification
-        }
-
-        public int CriticiteId { get; set; }
-        public string CriticiteNom { get; set; }
-        public string? Couleur { get; set; }
-        public string? Descriptions { get; set; }
-
-        // new properties
-        public DateTime DateCreation { get; set; } = DateTime.Now; // defaultvalue system actual date
-        public DateTime? DateDesactivation { get; set; } // Nullable
-        public string Statut { get; set; } // Peut être "Actif" ou "Inactif"
-        public virtual ICollection<Incident> Incidents { get; set; }
-    }
-}
- 
-
-
-// GET: Criticite/Create
-        public IActionResult CreateCriticite()
-        {
-            var breadcrumb = GetBreadcrumb("CreateCriticite");
-            ViewBag.Breadcrumb = breadcrumb;
-            return View();
-        }
-
-        // POST: Criticite/Create
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> CreateCriticite(Criticite criticite)
-        {
-            if (ModelState.IsValid)
-            {
-
-                criticite.Statut = "Actif";
-                // Check if Descriptions is null or empty, and set it to "RAS" if so
-                if (string.IsNullOrEmpty(criticite.Descriptions))
-                {
-                    criticite.Descriptions = "RAS";
-                }
-
-                // La date de création est déjà initialisée dans le modèle, no more need adding it here
-                _context.Add(criticite);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
-            }
-            return View(criticite);
-        }
-
-voici mon criticité controller en haut, j'aimerais qu'en ajoutant une nouvelle criticité 
-je n'aimerais pas que des donnees qui existent déjà soient enregistrés deux fois, 
-lorsquon insere un enregistrement et lorsquon appii sur valider j'aimerais qu'on me propose un modal window
-pour signaller que ca existe deja et vouslez vous continuer avec l'enregistrement ???
-si oui ca enregistre si non ca annule 
-
-
-
 @model NotifApps.Models.Criticite
 
 @{
     ViewData["Title"] = "Créer Criticité";
 }
-
 
 <div class="container mt-5">
     <div class="card">
@@ -178,6 +59,34 @@ si oui ca enregistre si non ca annule
     </div>
 </div>
 
+<!-- Modal pour duplication -->
+@if (ViewBag.DuplicateCriticite != null && (bool)ViewBag.DuplicateCriticite)
+{
+    <div class="modal fade show" id="duplicateModal" tabindex="-1" aria-labelledby="duplicateModalLabel" aria-hidden="true" style="display: block;">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-white">
+                    <h5 class="modal-title" id="duplicateModalLabel">Doublon détecté</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Une criticité avec le même nom existe déjà. Voulez-vous continuer ?
+                </div>
+                <div class="modal-footer">
+                    <form asp-action="CreateCriticite">
+                        <input type="hidden" name="ForceSave" value="true" />
+                        <input asp-for="CriticiteNom" type="hidden" />
+                        <input asp-for="Couleur" type="hidden" />
+                        <input asp-for="Descriptions" type="hidden" />
+                        <button type="submit" class="btn btn-success">Oui, continuer</button>
+                    </form>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Non, annuler</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 <style>
     .card {
         border-top: 5px solid red;
@@ -198,8 +107,3 @@ si oui ca enregistre si non ca annule
         border-color: #6c757d;
     }
 </style>
-
-
-
-
-
