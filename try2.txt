@@ -1,4 +1,5 @@
-if (!ModelState.IsValid)
+// GET: Create
+public IActionResult Create()
 {
     ViewBag.HebergementOptions = new List<string> { "Centrale", "Locale" };
     ViewBag.AddressTypes = _context.AddressTypes.ToList();
@@ -8,27 +9,86 @@ if (!ModelState.IsValid)
         Text = s.StatutNom
     }).ToList();
 
-    return View(applicatif);
+    return View();
+}
+
+// POST: Create
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> Create(Applicatif applicatif, List<Address> addresses, bool confirmContinue = false)
+{
+    if (!ModelState.IsValid)
+    {
+        ViewBag.HebergementOptions = new List<string> { "Centrale", "Locale" };
+        ViewBag.AddressTypes = _context.AddressTypes.ToList();
+        ViewBag.StatutId = _context.StatutApplicatifs.Select(s => new SelectListItem
+        {
+            Value = s.StatutId.ToString(),
+            Text = s.StatutNom
+        }).ToList();
+
+        return View(applicatif);
+    }
+
+    // Vérification du nom d'applicatif
+    var existingApplicatif = await _context.Applicatifs.FirstOrDefaultAsync(a => a.AppNom == applicatif.AppNom);
+
+    if (existingApplicatif != null && !confirmContinue)
+    {
+        return Json(new
+        {
+            duplicateApplicatif = true,
+            message = $"L'applicatif '{applicatif.AppNom}' existe déjà. Voulez-vous continuer ?"
+        });
+    }
+
+    // Vérification des adresses
+    var duplicateAddresses = new List<string>();
+    foreach (var address in addresses)
+    {
+        if (await _context.Addresses.AnyAsync(a => a.Value == address.Value))
+        {
+            duplicateAddresses.Add(address.Value);
+        }
+    }
+
+    if (duplicateAddresses.Any() && !confirmContinue)
+    {
+        return Json(new
+        {
+            duplicateAddresses = true,
+            addresses = duplicateAddresses,
+            message = "Les adresses suivantes existent déjà : " + string.Join(", ", duplicateAddresses) + ". Voulez-vous continuer ?"
+        });
+    }
+
+    using (var transaction = await _context.Database.BeginTransactionAsync())
+    {
+        try
+        {
+            _context.Add(applicatif);
+            await _context.SaveChangesAsync();
+
+            foreach (var address in addresses)
+            {
+                address.AppId = applicatif.AppId;
+                _context.Addresses.Add(address);
+            }
+
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            return Json(new { success = true });
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync();
+            return Json(new { success = false, error = ex.Message });
+        }
+    }
 }
 
 
-An unhandled exception occurred while processing the request.
-NullReferenceException: Object reference not set to an instance of an object.
-AspNetCore.Views_Applicatif_Create.<ExecuteAsync>b__28_0() in Create.cshtml, line 30
-
-Stack Query Cookies Headers Routing
-NullReferenceException: Object reference not set to an instance of an object.
-AspNetCore.Views_Applicatif_Create.<ExecuteAsync>b__28_0() in Create.cshtml
-+
-                        @foreach (var hebergement in ViewBag.HebergementOptions)
-Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperExecutionContext.GetChildContentAsync(bool useCachedResult, HtmlEncoder encoder)
-Microsoft.AspNetCore.Mvc.TagHelpers.RenderAtEndOfFormTagHelper.ProcessAsync(TagHelperContext context, TagHelperOutput output)
-Microsoft.AspNetCore.Razor.Runtime.TagHelpers.TagHelperRunner.<RunAsync>g__Awaited|0_0(Task task, TagHelperExecutionContext executionContext, int i, int count)
-AspNetCore.Views_Applicatif_Create.ExecuteAsync() in Create.cshtml
-+
-    ViewData["Title"] = "Création d'applicatif";
-
-ma vue Create 
 
 @model NotifApps.Models.Applicatif
 
@@ -42,235 +102,104 @@ ma vue Create
             <h2>Création d'applicatif</h2>
         </div>
         <div class="card-body">
-            <form asp-action="Create" method="post">
+            <form id="applicatifForm" method="post">
                 <div class="form-group mb-3">
-                    <label asp-for="AppNom" class="control-label text-danger" hidden></label>
                     <label>Nom</label>
                     <input asp-for="AppNom" class="form-control" placeholder="Entrez un nom" />
+                    <span asp-validation-for="AppNom" class="text-danger"></span>
                 </div>
-                <div class="form-group mb-3">
 
-                    <label asp-for="Descriptif" class="form-label">Description</label>
-                    <textarea asp-for="Descriptif" class="form-control" placeholder="Ajoutez une description si nécessaire"></textarea>
+                <div class="form-group mb-3">
+                    <label>Description</label>
+                    <textarea asp-for="Descriptif" class="form-control" placeholder="Ajoutez une description"></textarea>
                     <span asp-validation-for="Descriptif" class="text-danger"></span>
                 </div>
 
                 <div class="form-group">
                     <label for="Hebergement">Lieu de déploiement</label>
                     <select name="Hebergement" class="form-control">
-                        <option value="">-- Sélectionnez--</option>
-                        @foreach (var hebergement in ViewBag.HebergementOptions)
+                        <option value="">-- Sélectionnez --</option>
+                        @if (ViewBag.HebergementOptions != null)
                         {
-                            <option value="@hebergement">@hebergement</option>
+                            foreach (var hebergement in ViewBag.HebergementOptions)
+                            {
+                                <option value="@hebergement">@hebergement</option>
+                            }
                         }
                     </select>
                 </div>
 
                 <div class="form-group mb-3">
-                    <label asp-for="LienWeb" class="control-label" hidden></label>
                     <label>Lien</label>
                     <input asp-for="LienWeb" class="form-control" placeholder="Entrez un lien" />
+                    <span asp-validation-for="LienWeb" class="text-danger"></span>
                 </div>
 
-                <div class="flex-fill">
-                    <label class="control-label">Statut <span class="text-danger">*</span></label>
-                    <div class="input-group">
-                        <select asp-for="StatutId" class="form-control" asp-items="ViewBag.StatutId"></select>
-                        <span class="input-group-text" style="cursor: pointer;">
-                            <i class="fas fa-chevron-down"></i>
-                        </span>
-                    </div>
+                <div class="form-group">
+                    <label>Statut</label>
+                    <select asp-for="StatutId" class="form-control" asp-items="ViewBag.StatutId">
+                        <option value="">-- Sélectionnez --</option>
+                    </select>
                     <span asp-validation-for="StatutId" class="text-danger"></span>
                 </div>
 
-                <!-- Address input (you can dynamically add multiple addresses) -->
                 <div id="address-container">
-                    <div class="form-group d-flex align-items-center justify-content-between">
-                        <div class="flex-fill me-2">
-                            <label class="text-black me-2">Type d'adresse</label>
-                            <select name="addresses[0].Type" class="form-control">
-                                <option value="" disabled selected>Sélectionnez....</option>
-                                @foreach (var type in ViewBag.AddressTypes)
-                                {
-                                    <option value="@type.TypeName">@type.TypeName</option>
-                                }
-                            </select>
-                        </div>
-                        <div class="flex-fill me-2">
-                            <label class="text-black me-2">Adresse</label>
-                            <input type="text" name="addresses[0].Value" class="form-control" placeholder="Saisissez une addresse" />
-                        </div>
-                        <div class="flex-fill me-2">
-                            <i type="button" id="addAddressBtn" class="fas fa-plus m-md-3 mx-5"></i>
-                        </div>
-                    </div>
+                    <!-- Addresses -->
                 </div>
 
-
-
-                <div class="form-group  d-flex justify-content-center">
-                    <button type="submit" class="btn btn-danger mx-3"><i class="fas fa-save " title="Créer"></i></button>
-                    <a asp-action="Index" class="btn btn-black mx-3"><i class="fas fa-arrow-circle-left " title="Annuler"></i></a>
+                <div class="form-group d-flex justify-content-center mt-3">
+                    <button type="button" class="btn btn-danger mx-2" onclick="submitForm(false)">Créer</button>
+                    <a asp-action="Index" class="btn btn-secondary mx-2">Annuler</a>
                 </div>
             </form>
         </div>
-
     </div>
 </div>
 
-@if (ViewBag.ExistingApplicatif != null && (bool)ViewBag.ExistingApplicatif)
-{
-    <div class="modal fade show" tabindex="-1" role="dialog" style="display: block;" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered" role="document">
-            <div class="modal-content">
-                <div class="modal-header bg-warning-subtle border-black">
-                    <h5 class="modal-title ">Duplication détectée</h5>
-                    <i class="fas fa-exclamation-triangle ms-4"></i>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close" onclick="closeModal()">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body bg-light-subtle">
-                    <p>L'applicatif <strong>@ViewBag.AppNom</strong> existe déjà. Voulez-vous continuer ?</p>
-                </div>
-                <div class="modal-footer bg-warning-subtle">
-
-                    <form asp-action="Create" method="post">
-                        <input type="hidden" name="AppNom" value="@ViewBag.AppNom" />
-                        <input type="hidden" name="forceCreate" value="true" />
-                        <button type="submit" class="btn btn-danger">Oui</button>
-                    </form>
-                    <button type="button" class="btn btn-black" onclick="closeModal()">Non</button>
-                </div>
+<!-- Modal -->
+<div class="modal fade" id="confirmationModal" tabindex="-1" aria-labelledby="confirmationModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmationModalLabel">Confirmation</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="modalMessage"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" onclick="submitForm(true)">Continuer</button>
             </div>
         </div>
     </div>
-}
-
-<script>
-    function closeModal() {
-        document.querySelector('.modal').style.display = 'none';
-    }
-</script>
+</div>
 
 @section Scripts {
     <script>
-        let addressIndex = 1;
-        document.getElementById('addAddressBtn').addEventListener('click', function () {
-            const container = document.getElementById('address-container');
-            const newAddressHtml = `
-                  <div class="form-group d-flex align-items-center justify-content-between">
-                     <div class="flex-fill me-2">
-                            <label class="text-black me-2">Type d'adresse</label>
-                    <select name="addresses[${addressIndex}].Type" class="form-control">
-                        <option value="" disabled selected>Sélectionnez....</option>
-                        @foreach (var type in ViewBag.AddressTypes)
-                        {
-                            <option value="@type.TypeName">@type.TypeName</option>
-                        }
-                    </select>
-                     </div>
-                    <div class="flex-fill me-2">
-                    <label class="text-black me-2">Adresse</label>
-                    <input type="text" name="addresses[${addressIndex}].Value" class="form-control" />
-                    </div>
-                </div>
-            `;
-            container.insertAdjacentHTML('beforeend', newAddressHtml);
-            addressIndex++;
-        });
+        async function submitForm(confirmContinue) {
+            const form = document.getElementById('applicatifForm');
+            const formData = new FormData(form);
+
+            formData.append('confirmContinue', confirmContinue);
+
+            const response = await fetch('@Url.Action("Create")', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.duplicateApplicatif || result.duplicateAddresses) {
+                const message = result.message;
+                document.getElementById('modalMessage').innerText = message;
+                const modal = new bootstrap.Modal(document.getElementById('confirmationModal'));
+                modal.show();
+            } else if (result.success) {
+                window.location.href = '@Url.Action("Index")';
+            } else {
+                alert('Erreur : ' + result.error);
+            }
+        }
     </script>
 }
-
-<style>
-    .card {
-        border-top-color: red;
-        border-top-style: solid;
-        border-top-width: 5px;
-        border-top-left-radius: 5px;
-        border-top-right-radius: 5px;
-    }
-</style>
- mon get Create et min post 
-
- // GEET CREATE
-        public IActionResult Create()
-        {
-            var breadcrumb = GetBreadcrumb("Create");
-            ViewBag.Breadcrumb = breadcrumb;
-            ViewBag.AddressTypes = _context.AddressTypes.ToList();
-
-            ViewBag.StatutId = _context.StatutApplicatifs.Select(s => new SelectListItem
-            {
-                Value = s.StatutId.ToString(),
-                Text = s.StatutNom
-            }).ToList();
-
-            ViewBag.HebergementOptions = new List<string> { "Centrale", "Locale" };
-
-            return View();
-        }
-
-        // CREATE POST
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(Applicatif applicatif, List<Address> addresses, bool forceCreate = false)
-        {
-            if (ModelState.IsValid)
-            {
-                using (var transaction = await _context.Database.BeginTransactionAsync())
-                {
-                    try
-                    {
-                        _context.Add(applicatif);
-                        await _context.SaveChangesAsync();
-
-                        // Vérification de l'existence d'une origine avec le même nom
-                        var existingApplicatif = await _context.Applicatifs
-                            .FirstOrDefaultAsync(c => c.AppNom == applicatif.AppNom);
-
-                        if (existingApplicatif != null && !forceCreate)
-                        {
-                            // Criticité existe déjà, demander confirmation
-                            ViewBag.ExistingApplicatif = true;
-                            ViewBag.AppNom = applicatif.AppNom;
-                            return View(applicatif);
-                        }
-
-                        // Handle addresses
-                        foreach (var address in addresses)
-                        {
-                            var existingAddress = await _context.Addresses
-                                .FirstOrDefaultAsync(a => a.Type == address.Type && a.Value == address.Value && a.AppId == applicatif.AppId);
-
-                            if (existingAddress == null)
-                            {
-                                address.AppId = applicatif.AppId; 
-                                _context.Addresses.Add(address);
-                            }
-                        }
-                        await _context.SaveChangesAsync();
-
-                        // Commit the transaction
-                        await transaction.CommitAsync();
-
-                        return RedirectToAction(nameof(Index));
-                    }
-                    catch (Exception)
-                    {
-                        await transaction.RollbackAsync();
-                        throw; 
-                    }
-                }
-            }
-            ViewBag.HebergementOptions = new List<string> { "Centrale", "Locale" };
-
-            ViewBag.AddressTypes = _context.AddressTypes.ToList();
-
-            ViewBag.StatutId = _context.StatutApplicatifs.Select(s => new SelectListItem
-            {
-                Value = s.StatutId.ToString(),
-                Text = s.StatutNom
-            }).ToList();
-            return View(applicatif);
-        }
