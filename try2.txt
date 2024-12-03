@@ -1,3 +1,17 @@
+if (!ModelState.IsValid)
+{
+    ViewBag.HebergementOptions = new List<string> { "Centrale", "Locale" };
+    ViewBag.AddressTypes = _context.AddressTypes.ToList();
+    ViewBag.StatutId = _context.StatutApplicatifs.Select(s => new SelectListItem
+    {
+        Value = s.StatutId.ToString(),
+        Text = s.StatutNom
+    }).ToList();
+
+    return View(applicatif);
+}
+
+
 An unhandled exception occurred while processing the request.
 NullReferenceException: Object reference not set to an instance of an object.
 AspNetCore.Views_Applicatif_Create.<ExecuteAsync>b__28_0() in Create.cshtml, line 30
