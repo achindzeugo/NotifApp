@@ -11,135 +11,143 @@
     <div class="card-header bg-black text-white text-center">
         <h4> Déclarer un Incident</h4>
     </div>
+
+    <!-- Stepper Navigation -->
+    <div class="stepper d-flex justify-content-between align-items-center mb-4">
+        <div class="step" id="step1">
+            <i class="fas fa-info-circle step-icon"></i>
+            <span class="step-label">Informations</span>
+        </div>
+        <div class="step" id="step2">
+            <i class="fas fa-exclamation-triangle step-icon"></i>
+            <span class="step-label">Détails</span>
+        </div>
+        <div class="step" id="step3">
+            <i class="fas fa-paper-plane step-icon"></i>
+            <span class="step-label">Soumission</span>
+        </div>
+    </div>
+
     <div class="card-body">
-
         <form asp-action="Create" id="incidentForm">
-            <!-- Stepper Navigation -->
-            <div class="stepper-navigation mb-4">
-                <button type="button" class="btn btn-outline-secondary step-button active" data-step="1">Étape 1</button>
-                <button type="button" class="btn btn-outline-secondary step-button" data-step="2">Étape 2</button>
-                <button type="button" class="btn btn-outline-secondary step-button" data-step="3">Étape 3</button>
-            </div>
-
-            <!-- Étape 1 -->
-            <div class="step-content" data-step="1">
-                <!-- TITRE -->
+            <!-- Step 1 -->
+            <div class="form-step" id="step-1">
                 <div class="form-group">
                     <label class="control-label">Titre <span class="text-danger">*</span></label>
                     <textarea asp-for="Titre" class="form-control" placeholder="Entrez un Titre"></textarea>
                     <span asp-validation-for="Titre" class="text-danger"></span>
                 </div>
-
-                <!-- APPLICATIF -->
                 <div class="form-group">
                     <label class="control-label">Applicatif <span class="text-danger">*</span></label>
                     <select asp-for="AppId" class="form-control" asp-items="ViewBag.AppId"></select>
                     <span asp-validation-for="AppId" class="text-danger"></span>
                 </div>
-            </div>
-
-            <!-- Étape 2 -->
-            <div class="step-content d-none" data-step="2">
-                <!-- CRITICITE -->
-                <div class="form-group">
-                    <label class="control-label">Criticité <span class="text-danger">*</span></label>
-                    <select asp-for="CriticiteId" class="form-control" asp-items="ViewBag.CriticiteId"></select>
-                    <span asp-validation-for="CriticiteId" class="text-danger"></span>
-                </div>
-
-                <!-- STATUT -->
-                <div class="form-group">
-                    <label class="control-label">Statut <span class="text-danger">*</span></label>
-                    <select asp-for="StatutId" class="form-control" asp-items="ViewBag.StatutId"></select>
-                    <span asp-validation-for="StatutId" class="text-danger"></span>
+                <div class="text-end mt-3">
+                    <button type="button" class="btn btn-primary" onclick="nextStep(2)">
+                        <i class="fas fa-arrow-right"></i> Suivant
+                    </button>
                 </div>
             </div>
 
-            <!-- Étape 3 -->
-            <div class="step-content d-none" data-step="3">
-                <!-- RÉFÉRENCE TICKET -->
-                <div class="form-group">
-                    <label class="control-label">Référence du ticket <span class="text-danger">*</span></label>
-                    <input asp-for="RefTicket" class="form-control" placeholder="Entrez une référence" />
-                    <span asp-validation-for="RefTicket" class="text-danger"></span>
+            <!-- Step 2 -->
+            <div class="form-step d-none" id="step-2">
+                <div class="form-group d-flex justify-content-between">
+                    <div class="flex-fill me-2">
+                        <label class="control-label">Criticité <span class="text-danger">*</span></label>
+                        <select asp-for="CriticiteId" class="form-control" asp-items="ViewBag.CriticiteId"></select>
+                        <span asp-validation-for="CriticiteId" class="text-danger"></span>
+                    </div>
+                    <div class="flex-fill">
+                        <label class="control-label">Statut <span class="text-danger">*</span></label>
+                        <select asp-for="StatutId" class="form-control" asp-items="ViewBag.StatutId"></select>
+                        <span asp-validation-for="StatutId" class="text-danger"></span>
+                    </div>
                 </div>
-
-                <!-- LIEN TICKET -->
-                <div class="form-group">
-                    <label class="control-label">Lien du ticket <span class="text-danger">*</span></label>
-                    <input asp-for="LienTicket" class="form-control" placeholder="Entrez un lien" />
-                    <span asp-validation-for="LienTicket" class="text-danger"></span>
+                <div class="form-group d-flex justify-content-between">
+                    <div class="flex-fill me-2">
+                        <label class="control-label">Référence du ticket <span class="text-danger">*</span></label>
+                        <input asp-for="RefTicket" class="form-control" placeholder="Entrez une référence" />
+                        <span asp-validation-for="RefTicket" class="text-danger"></span>
+                    </div>
+                    <div class="flex-fill">
+                        <label class="control-label">Lien du ticket <span class="text-danger">*</span></label>
+                        <input asp-for="LienTicket" class="form-control" placeholder="Entrez un lien" />
+                        <span asp-validation-for="LienTicket" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="text-end mt-3">
+                    <button type="button" class="btn btn-secondary me-2" onclick="prevStep(1)">
+                        <i class="fas fa-arrow-left"></i> Retour
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="nextStep(3)">
+                        <i class="fas fa-arrow-right"></i> Suivant
+                    </button>
                 </div>
             </div>
 
-            <!-- Navigation buttons -->
-            <div class="stepper-buttons text-center mt-4">
-                <button type="button" class="btn btn-secondary me-2 prev-button d-none">Précédent</button>
-                <button type="button" class="btn btn-primary me-2 next-button">Suivant</button>
-                <button type="submit" class="btn btn-danger d-none submit-button">Déclarer</button>
+            <!-- Step 3 -->
+            <div class="form-step d-none" id="step-3">
+                <div class="form-group">
+                    <label class="control-label">Impact <span class="text-danger">*</span></label>
+                    <textarea asp-for="Impact" class="form-control" placeholder="Saisissez un impact"></textarea>
+                    <span asp-validation-for="Impact" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label class="control-label">Origine <span class="text-danger">*</span></label>
+                    <input asp-for="OrigineNom" class="form-control" placeholder="Entrez une origine" />
+                    <span asp-validation-for="OrigineNom" class="text-danger"></span>
+                </div>
+                <div class="text-end mt-3">
+                    <button type="button" class="btn btn-secondary me-2" onclick="prevStep(2)">
+                        <i class="fas fa-arrow-left"></i> Retour
+                    </button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-save"></i> Déclarer
+                    </button>
+                </div>
             </div>
         </form>
     </div>
 </div>
 
-@section Scripts {
-    <script>
-        $(document).ready(function () {
-            let currentStep = 1;
-            const totalSteps = $(".step-content").length;
+<script>
+    function nextStep(step) {
+        document.querySelectorAll('.form-step').forEach(step => step.classList.add('d-none'));
+        document.getElementById(`step-${step}`).classList.remove('d-none');
+        updateStepper(step);
+    }
 
-            function showStep(step) {
-                $(".step-content").addClass("d-none").filter(`[data-step="${step}"]`).removeClass("d-none");
-                $(".step-button").removeClass("active").filter(`[data-step="${step}"]`).addClass("active");
+    function prevStep(step) {
+        document.querySelectorAll('.form-step').forEach(step => step.classList.add('d-none'));
+        document.getElementById(`step-${step}`).classList.remove('d-none');
+        updateStepper(step);
+    }
 
-                $(".prev-button").toggleClass("d-none", step === 1);
-                $(".next-button").toggleClass("d-none", step === totalSteps);
-                $(".submit-button").toggleClass("d-none", step !== totalSteps);
+    function updateStepper(step) {
+        document.querySelectorAll('.step-icon').forEach((icon, index) => {
+            if (index < step) {
+                icon.style.color = 'blue';
+            } else {
+                icon.style.color = 'black';
             }
-
-            $(".step-button").click(function () {
-                currentStep = $(this).data("step");
-                showStep(currentStep);
-            });
-
-            $(".next-button").click(function () {
-                if (currentStep < totalSteps) {
-                    currentStep++;
-                    showStep(currentStep);
-                }
-            });
-
-            $(".prev-button").click(function () {
-                if (currentStep > 1) {
-                    currentStep--;
-                    showStep(currentStep);
-                }
-            });
-
-            // Initialize the first step
-            showStep(currentStep);
         });
-    </script>
-}
-
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    }
+</script>
 
 <style>
-    .stepper-navigation .step-button {
-        margin-right: 5px;
-        border-radius: 5px;
+    .stepper {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 20px;
     }
-
-    .stepper-navigation .step-button.active {
-        background-color: #dc3545;
-        color: white;
+    .step {
+        text-align: center;
     }
-
-    .step-content {
-        display: none;
+    .step-icon {
+        font-size: 24px;
+        color: black;
     }
-
-    .step-content:not(.d-none) {
-        display: block;
+    .step-label {
+        font-size: 14px;
     }
 </style>
