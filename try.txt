@@ -1,4 +1,52 @@
- //GET Equipe To rattach user to it
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> SaveEquipe(int utilisateurId, int equipeId)
+{
+    if (utilisateurId > 0 && equipeId > 0)
+    {
+        // Vérifier si la relation existe déjà
+        var existe = _context.EquipeUtilisateurs
+            .Any(eu => eu.UtilisateursId == utilisateurId && eu.EquipeId == equipeId);
+
+        if (existe)
+        {
+            // Ajouter un message d'erreur dans TempData
+            TempData["ErrorMessage"] = "Cet utilisateur est déjà rattaché à cette équipe.";
+            return RedirectToAction(nameof(AttachEquipe), new { id = utilisateurId });
+        }
+
+        // Ajouter la relation
+        var equipeUtilisateur = new EquipeUtilisateur
+        {
+            UtilisateursId = utilisateurId,
+            EquipeId = equipeId
+        };
+
+        _context.Add(equipeUtilisateur);
+        await _context.SaveChangesAsync();
+
+        return RedirectToAction(nameof(Index));
+    }
+
+    return View();
+}
+
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger" role="alert">
+        @TempData["ErrorMessage"]
+    </div>
+}
+
+
+
+
+
+
+
+
+//GET Equipe To rattach user to it
         public IActionResult AttachEquipe(int id)
         {
             var breadcrumb = GetBreadcrumb("AttachEquipe");
