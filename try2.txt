@@ -23,6 +23,38 @@ public async Task<IActionResult> ToggleStatus(int id)
 }
 
 
+<script>
+    document.querySelectorAll('.toggle-status').forEach(toggle => {
+        toggle.addEventListener('change', function () {
+            const criticiteId = this.getAttribute('data-id');
+            const isChecked = this.checked;
+
+            fetch('/Criticite/ToggleStatus', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('input[name="__RequestVerificationToken"]').value
+                },
+                body: JSON.stringify({ id: criticiteId })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                    } else {
+                        alert('Erreur: ' + data.message);
+                        this.checked = !isChecked; // Revert the toggle on failure
+                    }
+                })
+                .catch(error => {
+                    alert('Une erreur est survenue.');
+                    this.checked = !isChecked; // Revert the toggle on failure
+                });
+        });
+    });
+</script>
+
+
 
 
 <td>
