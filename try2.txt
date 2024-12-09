@@ -1,3 +1,102 @@
+[HttpPost]
+public JsonResult CreateCriticite([FromBody] Criticite criticite)
+{
+    if (criticite == null || string.IsNullOrWhiteSpace(criticite.CriticiteNom))
+    {
+        return Json(new { success = false, message = "Données invalides." });
+    }
+
+    // Vérifiez les doublons
+    var exists = _context.Criticites.Any(c => c.CriticiteNom == criticite.CriticiteNom);
+    if (exists)
+    {
+        return Json(new { success = false, message = "Une criticité avec ce nom existe déjà." });
+    }
+
+    // Ajoutez la criticité
+    _context.Criticites.Add(criticite);
+    _context.SaveChanges();
+
+    return Json(new { success = true, message = "Criticité ajoutée avec succès !" });
+}
+
+
+[HttpPost]
+public JsonResult CheckDuplicate([FromBody] Criticite criticite)
+{
+    var exists = _context.Criticites.Any(c => c.CriticiteNom == criticite.CriticiteNom);
+    return Json(new { exists });
+}
+
+
+document.getElementById("saveCriticiteBtn").addEventListener("click", function () {
+    // Récupérer les données du formulaire
+    var formData = {
+        CriticiteNom: document.getElementById("CriticiteNom").value.trim(),
+        Couleur: document.getElementById("Couleur").value,
+        Descriptions: document.getElementById("Descriptions").value.trim()
+    };
+
+    if (!formData.CriticiteNom) {
+        alert("Veuillez entrer un nom pour la criticité.");
+        return;
+    }
+
+    // Vérification des doublons
+    fetch('/Criticite/CheckDuplicate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ CriticiteNom: formData.CriticiteNom })
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.exists) {
+                alert("Une criticité avec ce nom existe déjà !");
+            } else {
+                // Envoi du formulaire
+                fetch('/Criticite/CreateCriticite', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                })
+                    .then(response => response.json())
+                    .then(result => {
+                        if (result.success) {
+                            alert(result.message);
+                            location.reload();
+                        } else {
+                            alert(result.message || "Erreur lors de la création de la criticité !");
+                        }
+                    })
+                    .catch(error => console.error("Erreur:", error));
+            }
+        })
+        .catch(error => console.error("Erreur lors de la vérification des doublons:", error));
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 @model IEnumerable<NotifApps.Models.Criticite>
 
 <h2>Criticités</h2>
