@@ -1,17 +1,15 @@
 [HttpPost]
 public async Task<IActionResult> ToggleStatus(int id)
 {
+    Console.WriteLine($"ToggleStatus appelé pour Criticité ID: {id}"); // Log de test
+
     var criticite = await _context.Criticites.FindAsync(id);
     if (criticite == null)
     {
         return NotFound(new { success = false, message = "Criticité introuvable." });
     }
 
-    // Inversion du statut
     criticite.Statut = criticite.Statut == "Actif" ? "Inactif" : "Actif";
-
-    // Mettre à jour la date de désactivation si nécessaire
-    criticite.DateDesactivation = criticite.Statut == "Inactif" ? DateTime.Now : (DateTime?)null;
 
     await _context.SaveChangesAsync();
 
@@ -22,38 +20,46 @@ public async Task<IActionResult> ToggleStatus(int id)
     });
 }
 
-
 <script>
-    document.querySelectorAll('.toggle-status').forEach(toggle => {
-        toggle.addEventListener('change', function () {
-            const criticiteId = this.getAttribute('data-id');
-            const isChecked = this.checked;
+   document.querySelectorAll('.toggle-status').forEach(toggle => {
+    toggle.addEventListener('change', function () {
+        const criticiteId = this.getAttribute('data-id');
+        const isChecked = this.checked;
 
-            fetch('/Criticite/ToggleStatus', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('input[name="__RequestVerificationToken"]').value
-                },
-                body: JSON.stringify({ id: criticiteId })
-            })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        alert(data.message);
-                    } else {
-                        alert('Erreur: ' + data.message);
-                        this.checked = !isChecked; // Revert the toggle on failure
-                    }
-                })
-                .catch(error => {
-                    alert('Une erreur est survenue.');
+        console.log(`Envoi de la requête pour ID: ${criticiteId}, statut: ${isChecked}`);
+
+        fetch('/Criticite/ToggleStatus', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('input[name="__RequestVerificationToken"]').value
+            },
+            body: JSON.stringify({ id: criticiteId })
+        })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data); // Log pour voir la réponse
+                if (data.success) {
+                    alert(data.message);
+                } else {
+                    alert('Erreur: ' + data.message);
                     this.checked = !isChecked; // Revert the toggle on failure
-                });
-        });
+                }
+            })
+            .catch(error => {
+                console.error('Erreur dans la requête:', error);
+                this.checked = !isChecked; // Revert the toggle on failure
+            });
     });
+});
+
 </script>
 
+<input name="__RequestVerificationToken" type="hidden" value="@Antiforgery.GetAndStoreTokens(HttpContext).RequestToken" />
+
+var criticite = await _context.Criticites.FindAsync(1); // ID d'exemple
+criticite.Statut = "Inactif";
+await _context.SaveChangesAsync();
 
 
 
