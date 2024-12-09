@@ -1,3 +1,30 @@
+[HttpPost]
+public async Task<IActionResult> ToggleStatus(int id)
+{
+    var criticite = await _context.Criticites.FindAsync(id);
+    if (criticite == null)
+    {
+        return NotFound(new { success = false, message = "Criticité introuvable." });
+    }
+
+    // Inversion du statut
+    criticite.Statut = criticite.Statut == "Actif" ? "Inactif" : "Actif";
+
+    // Mettre à jour la date de désactivation si nécessaire
+    criticite.DateDesactivation = criticite.Statut == "Inactif" ? DateTime.Now : (DateTime?)null;
+
+    await _context.SaveChangesAsync();
+
+    return Json(new
+    {
+        success = true,
+        message = $"Vous venez de {(criticite.Statut == "Actif" ? "activer" : "désactiver")} la criticité {criticite.CriticiteNom}."
+    });
+}
+
+
+
+
 <td>
     <label class="switch">
         <input type="checkbox" 
