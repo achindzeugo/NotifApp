@@ -1,204 +1,69 @@
-@model NotifApps.Models.Incident
-
-@{
-    ViewData["Title"] = "Create";
-}
-
-<h1>Déclarer un Incident</h1>
-<hr />
-
-<div class="card card">
-    <div class="card-header bg-black text-white text-center">
-        <h4> Déclarer un Incident</h4>
-
-    </div>
-    <div class="card-body">
-
-        <!--TITRE-->
-        <form asp-action="Create">
-            <div class="form-group">
-                <label class="control-label">Titre <span class="text-danger">*</span></label>
-                <textarea asp-for="Titre" class="form-control" placeholder="Entrez un Titre"></textarea>
-                <span asp-validation-for="Titre" class="text-danger"></span>
-            </div>
-
-            <!--APPLICATIF-->
-            <div class="form-group flex-fill me-2">
-                <label class="control-label">Applicatif <span class="text-danger">*</span></label>
-                <div class="input-group">
-                    <select asp-for="AppId" class="form-control" asp-items="ViewBag.AppId"></select>
-                    <span class="input-group-text" style="cursor: pointer;">
-                        <i class="fas fa-chevron-down"></i>
-                    </span>
-                </div>
-                <span asp-validation-for="AppId" class="text-danger"></span>
-            </div>
-            <div class="form-group d-flex justify-content-between">
-                <!--CRITICITE-->
-                <div class="flex-fill me-2">
-                    <label class="control-label">Criticité <span class="text-danger">*</span></label>
-                    <div class="input-group">
-                        <select asp-for="CriticiteId" class="form-control" asp-items="ViewBag.CriticiteId"></select>
-                        <span class="input-group-text" style="cursor: pointer;">
-                            <i class="fas fa-chevron-down"></i>
-                        </span>
-                    </div>
-                    <span asp-validation-for="CriticiteId" class="text-danger"></span>
-                </div>
-
-                <!--STATUT-->
-                <div class="flex-fill">
-                    <label class="control-label">Statut <span class="text-danger">*</span></label>
-                    <div class="input-group">
-                        <select asp-for="StatutId" class="form-control" asp-items="ViewBag.StatutId"></select>
-                        <span class="input-group-text" style="cursor: pointer;">
-                            <i class="fas fa-chevron-down"></i>
-                        </span>
-                    </div>
-                    <span asp-validation-for="StatutId" class="text-danger"></span>
-                </div>
-            </div>
-
-
-            <!--REFERENCE TICKET-->
-            <div class="form-group d-flex justify-content-between">
-                <div class="flex-fill me-2">
-                    <label class="control-label">Référence du ticket <span class="text-danger">*</span></label>
-                    <input asp-for="RefTicket" class="form-control" placeholder="Entrez une reference" />
-                    <span asp-validation-for="RefTicket" class="text-danger"></span>
-                </div>
-
-                <!--LIEN TICKET-->
-                <div class="flex-fill">
-                    <label class="control-label">Lien du ticket <span class="text-danger">*</span></label>
-                    <input asp-for="LienTicket" class="form-control" placeholder="Entrez un lien" />
-                    <span asp-validation-for="LienTicket" class="text-danger"></span>
-                </div>
-            </div>
-
-            <!--PRISE EN CHARGE-->
-            <div class="form-group flex-fill me">
-                <label class="control-label">Equipe en charge <span class="text-danger">*</span></label>
-                <div class="input-group">
-                    <select asp-for="EquipeId" class="form-control" asp-items="ViewBag.EquipeId"></select>
-                    <span class="input-group-text" style="cursor: pointer;">
-                        <i class="fas fa-chevron-down"></i>
-                    </span>
-                </div>
-                <span asp-validation-for="EquipeId" class="text-danger"></span>
-            </div>
-
-            <!--DEBUT IMPACT-->
-            <div class="form-group d-flex justify-content-between">
-                <div class="flex-fill me-2">
-                    <label class="control-label">Début d'impact <span class="text-danger">*</span></label>
-                    <input asp-for="Debutdimpact" class="form-control" type="datetime-local" placeholder="Selectionnez une date" />
-                    <span asp-validation-for="Debutdimpact" class="text-danger"></span>
-                </div>
-
-                <!--DATE DE PRISE EN CHARGE-->
-                <div class="flex-fill">
-                    <label class="control-label">Date de prise en charge <span class="text-danger">*</span></label>
-                    <input asp-for="Datepriseencharge" class="form-control" type="datetime-local" placeholder="Selectionnez une date" />
-                    <span asp-validation-for="Datepriseencharge" class="text-danger"></span>
-                </div>
-            </div>
-            <!--DESCRIPTION-->
-            <div class="form-group mb-3">
-
-                <label asp-for="Description" class="form-label">Description</label>
-                <textarea asp-for="Description" class="form-control" placeholder="Ajoutez une description"></textarea>
-                <span asp-validation-for="Description" class="text-danger"></span>
-            </div>
+<td>
+    <label class="switch">
+        <input type="checkbox" 
+               class="toggle-status" 
+               data-id="@criticite.CriticiteId" 
+               @(criticite.Statut == "Actif" ? "checked" : "")>
+        <span class="slider round"></span>
+    </label>
+</td>
 
 
 
+<td>
+    <label class="switch">
+        <input type="checkbox" 
+               class="toggle-status" 
+               data-id="@criticite.CriticiteId" 
+               @(criticite.Statut == "Actif" ? "checked" : "")>
+        <span class="slider round"></span>
+    </label>
+</td>
 
-            <!--ORIGINE-->
-            <div class="form-group">
-                <label class="control-label">Origine <span class="text-danger">*</span></label>
-                <div class="input-group">
-                    <input type="text" id="OrigineNom" name="OrigineNom" class="form-control" placeholder="Saisir ou selectionnez une origine" />
-                    <div class="input-group-append">
-                        <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Sélectionner</button>
-                        <div class="dropdown-menu">
-                            @foreach (var origine in ViewBag.OrigineId)
-                            {
-                                <a class="dropdown-item" href="#" onclick="selectOrigine('@origine.Text')">@origine.Text</a>
-                            }
-                        </div>
-                    </div>
-                </div>
-                @if (ViewData.ModelState["OrigineNom"] != null)
-                {
-                    <span class="text-danger">@ViewData.ModelState["OrigineNom"].Errors.FirstOrDefault()?.ErrorMessage</span>
-                }
-            </div>
-
-
-
-            <!--IMPACT-->
-            <div class="form-group">
-                <label class="control-label">Impact <span class="text-danger">*</span></label>
-                <textarea asp-for="Impact" class="form-control" placeholder="Saisissez un impact"></textarea>
-                <span asp-validation-for="Impact" class="text-danger"></span>
-            </div>
-
-
-
-
-            <!--<span class="caret"></span>
-            <div id="plansContainer"></div>
-            <button type="button" id="addPlanButton">Ajouter un Plan d'Action</button>
-               -->
-            <!--DESTINATAIRE SUPPLEMENTAIRE-->
-            <div class="form-group">
-                <label class="control-label">Destinataire</label>
-                <input asp-for="DestinataireSup" class="form-control" placeholder="ajoutez un destinataire" />
-                <span asp-validation-for="DestinataireSup" class="text-danger"></span>
-            </div>
-
-            <!--bouttons de soumission -->
-            <div class="text-center mt-4">
-                <button type="submit" class="btn btn-danger me-2">
-                    <i class="fas fa-save"></i> Déclarer
-                </button>
-                <a asp-action="Index" class="btn btn-black">
-                    <i class="fas fa-ban"></i> Annuler
-                </a>
-            </div>
-        </form>
-    </div>
-</div>
-
-<div class="mt-3">
-    <a asp-action="Index">Back to List</a>
-</div>
-
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
-@section Scripts {
-    <script>
-        function selectOrigine(origineNom) {
-            $('#OrigineNom').val(origineNom);
-        }
-    </script>
-}
-
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 
 <style>
-    .card {
-        border-top-color: red;
-        border-top-style: solid;
-        border-top-width: 5px;
-        border-top-left-radius: 5px;
-        border-top-right-radius: 5px;
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 34px;
+        height: 20px;
+    }
+
+    .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: .4s;
+        border-radius: 34px;
+    }
+
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 14px;
+        width: 14px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+
+    input:checked + .slider {
+        background-color: #4CAF50;
+    }
+
+    input:checked + .slider:before {
+        transform: translateX(14px);
     }
 </style>
-
-
-voici mon formumaire de création pour declarer un incident, j'aimerais que vous faites de ca un formulaire multiform stepper, 
-avec des etapes 
-ne changez pas mon code 
-rendez le juste comme je dis mais ca doit toujours déclarer les incidents sans probleme apres votre modification 
