@@ -1,4 +1,5 @@
 
+
 @model IEnumerable<NotifApps.Models.Criticite>
 
 <h2>Criticités</h2>
@@ -25,99 +26,95 @@
     <tbody>
         @foreach (var criticite in Model)
         {
-        <tr>
-            <td>@criticite.CriticiteNom</td>
-            <td>
-                <span class="badge text-black" style="background-color: @(criticite.Couleur ?? "gray");">
-                    @(criticite.CriticiteNom?.ToUpper() ?? "N/A")
-                </span>
-            </td>
-            <td>
-                @if (criticite.Descriptions.Length > 50)
-                {
-                    @criticite.Descriptions.Substring(0, 50)
-                }
-                else
-                {
-                    @criticite.Descriptions
-                }
-            </td>
-            <td>
-                <label class="switch">
-                    <input type="checkbox" class="toggle-status" data-id="@criticite.CriticiteId" 
-                           @(criticite.Statut == "Actif" ? "checked" : "") />
-                    <span class="slider"></span>
-                </label>
-            </td>
-            <td>
-                <a asp-action="Details" asp-route-id="@criticite.CriticiteId" class="btn btn-black" title="Détails">
-                    <i class="fas fa-list"></i>
-                </a>
-                <a asp-action="EditCriticite" asp-route-id="@criticite.CriticiteId" class="btn btn-warning" title="Modifier">
-                    <i class="fas fa-edit"></i>
-                </a>
-            </td>
-        </tr>
+            <tr>
+                <td>@criticite.CriticiteNom</td>
+                <td>
+                    <span class="badge text-black" style="background-color: @(criticite.Couleur ?? "gray");">
+                        @(criticite.CriticiteNom?.ToUpper() ?? "N/A")
+                    </span>
+                </td>
+                <td>
+                    @if (criticite.Descriptions.Length > 50)
+                    {
+                        @criticite.Descriptions.Substring(0, 50)
+                    }
+                    else
+                    {
+                        @criticite.Descriptions
+                    }
+                </td>
+                <td>
+                    <form method="post" asp-action="ToggleStatus">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@criticite.CriticiteId" />
+                        <label class="switch">
+                            <input type="checkbox"
+                                   name="statut"
+                                   onchange="this.form.submit()"
+                                   @(criticite.Statut == "Actif" ? "checked" : "") />
+                            <span class="slider"></span>
+                        </label>
+                    </form>
+                </td>
+                <td>
+                    <a asp-action="Details" asp-route-id="@criticite.CriticiteId" class="btn btn-black" title="Détails">
+                        <i class="fas fa-list"></i>
+                    </a>
+                    <a asp-action="EditCriticite" asp-route-id="@criticite.CriticiteId" class="btn btn-warning" title="Modifier">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                </td>
+            </tr>
         }
     </tbody>
 </table>
 
-<!-- Champ caché pour le token CSRF -->
-<input type="hidden" name="__RequestVerificationToken" value="@Antiforgery.GetAndStoreTokens(HttpContext).RequestToken" />
-
 <style>
-    .table {
-        border-top-color: red;
-        border-top-style: solid;
-        border-top-width: 5px;
-        border-top-left-radius: 5px;
-        border-top-right-radius: 5px;
-    }
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 34px;
+    height: 20px;
+}
 
-    .switch {
-        position: relative;
-        display: inline-block;
-        width: 34px;
-        height: 20px;
-    }
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
 
-    .switch input {
-        opacity: 0;
-        width: 0;
-        height: 0;
-    }
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 34px;
+}
 
-    .slider {
-        position: absolute;
-        cursor: pointer;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: #ccc;
-        transition: .4s;
-        border-radius: 34px;
-    }
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 14px;
+    width: 14px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
 
-    .slider:before {
-        position: absolute;
-        content: "";
-        height: 14px;
-        width: 14px;
-        left: 3px;
-        bottom: 3px;
-        background-color: white;
-        transition: .4s;
-        border-radius: 50%;
-    }
+input:checked + .slider {
+    background-color: #4CAF50;
+}
 
-    input:checked + .slider {
-        background-color: #4CAF50;
-    }
+input:checked + .slider:before {
+    transform: translateX(14px);
+}
 
-    input:checked + .slider:before {
-        transform: translateX(14px);
-    }
 </style>
 
 <script>
@@ -135,216 +132,18 @@
         });
     });
 
-    document.querySelectorAll('.toggle-status').forEach(toggle => {
-        toggle.addEventListener('change', function () {
-            const criticiteId = this.getAttribute('data-id');
-            const isChecked = this.checked;
-            const csrfToken = document.querySelector('input[name="__RequestVerificationToken"]').value;
-
-            fetch('/Criticite/ToggleStatus', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken
-                },
-                body: JSON.stringify({ id: criticiteId })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (!data.success) {
-                    alert('Erreur: ' + data.message);
-                    this.checked = !isChecked; // Réinitialiser l'état du toggle en cas d'échec
-                }
-            })
-            .catch(error => {
-                console.error('Erreur dans la requête:', error);
-                this.checked = !isChecked; // Réinitialiser l'état du toggle en cas d'échec
-            });
-        });
-    });
 </script>
-
-=======================================================================
-
-@model IEnumerable<NotifApps.Models.Criticite>
-
-<h2>Criticités</h2>
-<hr />
-<p>
-    <a asp-action="CreateCriticite" class="btn btn-black">Ajouter Criticité</a>
-</p>
-
-<div>
-    <input type="text" id="searchInput" class="form-control" placeholder="Rechercher par criticité...">
-    <button type="submit" class="btn btn-black mt-2 fas fa-search"></button>
-
-</div>
-<br />
-<table class="table table">
-    <thead>
-        <tr>
-            <th class="bg-black text-white">Nom de Criticité</th>
-            <th class="bg-black text-white">BADGE</th>
-            <th class="bg-black text-white">Descriptions</th>
-            <th class="bg-black text-white">Statut</th>
-            <th class="bg-black text-white">Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var criticite in Model)
-        {
-        <tr>
-            <td>@criticite.CriticiteNom</td>
-            <td>
-                <span class="badge text-black" style="background-color: @(criticite.Couleur ?? "gray");">
-                    @(criticite.CriticiteNom?.ToUpper() ?? "N/A")
-                </span>
-            </td>
-            <td>
-                @if (criticite.Descriptions.Length > 50)
-                {
-                    @criticite.Descriptions.Substring(0, 50)
-                }
-                else
-                {
-                    @criticite.Descriptions
-                }
-            </td>
-            <td>
-                @if (criticite.Statut == "Actif")
-                {
-                    <span class="badge bg-success">Actif</span>
-                }
-                else
-                {
-                    <span class="badge bg-secondary">Inactif</span>
-                }
-            </td>
-
-            <td>
-                <a asp-action="Details" asp-route-id="@criticite.CriticiteId" class="btn btn-black" title="Détails">
-                    <i class="fas fa-list"></i>
-                </a>
-                <a asp-action="EditCriticite" asp-route-id="@criticite.CriticiteId" class="btn btn-warning" title="Modifier">
-                    <i class="fas fa-edit"></i>
-                </a>
-                <!--<a asp-action="DeleteCriticite" asp-route-id="@criticite.CriticiteId" class="btn btn-danger" title="Supprimer">
-         <i class="fas fa-trash"></i>
-     </a>-->
-            </td>
-        </tr>
-        }
-    </tbody>
-</table>
-
-<style>
-    .table {
-        border-top-color: red;
-        border-top-style: solid;
-        border-top-width: 5px;
-        border-top-left-radius: 5px;
-        border-top-right-radius: 5px;
-    }
-</style>
-
-<style>
-    .switch {
-        position: relative;
-        display: inline-block;
-        width: 34px;
-        height: 20px;
-    }
-
-    .switch input {
-        opacity: 0;
-        width: 0;
-        height: 0;
-    }
-
-    .slider {
-        position: absolute;
-        cursor: pointer;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: #ccc;
-        transition: .4s;
-        border-radius: 34px;
-    }
-
-    .slider:before {
-        position: absolute;
-        content: "";
-        height: 14px;
-        width: 14px;
-        left: 3px;
-        bottom: 3px;
-        background-color: white;
-        transition: .4s;
-        border-radius: 50%;
-    }
-
-    input:checked + .slider {
-        background-color: #4CAF50;
-    }
-
-    input:checked + .slider:before {
-        transform: translateX(14px);
-    }
-</style>                                                                                                                        
-
-<script>
-    document.getElementById('searchInput').addEventListener('keyup', function() {
-        var searchString = this.value.toLowerCase();
-        var rows = document.querySelectorAll('tbody tr');
-
-        rows.forEach(function(row) {
-            var appName = row.querySelector('td:first-child').textContent.toLowerCase();
-            if (appName.includes(searchString)) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
+<script type="text/javascript">
+        document.addEventListener("DOMContentLoaded", function() {
+            var message = '@TempData["Message"]';
+            if (message) {
+                alert(message);
             }
         });
-    });
-</script>
+</script>                                                                                    
 
-<script>
-   document.querySelectorAll('.toggle-status').forEach(toggle => {
-    toggle.addEventListener('change', function () {
-        const criticiteId = this.getAttribute('data-id');
-        const isChecked = this.checked;
 
-        console.log(`Envoi de la requête pour ID: ${criticiteId}, statut: ${isChecked}`);
-
-        fetch('/Criticite/ToggleStatus', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('input[name="__RequestVerificationToken"]').value
-            },
-            body: JSON.stringify({ id: criticiteId })
-        })
-            .then(response => response.json())
-            .then(data => {
-                console.log(data); // Log pour voir la réponse
-                if (data.success) {
-                    alert(data.message);
-                } else {
-                    alert('Erreur: ' + data.message);
-                    this.checked = !isChecked; // Revert the toggle on failure
-                }
-            })
-            .catch(error => {
-                console.error('Erreur dans la requête:', error);
-                this.checked = !isChecked; // Revert the toggle on failure
-            });
-    });
-});
-
-</script>                                                                                       
-
+voici ma vue create criticite
 @model NotifApps.Models.Criticite
 
 @{
@@ -463,8 +262,6 @@
     }
 </style>
 
-criticite conroller 
-
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using NotifApps.Models;
@@ -538,28 +335,38 @@ namespace NotifApps.Controllers
             return View(criticites);
         }
 
-[HttpPost]
-public async Task<IActionResult> ToggleStatus(int id)
-{
-    Console.WriteLine($"ToggleStatus appelé pour Criticité ID: {id}"); // Log de test
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult ToggleStatus(int id)
+        {
+            // Récupérez la criticité à partir de la base de données
+            var criticite = _context.Criticites.FirstOrDefault(c => c.CriticiteId == id);
 
-    var criticite = await _context.Criticites.FindAsync(id);
-    if (criticite == null)
-    {
-        return NotFound(new { success = false, message = "Criticité introuvable." });
-    }
+            string message = string.Empty;
 
-    criticite.Statut = criticite.Statut == "Actif" ? "Inactif" : "Actif";
+            if (criticite != null)
+            {
+                if (criticite.Statut == "Actif")
+                {
+                    // Change le statut à Inactif et ajoute la date de désactivation
+                    criticite.Statut = "Inactif";
+                    criticite.DateDesactivation = DateTime.Now;
+                    message = $"Vous venez de desactiver le statut de {criticite.CriticiteNom}.";
+                }
+                else
+                {
+                    // Change le statut à Actif et retire la date de désactivation
+                    criticite.Statut = "Actif";
+                    criticite.DateDesactivation = null;
+                    message = $"Vous venez dactiver le statut de {criticite.CriticiteNom}.";
+                }
 
-    await _context.SaveChangesAsync();
-
-    return Json(new
-    {
-        success = true,
-        message = $"Vous venez de {(criticite.Statut == "Actif" ? "activer" : "désactiver")} la criticité {criticite.CriticiteNom}."
-    });
-}
-
+       
+                _context.SaveChanges();
+            }
+            TempData["Message"] = message;
+            return RedirectToAction(nameof(Index));
+        }
 
         // GET: Criticite/Create
         public IActionResult CreateCriticite()
