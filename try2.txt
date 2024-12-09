@@ -1,64 +1,27 @@
-@model IEnumerable<NotifApps.Models.Criticite>
-
-<h2>Criticités</h2>
-<hr />
-
-<!-- Bouton pour ouvrir le modal -->
 <p>
-    <button class="btn btn-black" onclick="openCreateModal()">Ajouter Criticité</button>
+    <button class="btn btn-black" data-bs-toggle="modal" data-bs-target="#createCriticiteModal">
+        Ajouter Criticité
+    </button>
 </p>
 
-<!-- Liste des criticités -->
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>Nom</th>
-            <th>Badge</th>
-            <th>Description</th>
-            <th>Statut</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var criticite in Model)
-        {
-            <tr>
-                <td>@criticite.CriticiteNom</td>
-                <td>
-                    <span style="background-color: @criticite.Couleur; padding: 5px 10px; border-radius: 5px; color: white;">
-                        @criticite.Couleur
-                    </span>
-                </td>
-                <td>@criticite.Descriptions</td>
-                <td>@criticite.Statut</td>
-            </tr>
-        }
-    </tbody>
-</table>
 
-<!-- Modal pour créer une criticité -->
-<div id="createCriticiteModal" class="modal" tabindex="-1" role="dialog">
-    <div class="modal-dialog">
+<div class="modal fade" id="createCriticiteModal" tabindex="-1" aria-labelledby="createCriticiteLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-black text-white">
-                <h4 class="modal-title">Créer une Criticité</h4>
-                <button type="button" class="close" onclick="closeCreateModal()">
-                    <span>&times;</span>
-                </button>
+                <h5 class="modal-title" id="createCriticiteLabel">Créer une Criticité</h5>
+                <button type="button" class="btn-close text-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <!-- Formulaire de création -->
-                <form asp-action="CreateCriticite" method="post">
-                    <!-- Nom de la Criticité -->
+                <form id="createCriticiteForm">
                     <div class="form-group">
-                        <label asp-for="CriticiteNom" class="form-label">Nom de la Criticité</label>
-                        <input asp-for="CriticiteNom" class="form-control" placeholder="Entrez le nom de la criticité" />
-                        <span asp-validation-for="CriticiteNom" class="text-danger"></span>
+                        <label for="CriticiteNom" class="form-label">Nom de la Criticité</label>
+                        <input id="CriticiteNom" name="CriticiteNom" class="form-control" placeholder="Entrez le nom de la criticité" />
+                        <span class="text-danger" id="criticiteNomError"></span>
                     </div>
-
-                    <!-- Couleur -->
                     <div class="form-group">
-                        <label asp-for="Couleur" class="form-label">Couleur</label>
-                        <select asp-for="Couleur" class="form-control">
+                        <label for="Couleur" class="form-label">Couleur</label>
+                        <select id="Couleur" name="Couleur" class="form-control">
                             <option value="">-- Sélectionnez une couleur --</option>
                             <option value="red">Rouge</option>
                             <option value="orange">Orange</option>
@@ -72,259 +35,70 @@
                             <option value="cyan">Cyan</option>
                             <option value="lime">Lime</option>
                         </select>
-                        <span asp-validation-for="Couleur" class="text-danger"></span>
+                        <span class="text-danger" id="couleurError"></span>
                     </div>
-
-                    <!-- Description -->
                     <div class="form-group">
-                        <label asp-for="Descriptions" class="form-label">Description</label>
-                        <textarea asp-for="Descriptions" class="form-control" placeholder="Ajoutez une description si nécessaire"></textarea>
-                        <span asp-validation-for="Descriptions" class="text-danger"></span>
-                    </div>
-
-                    <!-- Statut -->
-                    <div class="form-group">
-                        <label asp-for="Statut" class="form-label">Statut</label>
-                        <select asp-for="Statut" class="form-control">
-                            <option value="Actif">Actif</option>
-                            <option value="Inactif">Inactif</option>
-                        </select>
-                        <span asp-validation-for="Statut" class="text-danger"></span>
-                    </div>
-
-                    <!-- Boutons d'action -->
-                    <div class="text-center mt-4">
-                        <button type="submit" class="btn btn-danger">
-                            <i class="fas fa-save"></i> Enregistrer
-                        </button>
-                        <button type="button" class="btn btn-black mx-2" onclick="closeCreateModal()">
-                            <i class="fas fa-ban"></i> Annuler
-                        </button>
+                        <label for="Descriptions" class="form-label">Description</label>
+                        <textarea id="Descriptions" name="Descriptions" class="form-control" placeholder="Ajoutez une description si nécessaire"></textarea>
+                        <span class="text-danger" id="descriptionError"></span>
                     </div>
                 </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-black" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" id="saveCriticiteBtn" class="btn btn-danger">Enregistrer</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- JavaScript pour ouvrir et fermer le modal -->
-<script>
-    function openCreateModal() {
-        document.getElementById('createCriticiteModal').style.display = 'block';
-    }
 
-    function closeCreateModal() {
-        document.getElementById('createCriticiteModal').style.display = 'none';
-    }
-</script>
 
-<style>
-    .modal {
-        display: none;
-        position: fixed;
-        z-index: 1050;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        overflow: hidden;
-        background-color: rgba(0, 0, 0, 0.5);
-        outline: 0;
-    }
+document.getElementById("saveCriticiteBtn").addEventListener("click", function () {
+    // Récupérer les données du formulaire
+    var formData = {
+        CriticiteNom: document.getElementById("CriticiteNom").value,
+        Couleur: document.getElementById("Couleur").value,
+        Descriptions: document.getElementById("Descriptions").value
+    };
 
-    .modal-dialog {
-        position: relative;
-        margin: 30px auto;
-        max-width: 500px;
-    }
-
-    .modal-content {
-        background-color: #fff;
-        border: 1px solid #999;
-        border-radius: 10px;
-    }
-
-    .modal-header,
-    .modal-footer {
-        padding: 10px 20px;
-    }
-
-    .modal-title {
-        margin: 0;
-        font-size: 1.5em;
-    }
-
-    .close {
-        float: right;
-        font-size: 1.5em;
-        color: #000;
-    }
-</style>
+    // Vérification des doublons
+    fetch('/Criticite/CheckDuplicate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ CriticiteNom: formData.CriticiteNom })
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.exists) {
+                alert("Une criticité avec ce nom existe déjà !");
+            } else {
+                // Envoi du formulaire
+                fetch('/Criticite/CreateCriticite', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                })
+                    .then(response => response.json())
+                    .then(result => {
+                        if (result.success) {
+                            alert("Criticité ajoutée avec succès !");
+                            location.reload();
+                        } else {
+                            alert("Erreur lors de la création de la criticité !");
+                        }
+                    });
+            }
+        });
+});
 
 
 
 
-
-
-
-
-
-
-
-
-@model IEnumerable<NotifApps.Models.Criticite>
-
-<h2>Criticités</h2>
-<hr />
-<p>
-    <a asp-action="CreateCriticite" class="btn btn-black">Ajouter Criticité</a>
-</p>
-
-<div>
-    <input type="text" id="searchInput" class="form-control" placeholder="Rechercher par criticité...">
-    <button type="submit" class="btn btn-black mt-2 fas fa-search"></button>
-</div>
-<br />
-<table class="table table">
-    <thead>
-        <tr>
-            <th class="bg-black text-white">Nom de Criticité</th>
-            <th class="bg-black text-white">BADGE</th>
-            <th class="bg-black text-white">Descriptions</th>
-            <th class="bg-black text-white">Statut</th>
-            <th class="bg-black text-white">Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var criticite in Model)
-        {
-            <tr>
-                <td>@criticite.CriticiteNom</td>
-                <td>
-                    <span class="badge text-black" style="background-color: @(criticite.Couleur ?? "gray");">
-                        @(criticite.CriticiteNom?.ToUpper() ?? "N/A")
-                    </span>
-                </td>
-                <td>
-                    @if (criticite.Descriptions.Length > 50)
-                    {
-                        @criticite.Descriptions.Substring(0, 50)
-                    }
-                    else
-                    {
-                        @criticite.Descriptions
-                    }
-                </td>
-                <td>
-                    <form method="post" asp-action="ToggleStatus">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="id" value="@criticite.CriticiteId" />
-                        <label class="switch">
-                            <input type="checkbox"
-                                   name="statut"
-                                   onchange="this.form.submit()"
-                                   @(criticite.Statut == "Actif" ? "checked" : "") />
-                            <span class="slider"></span>
-                        </label>
-                    </form>
-                </td>
-                <td>
-                    <button class="btn btn-warning" data-toggle="modal" data-target="#editModal" onclick="openEditModal('@criticite.CriticiteId', '@criticite.CriticiteNom', '@criticite.Couleur', '@criticite.Descriptions')">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
-
-<!-- Edit Modal -->
-<div class="modal fade" id="editModal" tabindex="-1" role="dialog" aria-labelledby="editModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" role="document">
-        <div class="modal-content">
-            <div class="modal-header bg-warning-subtle border-black">
-                <h5 class="modal-title" id="editModalLabel">Modifier la Criticité</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close" onclick="closeModal()">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body bg-light-subtle">
-                <form asp-action="EditCriticite" method="post">
-                    <input type="hidden" id="CriticiteId" name="CriticiteId" />
-                    
-                    <div class="form-group">
-                        <label asp-for="CriticiteNom" class="form-label">Nom de la Criticité</label>
-                        <input asp-for="CriticiteNom" id="EditCriticiteNom" class="form-control" />
-                        <span asp-validation-for="CriticiteNom" class="text-danger"></span>
-                    </div>
-
-                    <div class="form-group">
-                        <label asp-for="Couleur" class="form-label">Couleur</label>
-                        <select asp-for="Couleur" id="EditCouleur" class="form-control">
-                            <option value="">-- Sélectionnez une couleur --</option>
-                            <option value="red">Rouge</option>
-                            <option value="orange">Orange</option>
-                            <option value="yellow">Jaune</option>
-                            <option value="blue">Bleu</option>
-                            <option value="green">Vert</option>
-                            <option value="purple">Violet</option>
-                            <option value="pink">Rose</option>
-                            <option value="gray">Gris</option>
-                            <option value="brown">Marron</option>
-                            <option value="cyan">Cyan</option>
-                            <option value="lime">Lime</option>
-                        </select>
-                        <span asp-validation-for="Couleur" class="text-danger"></span>
-                    </div>
-
-                    <div class="form-group">
-                        <label asp-for="Descriptions" class="form-label">Description</label>
-                        <textarea asp-for="Descriptions" id="EditDescriptions" class="form-control"></textarea>
-                        <span asp-validation-for="Descriptions" class="text-danger"></span>
-                    </div>
-
-                    <div class="modal-footer bg-warning-subtle">
-                        <button type="submit" class="btn btn-danger">Enregistrer</button>
-                        <button type="button" class="btn btn-black" data-dismiss="modal" onclick="closeModal()">Annuler</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-    function openEditModal(id, nom, couleur, descriptions) {
-        document.getElementById('CriticiteId').value = id;
-        document.getElementById('EditCriticiteNom').value = nom;
-        document.getElementById('EditCouleur').value = couleur;
-        document.getElementById('EditDescriptions').value = descriptions;
-    }
-
-    function closeModal() {
-        document.getElementById('editModal').style.display = 'none';
-    }
-</script>
-
-<style>
-    .card {
-        border-top: 5px solid red;
-        border-radius: 8px;
-    }
-
-    .form-label {
-        font-weight: bold;
-    }
-
-    .btn-success {
-        background-color: #28a745;
-        border-color: #28a745;
-    }
-
-    .btn-secondary {
-        background-color: #6c757d;
-        border-color: #6c757d;
-    }
-</style>
-
+[HttpPost]
+public JsonResult CheckDuplicate(string CriticiteNom)
+{
+    bool exists = _context.Criticites.Any(c => c.CriticiteNom == CriticiteNom);
+    return Json(new { exists });
+}
 
