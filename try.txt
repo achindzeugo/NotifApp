@@ -1,153 +1,632 @@
-@model NotifApps.Models.Incident
+@model IEnumerable<NotifApps.Models.Criticite>
+
+<h2>Criticités</h2>
+<hr />
+<p>
+    <a asp-action="CreateCriticite" class="btn btn-black">Ajouter Criticité</a>
+</p>
+
+<div>
+    <input type="text" id="searchInput" class="form-control" placeholder="Rechercher par criticité...">
+    <button type="submit" class="btn btn-black mt-2 fas fa-search"></button>
+
+</div>
+<br />
+<table class="table table">
+    <thead>
+        <tr>
+            <th class="bg-black text-white">Nom de Criticité</th>
+            <th class="bg-black text-white">BADGE</th>
+            <th class="bg-black text-white">Descriptions</th>
+            <th class="bg-black text-white">Statut</th>
+            <th class="bg-black text-white">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var criticite in Model)
+        {
+        <tr>
+            <td>@criticite.CriticiteNom</td>
+            <td>
+                <span class="badge text-black" style="background-color: @(criticite.Couleur ?? "gray");">
+                    @(criticite.CriticiteNom?.ToUpper() ?? "N/A")
+                </span>
+            </td>
+            <td>
+                @if (criticite.Descriptions.Length > 50)
+                {
+                    @criticite.Descriptions.Substring(0, 50)
+                }
+                else
+                {
+                    @criticite.Descriptions
+                }
+            </td>
+            <td>
+                @if (criticite.Statut == "Actif")
+                {
+                    <span class="badge bg-success">Actif</span>
+                }
+                else
+                {
+                    <span class="badge bg-secondary">Inactif</span>
+                }
+            </td>
+
+            <td>
+                <a asp-action="Details" asp-route-id="@criticite.CriticiteId" class="btn btn-black" title="Détails">
+                    <i class="fas fa-list"></i>
+                </a>
+                <a asp-action="EditCriticite" asp-route-id="@criticite.CriticiteId" class="btn btn-warning" title="Modifier">
+                    <i class="fas fa-edit"></i>
+                </a>
+                <!--<a asp-action="DeleteCriticite" asp-route-id="@criticite.CriticiteId" class="btn btn-danger" title="Supprimer">
+         <i class="fas fa-trash"></i>
+     </a>-->
+            </td>
+        </tr>
+        }
+    </tbody>
+</table>
+
+<style>
+    .table {
+        border-top-color: red;
+        border-top-style: solid;
+        border-top-width: 5px;
+        border-top-left-radius: 5px;
+        border-top-right-radius: 5px;
+    }
+</style>
+
+<script>
+    document.getElementById('searchInput').addEventListener('keyup', function() {
+        var searchString = this.value.toLowerCase();
+        var rows = document.querySelectorAll('tbody tr');
+
+        rows.forEach(function(row) {
+            var appName = row.querySelector('td:first-child').textContent.toLowerCase();
+            if (appName.includes(searchString)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+</script>
+
+@model NotifApps.Models.Criticite
 
 @{
-    ViewData["Title"] = "Create";
+    ViewData["Title"] = "Créer Criticité";
 }
 
-<h1>Déclarer un Incident</h1>
-<hr />
-
-<div class="card card">
-    <div class="card-header bg-black text-white text-center">
-        <h4> Déclarer un Incident</h4>
-    </div>
-
-    <!-- Stepper Navigation -->
-    <div class="stepper d-flex justify-content-between align-items-center mb-4">
-        <div class="step" id="step1">
-            <i class="fas fa-info-circle step-icon"></i>
-            <span class="step-label">Informations</span>
+<div class="container mt-5">
+    <div class="card">
+        <div class="card-header bg-black text-white">
+            <h4>Créer une Criticité</h4>
         </div>
-        <div class="step" id="step2">
-            <i class="fas fa-exclamation-triangle step-icon"></i>
-            <span class="step-label">Détails</span>
+        <div class="card-body">
+            <form asp-action="CreateCriticite">
+                <!-- Nom de la Criticité -->
+                <div class="form-group">
+                    <label asp-for="CriticiteNom" class="form-label">Nom de la Criticité</label>
+                    <input asp-for="CriticiteNom" class="form-control" placeholder="Entrez le nom de la criticité" />
+                    <span asp-validation-for="CriticiteNom" class="text-danger"></span>
+                </div>
+
+                <!-- Couleur -->
+                <div class="form-group">
+                    <label asp-for="Couleur" class="form-label">Couleur</label>
+                    <select asp-for="Couleur" class="form-control">
+                        <option value="">-- Sélectionnez une couleur --</option>
+                        <option value="red">Rouge</option>
+                        <option value="orange">Orange</option>
+                        <option value="yellow">Jaune</option>
+                        <option value="blue">Bleu</option>
+                        <option value="green">Vert</option>
+                        <option value="purple">Violet</option>
+                        <option value="pink">Rose</option>
+                        <option value="gray">Gris</option>
+                        <option value="brown">Marron</option>
+                        <option value="cyan">Cyan</option>
+                        <option value="lime">Lime</option>
+                    </select>
+                    <span asp-validation-for="Couleur" class="text-danger"></span>
+                </div>
+
+                <!-- Description -->
+                <div class="form-group">
+                    <label asp-for="Descriptions" class="form-label">Description</label>
+                    <textarea asp-for="Descriptions" class="form-control" placeholder="Ajoutez une description si nécessaire"></textarea>
+                    <span asp-validation-for="Descriptions" class="text-danger"></span>
+                </div>
+
+                <!-- Boutons d'action -->
+                <div class="text-center mt-4">
+                    <button type="submit" class="btn btn-danger" title="Créer">
+                        <i class="fas fa-save"></i> Enregistrer
+                    </button>
+                    <a asp-action="Index" class="btn btn-black mx-2" title="Annuler">
+                        <i class="fas fa-ban"></i> Annuler
+                    </a>
+                </div>
+            </form>
         </div>
-        <div class="step" id="step3">
-            <i class="fas fa-paper-plane step-icon"></i>
-            <span class="step-label">Soumission</span>
-        </div>
-    </div>
-
-    <div class="card-body">
-        <form asp-action="Create" id="incidentForm">
-            <!-- Step 1 -->
-            <div class="form-step" id="step-1">
-                <div class="form-group">
-                    <label class="control-label">Titre <span class="text-danger">*</span></label>
-                    <textarea asp-for="Titre" class="form-control" placeholder="Entrez un Titre"></textarea>
-                    <span asp-validation-for="Titre" class="text-danger"></span>
-                </div>
-                <div class="form-group">
-                    <label class="control-label">Applicatif <span class="text-danger">*</span></label>
-                    <select asp-for="AppId" class="form-control" asp-items="ViewBag.AppId"></select>
-                    <span asp-validation-for="AppId" class="text-danger"></span>
-                </div>
-                <div class="text-end mt-3">
-                    <button type="button" class="btn btn-primary" onclick="nextStep(2)">
-                        <i class="fas fa-arrow-right"></i> Suivant
-                    </button>
-                </div>
-            </div>
-
-            <!-- Step 2 -->
-            <div class="form-step d-none" id="step-2">
-                <div class="form-group d-flex justify-content-between">
-                    <div class="flex-fill me-2">
-                        <label class="control-label">Criticité <span class="text-danger">*</span></label>
-                        <select asp-for="CriticiteId" class="form-control" asp-items="ViewBag.CriticiteId"></select>
-                        <span asp-validation-for="CriticiteId" class="text-danger"></span>
-                    </div>
-                    <div class="flex-fill">
-                        <label class="control-label">Statut <span class="text-danger">*</span></label>
-                        <select asp-for="StatutId" class="form-control" asp-items="ViewBag.StatutId"></select>
-                        <span asp-validation-for="StatutId" class="text-danger"></span>
-                    </div>
-                </div>
-                <div class="form-group d-flex justify-content-between">
-                    <div class="flex-fill me-2">
-                        <label class="control-label">Référence du ticket <span class="text-danger">*</span></label>
-                        <input asp-for="RefTicket" class="form-control" placeholder="Entrez une référence" />
-                        <span asp-validation-for="RefTicket" class="text-danger"></span>
-                    </div>
-                    <div class="flex-fill">
-                        <label class="control-label">Lien du ticket <span class="text-danger">*</span></label>
-                        <input asp-for="LienTicket" class="form-control" placeholder="Entrez un lien" />
-                        <span asp-validation-for="LienTicket" class="text-danger"></span>
-                    </div>
-                </div>
-                <div class="text-end mt-3">
-                    <button type="button" class="btn btn-secondary me-2" onclick="prevStep(1)">
-                        <i class="fas fa-arrow-left"></i> Retour
-                    </button>
-                    <button type="button" class="btn btn-primary" onclick="nextStep(3)">
-                        <i class="fas fa-arrow-right"></i> Suivant
-                    </button>
-                </div>
-            </div>
-
-            <!-- Step 3 -->
-            <div class="form-step d-none" id="step-3">
-                <div class="form-group">
-                    <label class="control-label">Impact <span class="text-danger">*</span></label>
-                    <textarea asp-for="Impact" class="form-control" placeholder="Saisissez un impact"></textarea>
-                    <span asp-validation-for="Impact" class="text-danger"></span>
-                </div>
-                <div class="form-group">
-                    <label class="control-label">Origine <span class="text-danger">*</span></label>
-                    <input asp-for="OrigineNom" class="form-control" placeholder="Entrez une origine" />
-                    <span asp-validation-for="OrigineNom" class="text-danger"></span>
-                </div>
-                <div class="text-end mt-3">
-                    <button type="button" class="btn btn-secondary me-2" onclick="prevStep(2)">
-                        <i class="fas fa-arrow-left"></i> Retour
-                    </button>
-                    <button type="submit" class="btn btn-danger">
-                        <i class="fas fa-save"></i> Déclarer
-                    </button>
-                </div>
-            </div>
-        </form>
     </div>
 </div>
 
+
+@if (ViewBag.ExistingCriticite != null && (bool)ViewBag.ExistingCriticite)
+{
+    <div class="modal fade show" tabindex="-1" role="dialog" style="display: block;" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-warning-subtle border-black">
+                    <h5 class="modal-title">Duplication détectée</h5>
+                    <i class="fas fa-exclamation-triangle ms-4"></i>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close" onclick="closeModal()">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body bg-light-subtle">
+                    <p>La criticité avec le nom <strong>@ViewBag.CriticiteNom</strong> existe déjà. Voulez-vous continuer ?</p>
+                </div>
+                <div class="modal-footer bg-warning-subtle">
+
+                    <form asp-action="CreateCriticite" method="post">
+                        <input type="hidden" name="CriticiteNom" value="@ViewBag.CriticiteNom" />
+                        <input type="hidden" name="forceCreate" value="true" />
+                        <button type="submit" class="btn btn-danger">Oui</button>
+                    </form>
+                    <button type="button" class="btn btn-black" onclick="closeModal()">Non</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 <script>
-    function nextStep(step) {
-        document.querySelectorAll('.form-step').forEach(step => step.classList.add('d-none'));
-        document.getElementById(`step-${step}`).classList.remove('d-none');
-        updateStepper(step);
-    }
-
-    function prevStep(step) {
-        document.querySelectorAll('.form-step').forEach(step => step.classList.add('d-none'));
-        document.getElementById(`step-${step}`).classList.remove('d-none');
-        updateStepper(step);
-    }
-
-    function updateStepper(step) {
-        document.querySelectorAll('.step-icon').forEach((icon, index) => {
-            if (index < step) {
-                icon.style.color = 'blue';
-            } else {
-                icon.style.color = 'black';
-            }
-        });
+    function closeModal() {
+        document.querySelector('.modal').style.display = 'none';
     }
 </script>
 
 <style>
-    .stepper {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 20px;
+    .card {
+        border-top: 5px solid red;
+        border-radius: 8px;
     }
-    .step {
-        text-align: center;
+
+    .form-label {
+        font-weight: bold;
     }
-    .step-icon {
-        font-size: 24px;
-        color: black;
+
+    .btn-success {
+        background-color: #28a745;
+        border-color: #28a745;
     }
-    .step-label {
-        font-size: 14px;
+
+    .btn-secondary {
+        background-color: #6c757d;
+        border-color: #6c757d;
+    }
+</style>
+
+criticite conroller 
+
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using NotifApps.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace NotifApps.Controllers
+{
+    public class CriticiteController : Controller
+    {
+        private readonly NotifdbContext _context;
+
+        public CriticiteController(NotifdbContext context)
+        {
+            _context = context;
+        }
+
+        //BREADCRUMB................................
+        public List<BreadcrumbItem> GetBreadcrumb(string page)
+        {
+            var breadcrumb = new List<BreadcrumbItem>
+       {
+           new BreadcrumbItem { Title = "Homes", Url = Url.Action("Index", "Homes"), IsActive = false }
+       };
+
+            switch (page)
+            {
+                case "Index":
+                    breadcrumb.Add(new BreadcrumbItem { Title = "Index", Url = Url.Action("Index", "Criticite"), IsActive = true });
+                    break;
+                case "CreateCriticite":
+                    breadcrumb.Add(new BreadcrumbItem { Title = "Index", Url = Url.Action("Index", "Criticite"), IsActive = false });
+                    breadcrumb.Add(new BreadcrumbItem { Title = "Create", Url = Url.Action("CreateCriticite", "Criticite"), IsActive = true });
+                    break;
+                case "Details":
+                    breadcrumb.Add(new BreadcrumbItem { Title = "Index", Url = Url.Action("Index", "Criticite"), IsActive = false });
+                    breadcrumb.Add(new BreadcrumbItem { Title = "Details", Url = Url.Action("Details", "Criticite"), IsActive = true });
+                    break;
+                case "EditCriticite":
+                    breadcrumb.Add(new BreadcrumbItem { Title = "Index", Url = Url.Action("Index", "Criticite"), IsActive = false });
+                    breadcrumb.Add(new BreadcrumbItem { Title = "EditCriticite", Url = Url.Action("EditCriticite", "Criticite"), IsActive = true });
+                    break;
+            }
+
+            return breadcrumb;
+        }
+
+
+        // GET: Criticite/Index
+        public async Task<IActionResult> Index(string searchString)
+        {
+            //Breadcrump, récupèration des donnéees 
+            var breadcrumb = GetBreadcrumb("Index");
+            ViewBag.Breadcrumb = breadcrumb;
+            // Récupère toutes les criticités depuis la base de données
+            var criticites = await _context.Criticites.ToListAsync();
+
+            // Vérifie s'il n'y a pas de criticités dans la base
+            if (criticites == null || !criticites.Any())
+            {
+                // Retourne une liste vide si aucune criticité n'est trouvée
+                return View(new List<Criticite>());
+            }
+            if (!string.IsNullOrEmpty(searchString))
+            {
+                criticites = criticites.Where(u => u.CriticiteNom.Contains(searchString)).ToList();
+            }
+            // Passe la liste des criticités à la vue
+            return View(criticites);
+        }
+
+
+        // GET: Criticite/Create
+        public IActionResult CreateCriticite()
+        {
+            var breadcrumb = GetBreadcrumb("CreateCriticite");
+            ViewBag.Breadcrumb = breadcrumb;
+            return View();
+        }
+
+        // POST: Criticite/Create
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateCriticite(Criticite criticite, bool forceCreate = false)
+        {
+            if (ModelState.IsValid)
+            {
+                // Vérification de l'existence d'une criticité avec le même nom
+                var existingCriticite = await _context.Criticites
+                    .FirstOrDefaultAsync(c => c.CriticiteNom == criticite.CriticiteNom);
+
+                if (existingCriticite != null && !forceCreate)
+                {
+                    // Criticité existe déjà, demander confirmation
+                    ViewBag.ExistingCriticite = true;
+                    ViewBag.CriticiteNom = criticite.CriticiteNom;
+                    return View(criticite);
+                }
+
+                // Si l'utilisateur confirme ou si aucun doublon n'existe
+                criticite.Statut = "Actif";
+                if (string.IsNullOrEmpty(criticite.Descriptions))
+                {
+                    criticite.Descriptions = "RAS";
+                }
+
+                _context.Add(criticite);
+                await _context.SaveChangesAsync();
+                return RedirectToAction(nameof(Index));
+            }
+            return View(criticite);
+        }
+
+
+
+        // GET: Criticite/Edit/5
+        public async Task<IActionResult> EditCriticite(int? id)
+        {
+            var breadcrumb = GetBreadcrumb("EditCriticite");
+            ViewBag.Breadcrumb = breadcrumb;
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var criticite = await _context.Criticites.FindAsync(id);
+            if (criticite == null)
+            {
+                return NotFound();
+            }
+            return View(criticite);
+        }
+
+        // POST: Criticite/Edit/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditCriticite(int id, Criticite criticite)
+        {
+            if (id != criticite.CriticiteId)
+            {
+                return NotFound();
+            }
+
+            if (ModelState.IsValid)
+            {
+                try
+                {
+                    // Récupérer la criticité existante depuis la base
+                    var existingCriticite = await _context.Criticites.FindAsync(id);
+                    if (existingCriticite == null)
+                    {
+                        return NotFound();
+                    }
+
+                    // Mettre à jour les champs modifiables
+                    existingCriticite.CriticiteNom = criticite.CriticiteNom;
+                    existingCriticite.Couleur = criticite.Couleur;
+                    existingCriticite.Descriptions = criticite.Descriptions;
+
+                    // Gestion des dates et statut
+                    if (existingCriticite.Statut != criticite.Statut)
+                    {
+                        // Si le statut passe à "Inactif", mettre à jour la date de désactivation
+                        if (criticite.Statut == "Inactif")
+                        {
+                            existingCriticite.DateDesactivation = DateTime.Now;
+                        }
+                        else
+                        {
+                            // Si réactivé, réinitialiser la date de désactivation
+                            existingCriticite.DateDesactivation = null;
+                        }
+
+                        // Mettre à jour le statut
+                        existingCriticite.Statut = criticite.Statut;
+                    }
+                  
+                    _context.Update(existingCriticite);
+                    await _context.SaveChangesAsync();
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    if (!CriticiteExists(criticite.CriticiteId))
+                    {
+                        return NotFound();
+                    }
+                    throw;
+                }
+                return RedirectToAction(nameof(Index));
+            }
+            return View(criticite);
+        }
+
+
+        // GET: Criticite/Details/5
+        public async Task<IActionResult> Details(int? id)
+        {
+            var breadcrumb = GetBreadcrumb("Details");
+            ViewBag.Breadcrumb = breadcrumb;
+
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var criticite = await _context.Criticites
+                .FirstOrDefaultAsync(m => m.CriticiteId == id);
+
+            if (criticite == null)
+            {
+                return NotFound();
+            }
+
+            return View(criticite);
+        }
+
+
+        // GET: Criticite/Delete/5
+        public async Task<IActionResult> DeleteCriticite(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var criticite = await _context.Criticites
+                .FirstOrDefaultAsync(m => m.CriticiteId == id);
+            if (criticite == null)
+            {
+                return NotFound();
+            }
+
+            return View(criticite);
+        }
+
+        // POST: Criticite/Delete/5
+        [HttpPost, ActionName("DeleteCriticite")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            var criticite = await _context.Criticites.FindAsync(id);
+            if (criticite == null)
+            {
+                return NotFound();
+            }
+
+            var incidents = await _context.Incidents.Where(i => i.CriticiteId == id).ToListAsync();
+            _context.Incidents.RemoveRange(incidents);
+
+            _context.Criticites.Remove(criticite);
+            await _context.SaveChangesAsync();
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        private bool CriticiteExists(int id)
+        {
+            return _context.Criticites.Any(e => e.CriticiteId == id);
+        }
+    }
+}
+
+
+ma vue ciriticte Edit
+@model NotifApps.Models.Criticite
+
+<div class="container mt-5">
+    <div class="card card">
+        <div class="card-header bg-black text-white">
+            <h4>Modifier Criticité</h4>
+        </div>
+        <div class="card-body">
+            <form asp-action="EditCriticite">
+                <input type="hidden" asp-for="CriticiteId" />
+                <div class="form-group">
+                    <label asp-for="CriticiteNom"></label>
+                    <input asp-for="CriticiteNom" class="form-control" />
+                    <span asp-validation-for="CriticiteNom" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label for="Couleur">Sélectionnez une couleur</label>
+                    <select asp-for="Couleur" class="form-control">
+                        <option value="red">Rouge</option>
+                        <option value="orange">Orange</option>
+                        <option value="yellow">Jaune</option>
+                        <option value="blue">Bleu</option>
+                        <option value="green">Vert</option>
+                        <option value="purple">Violet</option>
+                        <option value="pink">Rose</option>
+                        <option value="gray">Gris</option>
+                        <option value="brown">Marron</option>
+                        <option value="cyan">Cyan</option>
+                        <option value="lime">Lime</option>
+                    </select>
+                    <span asp-validation-for="Couleur" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label for="Descriptions">Descriptions</label>
+                    <textarea class="form-control" id="Descriptions" name="Descriptions">@Model.Descriptions</textarea>
+                </div>
+                <div class="form-group">
+                    <label asp-for="Statut">Statut</label>
+                    <select asp-for="Statut" class="form-control">
+                        <option value="Actif" selected>Actif</option>
+                        <option value="Inactif">Inactif</option>
+                    </select>
+                    <span asp-validation-for="Statut" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label>Date de Désactivation</label>
+                    <input type="text" class="form-control" value="@Model.DateDesactivation?.ToString("yyyy-MM-dd HH:mm:ss")" readonly />
+                </div>
+                <div class="d-flex justify-content-center">
+                    <button type="submit" class="btn btn-danger" title="Enregistrer">
+                        <i class="fas fa-save"></i>
+                    </button>
+                    <a asp-action="Index" class="btn btn-black mx-2" title="Annuler">
+                        <i class="fas fa-ban"></i>
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card {
+        border-top-color: red;
+        border-top-style: solid;
+        border-top-width: 5px;
+        border-top-left-radius: 5px;
+        border-top-right-radius: 5px;
+    }
+</style>
+
+ma vue criticite details
+
+@model NotifApps.Models.Criticite
+
+<h2>Détails de la Criticité</h2>
+<hr />
+
+<div class="container mt-5">
+    <div class="card card">
+
+        <div class="card-header bg-black text-white d-flex justify-content-between">
+            <h4>Détails de la Criticité @Model.CriticiteNom</h4>
+            <span class="badge text-black" style="background-color: @(Model.Couleur ?? "gray");">
+                @(Model.CriticiteNom?.ToUpper() ?? "N/A")
+            </span>
+        </div>
+        <div class="card-body">
+
+            <!-- Nom de la criticité avec badge couleur --> 
+            
+                
+            
+
+            <!-- Description -->
+            <p><strong>Description :</strong> @Model.Descriptions</p>
+
+            <!-- Statut avec badge -->
+            <p>
+                <strong>Statut :</strong>
+                <span class="badge @(Model.Statut == "Actif" ? "bg-success" : "bg-secondary") text-white">
+                    @(Model.Statut)
+                </span>
+            </p>
+
+            <!-- Dates -->
+            <p>
+                <strong>Date de Création :</strong>
+                @Model.DateCreation.ToString("dd MMMM yyyy ")
+            </p>
+            <p>
+                <strong>Date de Désactivation :</strong>
+                @(Model.DateDesactivation.HasValue
+                    ? Model.DateDesactivation?.ToString("dd MMMM yyyy ")
+                    : "Non désactivée")
+            </p>
+
+            <!-- Boutons d'action -->
+            <div class="d-flex justify-content-center mt-4">
+                <a asp-action="EditCriticite" asp-route-id="@Model.CriticiteId" class="btn btn-warning mx-2" title="Modifier">
+                    <i class="fas fa-edit"></i>
+                </a>
+                <a asp-action="Index" class="btn btn-black mx-2" title="Retour">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card {
+        border-top-color: red;
+        border-top-style: solid;
+        border-top-width: 5px;
+        border-top-left-radius: 5px;
+        border-top-right-radius: 5px;
+    }
+
+ 
+
+    .bg-success {
+        background-color: green;
+    }
+
+    .bg-danger {
+        background-color: green;
     }
 </style>
