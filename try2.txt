@@ -1,3 +1,19 @@
+var modal = bootstrap.Modal.getInstance(document.getElementById('duplicateCriticiteModal'));
+if (modal) {
+    modal.hide();
+}
+
+
+document.addEventListener("DOMContentLoaded", function () {
+    if ('@TempData["ExistingCriticite"]' === "true") {
+        var modal = new bootstrap.Modal(document.getElementById('duplicateCriticiteModal'), {});
+        modal.show();
+    }
+});
+
+
+
+
 @model IEnumerable<NotifApps.Models.Criticite>
 
 <h2>Criticités</h2>
