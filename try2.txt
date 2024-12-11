@@ -1,55 +1,32 @@
- <div class="container h-100">
-      <div class="d-flex justify-content-center h-100">
-        <div class="search">
-          <input class="search_input" type="text" name="" placeholder="Search here...">
-          <a href="#" class="search_icon"><i class="fa fa-search"></i></a>
-        </div>
-      </div>
-    </div>
+function filterUsers() {
+    const input = document.getElementById('searchUserInput');
+    const filter = input.value.toLowerCase();
+    const userList = document.getElementById("userList");
+    const checkboxes = userList.getElementsByClassName('form-check');
+
+    // Rendre visible la liste si un filtre est appliqué
+    userList.style.display = filter.length > 0 ? 'block' : 'none';
+
+    Array.from(checkboxes).forEach(function (checkbox) {
+        const label = checkbox.querySelector('label');
+        const txtValue = label ? label.textContent || label.innerText : '';
+        checkbox.style.display = txtValue.toLowerCase().includes(filter) ? '' : 'none';
+    });
+}
 
 
- .search{
-    margin-bottom: auto;
-    margin-top: auto;
-    height: 70px;
-    background-color: #fff;
-    border-radius: 40px;
-    padding: 10px;
-    }
+public IActionResult Create()
+{
+    var utilisateurs = _context.Utilisateurs.ToList();
+    ViewBag.Utilisateurs = utilisateurs;
+    return View();
+}
 
-    .search_input{
-    color: white;
-    border: 0;
-    outline: 0;
-    background: none;
-    width: 0;
-    margin-top:5px;
-    caret-color:transparent;
-    line-height: 40px;
-    transition: width 0.4s linear;
-    }
 
-    .search .search_input{
-    padding: 0 10px;
-    width: 550px;
-    caret-color:red;
-    transition: width 0.4s linear;
-    }
-    
-    .search:hover > .search_icon{
-    background: red;
-    color: #fff;
-    }
 
-    .search_icon{
-    height: 50px;
-    width: 50px;
-    float: right;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    border-radius: 50%;
-    color:white;
-    background-color:black;
-    }
-    
+<div id="userForm" style="display:none;">
+
+
+
+
+
