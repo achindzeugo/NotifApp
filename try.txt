@@ -1,93 +1,107 @@
-<div class="modal fade" id="createModal" tabindex="-1" aria-labelledby="createLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-black text-white">
-                <h5 class="modal-title" id="createLabel">Créer une Equipe</h5>
-                <button type="button" class="btn-close text-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
+<div class="container mt-5">
+    <div class="card card">
+        <div class="card-header bg-black text-white">
+            <h4>Créer une Équipe</h4>
+        </div>
+        <div class="card-body">
+            <form asp-action="Create" method="post">
+                <div class="form-group">
+                    <label asp-for="NomEquipe" class="control-label"></label>
+                    <input asp-for="NomEquipe" class="form-control" placeholder="Entrez un nom" />
+                    <span asp-validation-for="NomEquipe" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="Descriptions" class="form-label">Description</label>
+                    <textarea asp-for="Descriptions" class="form-control" placeholder="Ajoutez une description si nécessaire"></textarea>
+                    <span asp-validation-for="Descriptions" class="text-danger"></span>
+                </div>
 
-                <form asp-action="Create" method="post" id="createForm">
-                    <div class="form-group">
-                        <label for="NomEquipe"></label>
-                        <input id="NomEquipe" name="NomEquipe" class="form-control" placeholder="Entrez un nom" />
-                        <span id="NomEquipeError" class="text-danger"></span>
+                <div class="form-group mt-3">
+                    <label>Souhaitez-vous rattacher des utilisateurs à cette équipe ?</label>
+                    <div>
+                        <button type="button" class="btn btn-primary" onclick="showUserForm()">Oui</button>
+                        <button type="button" class="btn btn-secondary" onclick="hideUserForm()">Non</button>
                     </div>
-                    <div class="form-group">
-                        <label for="Descriptions" class="form-label">Description</label>
-                        <textarea id="Descriptions" name="Descriptions" class="form-control" placeholder="Ajoutez une description si nécessaire"></textarea>
-                        <span class="text-danger" id="descriptionError"></span>
-                    </div>
+                </div>
 
-                    <div class="form-group mt-3">
-                        <label>Souhaitez-vous rattacher des utilisateurs à cette équipe ?</label>
-                        <div>
-                            <button type="button" class="btn btn-primary" onclick="showUserForm()">Oui</button>
-                            <button type="button" class="btn btn-secondary" onclick="hideUserForm()">Non</button>
-                        </div>
-                    </div>
+                <div id="userForm" style="display:none;">
+                    <h5>Rattacher Utilisateur(s)</h5>
+                    <input type="text" id="searchInput" class="form-control" placeholder="Rechercher un utilisateur" onkeyup="filterUsers()" />
 
-                    <div id="userForm" style="display:none;">
-                        <h5>Rattacher Utilisateur(s)</h5>
-                        <input type="text" id="searchInput" class="form-control" placeholder="Rechercher un utilisateur" onkeyup="filterUsers()" />
-
-                        <div id="userList" class="mb-4" style="display:none;">
-                            @if (ViewBag.Utilisateurs != null)
+                    <div id="userList" class="mb-4" style="display:none;">
+                        @if (ViewBag.Utilisateurs != null)
+                        { 
+                            @foreach (var utilisateur in ViewBag.Utilisateurs)
                             {
-                                @foreach (var utilisateur in ViewBag.Utilisateurs)
-                                {
-                                    <div class="form-check">
-                                        <input type="checkbox" class="form-check-input"
-                                               name="selectedUsers"
-                                               value="@utilisateur.UtilisateursID"
-                                               id="user_@utilisateur.UtilisateursID" />
-                                        <label class="form-check-label" for="user_@utilisateur.UtilisateursID">
-                                            @utilisateur.NomUtilisateurs @utilisateur.PrenomUtilisateurs @utilisateur.AG
-                                        </label>
-                                    </div>
-                                }
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input"
+                                           name="selectedUsers"
+                                           value="@utilisateur.UtilisateursID"
+                                           id="user_@utilisateur.UtilisateursID" />
+                                    <label class="form-check-label" for="user_@utilisateur.UtilisateursID">
+                                        @utilisateur.NomUtilisateurs @utilisateur.PrenomUtilisateurs @utilisateur.AG
+                                    </label>
+                                </div>
                             }
-                        </div>
+                           }
                     </div>
-                    <input type="hidden" id="forceCreate" name="forceCreate" value="false" />
-                    <div class="modal-footer justify-content-center">
-                        <div class="text-center mt-4">
-                            <button type="submit" class="btn btn-danger ms-3" title="Créer" onclick="submitForm()">Enregistrer</button>
-                            <button type="button" class="btn btn-black ms-3" data-bs-dismiss="modal">
-                                <i class="fas fa-ban"></i> Annuler
-                            </button>
+                </div>
 
-                        </div>
-                    </div>
-                </form>
-            </div>
+                <div class="d-flex justify-content-center mt-4">
+                    <button type="submit" class="btn btn-danger ms-3" title="Créer"><i class="fas fa-save"></i></button>
+                    <a asp-action="Index" class="btn btn-black ms-3" title="Annuler"><i class="fas fa-ban"></i></a>
+                </div>
+            </form>
         </div>
     </div>
 </div>
 
-ce formulaire est dans un modal, j'aimerais que lorsqu'on le valide pour creer une equipe, si une equipe existe deja a ce nom 
-un message comme celui ci sort pour confirmer la creation ou pas 
-<script>
-    async function submitForm() {
-        const nomEquipe = document.getElementById('NomEquipe').value;
-        const response = await fetch(`/Equipe/CheckEquipeExists?nomEquipe=${nomEquipe}`);
-        const exists = await response.json();
+mettez ca dans un modal, je veux pouvoir creer une equipe et je veux que lorsque j'appui sur ce bouton 
 
-        if (exists) {
-            if (confirm("L'équipe avec le nom existe déjà. Voulez-vous continuer ?")) {
-                document.getElementById('forceCreate').value = "true";
-                document.getElementById('createForm').submit();
-            } else {
-                var myModal = new bootstrap.Modal(document.getElementById('createModal'));
-                myModal.show();
-            }
+<p>
+    <button class="btn btn-black" data-bs-toggle="modal" data-bs-target="#createModal">
+        Ajouter equipe
+    </button>
+</p>
+
+en creant l'equipe je peur aussi rattacher l'utilisateur directement 
+<script>
+    function showUserForm() {
+        document.getElementById('userForm').style.display = 'block';
+        document.getElementById('userList').style.display = 'none'; // hide ysers initially
+    }
+
+    function hideUserForm() {
+        document.getElementById('userForm').style.display = 'none';
+    }
+
+    function filterUsers() {
+        var input, filter, userList, checkboxes, label, i, txtValue;
+        input = document.getElementById('searchInput');
+        filter = input.value.toLowerCase();
+        userList = document.getElementById("userList");
+        checkboxes = userList.getElementsByClassName('form-check');
+
+        // Show the user list if there's input
+        if (filter.length > 0) {
+            userList.style.display = 'block';
         } else {
-            document.getElementById('createForm').submit();
+            userList.style.display = 'none'; // Hide if no input
+        }
+
+        for (i = 0; i < checkboxes.length; i++) {
+            label = checkboxes[i].getElementsByTagName("label")[0];
+            if (label) {
+                txtValue = label.textContent || label.innerText;
+                checkboxes[i].style.display = txtValue.toLowerCase().indexOf(filter) > -1 ? "" : "none";
+            }
         }
     }
 </script>
 
-voici les fonctions pour vous aider, 
+le but c'est de ne plus avoir une page create, mais depuis la vue Index je clique sur ajouter equipe et le formulaire de creation sort dans un modal
+
+voici les methodes de creation 
 
  // GET: Equipes/Create
         public IActionResult Create()
@@ -160,3 +174,4 @@ voici les fonctions pour vous aider,
                 .FirstOrDefaultAsync(c => c.NomEquipe == nomEquipe);
             return Json(existingEquipe != null);
         }
+
