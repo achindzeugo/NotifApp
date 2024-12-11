@@ -1,51 +1,30 @@
-async function submitForm() {
-    const nomEquipe = document.getElementById('NomEquipe').value;
-    const descriptions = document.getElementById('Descriptions').value;
+document.getElementById('searchInput').addEventListener('keyup', function () {
+    var searchString = this.value.toLowerCase();
+    var rows = document.querySelectorAll('tbody tr');
 
-    try {
-        const response = await fetch(`/Equipe/CheckEquipeExists?nomEquipe=${encodeURIComponent(nomEquipe)}`);
-        const exists = await response.json();
-
-        if (exists) {
-            if (confirm("L'équipe avec ce nom existe déjà. Voulez-vous continuer ?")) {
-                document.getElementById('forceCreate').value = "true";
-                document.getElementById('createForm').submit();
-            } else {
-                document.getElementById('NomEquipeError').innerText = "Nom d'équipe déjà utilisé.";
-                var myModal = new bootstrap.Modal(document.getElementById('createModal'));
-                myModal.show();
-            }
+    rows.forEach(function (row) {
+        var appName = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+        if (appName.includes(searchString)) {
+            row.style.display = '';
         } else {
-            document.getElementById('createForm').submit();
+            row.style.display = 'none';
         }
-    } catch (error) {
-        console.error("Erreur lors de la vérification : ", error);
-        alert("Une erreur est survenue. Veuillez réessayer.");
+    });
+});
+
+
+
+<input type="text" id="searchInput" class="form-control" placeholder="Rechercher par nom d'équipe...">
+
+
+
+
+rows.forEach(function (row) {
+    var appName = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+    console.log('Vérification : ', appName); // Ajoutez ceci pour déboguer
+    if (appName.includes(searchString)) {
+        row.style.display = '';
+    } else {
+        row.style.display = 'none';
     }
-}
-
-
-
-
-public async Task<IActionResult> CheckEquipeExists(string nomEquipe)
-{
-    try
-    {
-        var existingEquipe = await _context.Equipes
-            .FirstOrDefaultAsync(c => c.NomEquipe == nomEquipe);
-        return Json(existingEquipe != null);
-    }
-    catch (Exception ex)
-    {
-        // Log l'erreur ici si nécessaire
-        return Json(new { success = false, message = "Erreur serveur" });
-    }
-}
-
-
-
-<input id="NomEquipe" name="NomEquipe" class="form-control" placeholder="Entrez un nom" 
-       value="@TempData["NomEquipe"]" />
-<textarea id="Descriptions" name="Descriptions" class="form-control" 
-          placeholder="Ajoutez une description si nécessaire">@TempData["Descriptions"]</textarea>
-
+});
