@@ -320,3 +320,90 @@
             transform: translateX(14px);
         }
 </style>
+
+
+voici mes methodes 
+
+ // GET: Equipes
+        public IActionResult Index(string searchString)
+        {
+            var breadcrumb = GetBreadcrumb("Index");
+            ViewBag.Breadcrumb = breadcrumb;
+            var equipes = _context.Equipes.ToList();
+            if (equipes == null || !equipes.Any())
+            {
+                // Retourne une liste vide si aucune equipe n'est trouvée
+                return View(new List<Equipe>());
+            }
+
+           
+
+            if (!string.IsNullOrEmpty(searchString))
+            {
+                equipes = equipes.Where(u => u.NomEquipe.Contains(searchString)).ToList();
+            }
+            ViewBag.Utilisateurs = _context.Utilisateurs
+               .Where(u => u.Statut == "Actif")
+               .ToList();
+            return View(equipes); 
+        }
+
+
+ // GET: Equipes/Create
+        public IActionResult Create()
+        {
+            var breadcrumb = GetBreadcrumb("Create");
+            ViewBag.Breadcrumb = breadcrumb;
+            ViewBag.Utilisateurs = _context.Utilisateurs
+                .Where(u => u.Statut == "Actif")
+                .ToList(); // Récupérer tous les utilisateurs
+            return View();
+        }
+
+        // POST: Equipes/Create
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create([Bind("NomEquipe,Descriptions")] Equipe equipe, int[] selectedUsers, bool forceCreate = false)
+        {
+            if (ModelState.IsValid)
+            {
+                var existingEquipe = await _context.Equipes
+                    .FirstOrDefaultAsync(c => c.NomEquipe == equipe.NomEquipe);
+
+                if (existingEquipe != null && !forceCreate)
+                {
+                    return Json(new { exists = true });
+                }
+
+                equipe.Statut = "Actif";
+
+                if (string.IsNullOrEmpty(equipe.Descriptions))
+                {
+                    equipe.Descriptions = "RAS";
+                }
+
+                _context.Add(equipe);
+                await _context.SaveChangesAsync();
+
+                if (selectedUsers != null)
+                {
+                    foreach (var userId in selectedUsers)
+                    {
+                        var equipeUtilisateur = new EquipeUtilisateur
+                        {
+                            EquipeId = equipe.EquipeId,
+                            UtilisateursId = userId
+                        };
+                        _context.Add(equipeUtilisateur);
+                    }
+                    await _context.SaveChangesAsync();
+                }
+
+                return Json(new { success = true });
+            }
+
+            ViewBag.Utilisateurs = _context.Utilisateurs
+            .Where(u => u.Statut == "Actif")
+            .ToList();
+            return View(equipe);
+        }
