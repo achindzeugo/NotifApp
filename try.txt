@@ -1,117 +1,58 @@
-@model IEnumerable<NotifApps.Models.Criticite>
-
-<h2>Criticités</h2>
-<hr />
-<p>
-    <button class="btn btn-black" data-bs-toggle="modal" data-bs-target="#createCriticiteModal">
-        Ajouter Criticité
-    </button>
-</p>
-
-<div>
-    <input type="text" id="searchInput" class="form-control" placeholder="Rechercher par criticité...">
-    <button type="submit" class="btn btn-black mt-2 fas fa-search"></button>
-</div>
-<br />
-<table class="table table">
-    <thead>
-        <tr>
-            <th class="bg-black text-white">Nom de Criticité</th>
-            <th class="bg-black text-white">Badge</th>
-            <th class="bg-black text-white">Descriptions</th>
-            <th class="bg-black text-white">Statut</th>
-            <th class="bg-black text-white">Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var criticite in Model)
-        {
-            <tr>
-                <td>@criticite.CriticiteNom</td>
-                <td>
-                    <span class="badge text-black" style="background-color: @(criticite.Couleur ?? "gray");">
-                        @(criticite.CriticiteNom?.ToUpper() ?? "N/A")
-                    </span>
-                </td>
-                <td>
-                    @if (criticite.Descriptions.Length > 50)
-                    {
-                        @criticite.Descriptions.Substring(0, 50)
-                    }
-                    else
-                    {
-                        @criticite.Descriptions
-                    }
-                </td>
-                <td>
-                    <form method="post" asp-action="ToggleStatus">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="id" value="@criticite.CriticiteId" />
-                        <label class="switch">
-                            <input type="checkbox"
-                                   name="statut"
-                                   onchange="this.form.submit()"
-                                   @(criticite.Statut == "Actif" ? "checked" : "") />
-                            <span class="slider"></span>
-                        </label>
-                    </form>
-                </td>
-                <td>
-                    <a asp-action="Details" asp-route-id="@criticite.CriticiteId" class="btn btn-black" title="Détails">
-                        <i class="fas fa-list"></i>
-                    </a>
-                    <a asp-action="EditCriticite" asp-route-id="@criticite.CriticiteId" class="btn btn-warning" title="Modifier">
-                        <i class="fas fa-edit"></i>
-                    </a>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
-
-<div class="modal fade" id="createCriticiteModal" tabindex="-1" aria-labelledby="createCriticiteLabel" aria-hidden="true">
+<div class="modal fade" id="createModal" tabindex="-1" aria-labelledby="createLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-black text-white">
-                <h5 class="modal-title" id="createCriticiteLabel">Créer une Criticité</h5>
+                <h5 class="modal-title" id="createLabel">Créer une Equipe</h5>
                 <button type="button" class="btn-close text-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form asp-action="CreateCriticite" id="createCriticiteForm">
+
+                <form asp-action="Create" method="post" id="createForm">
                     <div class="form-group">
-                        <label for="CriticiteNom" class="form-label">Nom de la Criticité</label>
-                        <input id="CriticiteNom" name="CriticiteNom" class="form-control" placeholder="Entrez le nom de la criticité" />
-                        <span class="text-danger" id="criticiteNomError"></span>
-                    </div>
-                    <div class="form-group">
-                        <label for="Couleur" class="form-label">Couleur</label>
-                        <select id="Couleur" name="Couleur" class="form-control">
-                            <option value="">-- Sélectionnez une couleur --</option>
-                            <option value="red">Rouge</option>
-                            <option value="orange">Orange</option>
-                            <option value="yellow">Jaune</option>
-                            <option value="blue">Bleu</option>
-                            <option value="green">Vert</option>
-                            <option value="purple">Violet</option>
-                            <option value="pink">Rose</option>
-                            <option value="gray">Gris</option>
-                            <option value="brown">Marron</option>
-                            <option value="cyan">Cyan</option>
-                            <option value="lime">Lime</option>
-                        </select>
-                        <span class="text-danger" id="couleurError"></span>
+                        <label for="NomEquipe"></label>
+                        <input id="NomEquipe" name="NomEquipe" class="form-control" placeholder="Entrez un nom" />
+                        <span id="NomEquipeError" class="text-danger"></span>
                     </div>
                     <div class="form-group">
                         <label for="Descriptions" class="form-label">Description</label>
                         <textarea id="Descriptions" name="Descriptions" class="form-control" placeholder="Ajoutez une description si nécessaire"></textarea>
                         <span class="text-danger" id="descriptionError"></span>
                     </div>
+
+                    <div class="form-group mt-3">
+                        <label>Souhaitez-vous rattacher des utilisateurs à cette équipe ?</label>
+                        <div>
+                            <button type="button" class="btn btn-primary" onclick="showUserForm()">Oui</button>
+                            <button type="button" class="btn btn-secondary" onclick="hideUserForm()">Non</button>
+                        </div>
+                    </div>
+
+                    <div id="userForm" style="display:none;">
+                        <h5>Rattacher Utilisateur(s)</h5>
+                        <input type="text" id="searchInput" class="form-control" placeholder="Rechercher un utilisateur" onkeyup="filterUsers()" />
+
+                        <div id="userList" class="mb-4" style="display:none;">
+                            @if (ViewBag.Utilisateurs != null)
+                            {
+                                @foreach (var utilisateur in ViewBag.Utilisateurs)
+                                {
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input"
+                                               name="selectedUsers"
+                                               value="@utilisateur.UtilisateursID"
+                                               id="user_@utilisateur.UtilisateursID" />
+                                        <label class="form-check-label" for="user_@utilisateur.UtilisateursID">
+                                            @utilisateur.NomUtilisateurs @utilisateur.PrenomUtilisateurs @utilisateur.AG
+                                        </label>
+                                    </div>
+                                }
+                            }
+                        </div>
+                    </div>
+                    <input type="hidden" id="forceCreate" name="forceCreate" value="false" />
                     <div class="modal-footer justify-content-center">
                         <div class="text-center mt-4">
-                            <button type="submit" class="btn btn-danger ms-3" title="Créer">
-                                <i class="fas fa-save"></i> Enregistrer
-                            </button>
-
+                            <button type="submit" class="btn btn-danger ms-3" title="Créer" onclick="submitForm()">Enregistrer</button>
                             <button type="button" class="btn btn-black ms-3" data-bs-dismiss="modal">
                                 <i class="fas fa-ban"></i> Annuler
                             </button>
@@ -120,718 +61,102 @@
                     </div>
                 </form>
             </div>
-             </div>
         </div>
     </div>
-
-
-@if (TempData["ExistingCriticite"] != null && (bool)TempData["ExistingCriticite"])
-{
-    <div class="modal fade show" tabindex="-1" role="dialog" style="display:block;" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered" role="document">
-            <div class="modal-content">
-                <div class="modal-header bg-warning-subtle border-black">
-                    <h5 class="modal-title">Duplication détectée</h5>
-                    <i class="fas fa-exclamation-triangle ms-4"></i>
-                    <button type="button" class="btn-close text-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body bg-light-subtle">
-                    <p>La criticité avec le nom <strong>@TempData["CriticiteNom"]</strong> existe déjà. Voulez-vous continuer ?</p>
-                </div>
-                <div class="modal-footer bg-warning-subtle">
-                    <form asp-action="CreateCriticite" method="post">
-                        <input type="hidden" name="CriticiteNom" value="@TempData["CriticiteNom"]" />
-                        <input type="hidden" name="forceCreate" value="true" />
-                        <input type="hidden" name="Descriptions" value="@TempData["Descriptions"]" />
-
-                        <button type="submit" class="btn btn-danger">Oui</button>
-                    </form>
-                    <button type="button" class="btn btn-black" data-bs-dismiss="modal">Non</button>
-                </div>
-            </div>
-        </div>
-    </div>
-}
-
-<script>
-    function closeModal() {
-        document.querySelector('.modal').style.display = 'none';
-    }
-</script>
-
-<style>
-    .switch {
-        position: relative;
-        display: inline-block;
-        width: 34px;
-        height: 20px;
-    }
-
-        .switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-    .slider {
-        position: absolute;
-        cursor: pointer;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: #ccc;
-        transition: .4s;
-        border-radius: 34px;
-    }
-
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 14px;
-            width: 14px;
-            left: 3px;
-            bottom: 3px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
-        }
-
-    input:checked + .slider {
-        background-color: #4CAF50;
-    }
-
-        input:checked + .slider:before {
-            transform: translateX(14px);
-        }
-</style>
-
-<script>
-    document.getElementById('searchInput').addEventListener('keyup', function () {
-        var searchString = this.value.toLowerCase();
-        var rows = document.querySelectorAll('tbody tr');
-
-        rows.forEach(function (row) {
-            var appName = row.querySelector('td:first-child').textContent.toLowerCase();
-            if (appName.includes(searchString)) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
-        });
-    });
-
-
-
-
-
-
-</script>
-<script type="text/javascript">
-        document.addEventListener("DOMContentLoaded", function() {
-            var message = '@TempData["Message"]';
-            if (message) {
-                alert(message);
-            }
-        });
-</script>
-<script type="text/javascript">
-    document.getElementById("saveCriticiteBtn").addEventListener("click", function () {
-        // Récupérer les données du formulaire
-        var formData = {
-            CriticiteNom: document.getElementById("CriticiteNom").value,
-            Couleur: document.getElementById("Couleur").value,
-            Descriptions: document.getElementById("Descriptions").value
-        };
-
-        // Vérification des doublonss
-        fetch('/Criticite/CheckDuplicate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ CriticiteNom: formData.CriticiteNom })
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.exists) {
-                    alert("Une criticité avec ce nom existe déjà !");
-                } else {
-                    // Envoi du formulaire
-                    fetch('/Criticite/CreateCriticite', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(formData)
-                    })
-                        .then(response => response.json())
-                        .then(result => {
-                            if (result.success) {
-                                alert("Criticité ajoutée avec succès !");
-                                location.reload();
-                            } else {
-                                alert("Erreur lors de la création de la criticité !");
-                            }
-                        });
-                }
-            });
-    });
-</script>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-voici ma vue index pour criticite
-
-@model IEnumerable<NotifApps.Models.Criticite>
-
-<h2>Criticités</h2>
-<hr />
-<p>
-    <a asp-action="CreateCriticite" class="btn btn-black">Ajouter Criticité</a>
-</p>
-
-<div>
-    <input type="text" id="searchInput" class="form-control" placeholder="Rechercher par criticité...">
-    <button type="submit" class="btn btn-black mt-2 fas fa-search"></button>
 </div>
-<br />
-<table class="table table">
-    <thead>
-        <tr>
-            <th class="bg-black text-white">Nom de Criticité</th>
-            <th class="bg-black text-white">Badge</th>
-            <th class="bg-black text-white">Descriptions</th>
-            <th class="bg-black text-white">Statut</th>
-            <th class="bg-black text-white">Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var criticite in Model)
-        {
-            <tr>
-                <td>@criticite.CriticiteNom</td>
-                <td>
-                    <span class="badge text-black" style="background-color: @(criticite.Couleur ?? "gray");">
-                        @(criticite.CriticiteNom?.ToUpper() ?? "N/A")
-                    </span>
-                </td>
-                <td>
-                    @if (criticite.Descriptions.Length > 50)
-                    {
-                        @criticite.Descriptions.Substring(0, 50)
-                    }
-                    else
-                    {
-                        @criticite.Descriptions
-                    }
-                </td>
-                <td>
-                    <form method="post" asp-action="ToggleStatus">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="id" value="@criticite.CriticiteId" />
-                        <label class="switch">
-                            <input type="checkbox"
-                                   name="statut"
-                                   onchange="this.form.submit()"
-                                   @(criticite.Statut == "Actif" ? "checked" : "") />
-                            <span class="slider"></span>
-                        </label>
-                    </form>
-                </td>
-                <td>
-                    <a asp-action="Details" asp-route-id="@criticite.CriticiteId" class="btn btn-black" title="Détails">
-                        <i class="fas fa-list"></i>
-                    </a>
-                    <a asp-action="EditCriticite" asp-route-id="@criticite.CriticiteId" class="btn btn-warning" title="Modifier">
-                        <i class="fas fa-edit"></i>
-                    </a>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
 
-<style>
-.switch {
-    position: relative;
-    display: inline-block;
-    width: 34px;
-    height: 20px;
-}
-
-.switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: #ccc;
-    transition: .4s;
-    border-radius: 34px;
-}
-
-.slider:before {
-    position: absolute;
-    content: "";
-    height: 14px;
-    width: 14px;
-    left: 3px;
-    bottom: 3px;
-    background-color: white;
-    transition: .4s;
-    border-radius: 50%;
-}
-
-input:checked + .slider {
-    background-color: #4CAF50;
-}
-
-input:checked + .slider:before {
-    transform: translateX(14px);
-}
-
-</style>
-
+ce formulaire est dans un modal, j'aimerais que lorsqu'on le valide pour creer une equipe, si une equipe existe deja a ce nom 
+un message comme celui ci sort pour confirmer la creation ou pas 
 <script>
-    document.getElementById('searchInput').addEventListener('keyup', function () {
-        var searchString = this.value.toLowerCase();
-        var rows = document.querySelectorAll('tbody tr');
+    async function submitForm() {
+        const nomEquipe = document.getElementById('NomEquipe').value;
+        const response = await fetch(`/Equipe/CheckEquipeExists?nomEquipe=${nomEquipe}`);
+        const exists = await response.json();
 
-        rows.forEach(function (row) {
-            var appName = row.querySelector('td:first-child').textContent.toLowerCase();
-            if (appName.includes(searchString)) {
-                row.style.display = '';
+        if (exists) {
+            if (confirm("L'équipe avec le nom existe déjà. Voulez-vous continuer ?")) {
+                document.getElementById('forceCreate').value = "true";
+                document.getElementById('createForm').submit();
             } else {
-                row.style.display = 'none';
+                var myModal = new bootstrap.Modal(document.getElementById('createModal'));
+                myModal.show();
             }
-        });
-    });
-
+        } else {
+            document.getElementById('createForm').submit();
+        }
+    }
 </script>
-<script type="text/javascript">
-        document.addEventListener("DOMContentLoaded", function() {
-            var message = '@TempData["Message"]';
-            if (message) {
-                alert(message);
-            }
-        });
-    </script>
-===========================================================================================
-voici mon controller 
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using NotifApps.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
-namespace NotifApps.Controllers
-{
-    public class CriticiteController : Controller
-    {
-        private readonly NotifdbContext _context;
+voici les fonctions pour vous aider, 
 
-        public CriticiteController(NotifdbContext context)
+ // GET: Equipes/Create
+        public IActionResult Create()
         {
-            _context = context;
-        }
-
-        //BREADCRUMB................................
-        public List<BreadcrumbItem> GetBreadcrumb(string page)
-        {
-            var breadcrumb = new List<BreadcrumbItem>
-       {
-           new BreadcrumbItem { Title = "Homes", Url = Url.Action("Index", "Homes"), IsActive = false }
-       };
-
-            switch (page)
-            {
-                case "Index":
-                    breadcrumb.Add(new BreadcrumbItem { Title = "Index", Url = Url.Action("Index", "Criticite"), IsActive = true });
-                    break;
-                case "CreateCriticite":
-                    breadcrumb.Add(new BreadcrumbItem { Title = "Index", Url = Url.Action("Index", "Criticite"), IsActive = false });
-                    breadcrumb.Add(new BreadcrumbItem { Title = "Create", Url = Url.Action("CreateCriticite", "Criticite"), IsActive = true });
-                    break;
-                case "Details":
-                    breadcrumb.Add(new BreadcrumbItem { Title = "Index", Url = Url.Action("Index", "Criticite"), IsActive = false });
-                    breadcrumb.Add(new BreadcrumbItem { Title = "Details", Url = Url.Action("Details", "Criticite"), IsActive = true });
-                    break;
-                case "EditCriticite":
-                    breadcrumb.Add(new BreadcrumbItem { Title = "Index", Url = Url.Action("Index", "Criticite"), IsActive = false });
-                    breadcrumb.Add(new BreadcrumbItem { Title = "EditCriticite", Url = Url.Action("EditCriticite", "Criticite"), IsActive = true });
-                    break;
-            }
-
-            return breadcrumb;
-        }
-
-
-        // GET: Criticite/Index
-        public async Task<IActionResult> Index(string searchString)
-        {
-            //Breadcrump, récupèration des donnéees 
-            var breadcrumb = GetBreadcrumb("Index");
+            var breadcrumb = GetBreadcrumb("Create");
             ViewBag.Breadcrumb = breadcrumb;
-            // Récupère toutes les criticités depuis la base de données
-            var criticites = await _context.Criticites.ToListAsync();
-
-            // Vérifie s'il n'y a pas de criticités dans la base
-            if (criticites == null || !criticites.Any())
-            {
-                // Retourne une liste vide si aucune criticité n'est trouvée
-                return View(new List<Criticite>());
-            }
-            if (!string.IsNullOrEmpty(searchString))
-            {
-                criticites = criticites.Where(u => u.CriticiteNom.Contains(searchString)).ToList();
-            }
-            // Passe la liste des criticités à la vue
-            return View(criticites);
-        }
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public IActionResult ToggleStatus(int id)
-        {
-            // Récupérez la criticité à partir de la base de données
-            var criticite = _context.Criticites.FirstOrDefault(c => c.CriticiteId == id);
-
-            string message = string.Empty;
-
-            if (criticite != null)
-            {
-                if (criticite.Statut == "Actif")
-                {
-                    // Change le statut à Inactif et ajoute la date de désactivation
-                    criticite.Statut = "Inactif";
-                    criticite.DateDesactivation = DateTime.Now;
-                    message = $"Vous venez de desactiver le statut de {criticite.CriticiteNom}.";
-                }
-                else
-                {
-                    // Change le statut à Actif et retire la date de désactivation
-                    criticite.Statut = "Actif";
-                    criticite.DateDesactivation = null;
-                    message = $"Vous venez dactiver le statut de {criticite.CriticiteNom}.";
-                }
-
-       
-                _context.SaveChanges();
-            }
-            TempData["Message"] = message;
-            return RedirectToAction(nameof(Index));
-        }
-
-        // GET: Criticite/Create
-        public IActionResult CreateCriticite()
-        {
-            var breadcrumb = GetBreadcrumb("CreateCriticite");
-            ViewBag.Breadcrumb = breadcrumb;
+            ViewBag.Utilisateurs = _context.Utilisateurs
+                .Where(u=>u.Statut == "Actif")
+                .ToList(); // Récupérer tous les utilisateurs
             return View();
         }
 
-        // POST: Criticite/Create
+        // POST: Equipes/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> CreateCriticite(Criticite criticite, bool forceCreate = false)
+        public async Task<IActionResult> Create([Bind("NomEquipe,Descriptions")] Equipe equipe, int[] selectedUsers, bool forceCreate = false)
         {
             if (ModelState.IsValid)
             {
-                // Vérification de l'existence d'une criticité avec le même nom
-                var existingCriticite = await _context.Criticites
-                    .FirstOrDefaultAsync(c => c.CriticiteNom == criticite.CriticiteNom);
+                equipe.Statut = "Actif";
 
-                if (existingCriticite != null && !forceCreate)
+                // Vérification de l'existence d'une criticité avec le même nom
+                var existingEquipe = await _context.Equipes
+                    .FirstOrDefaultAsync(c => c.NomEquipe == equipe.NomEquipe);
+
+                if (existingEquipe != null && !forceCreate)
                 {
                     // Criticité existe déjà, demander confirmation
-                    ViewBag.ExistingCriticite = true;
-                    ViewBag.CriticiteNom = criticite.CriticiteNom;
-                    return View(criticite);
+                    TempData["ExistingEquipe"] = true;
+                    TempData["NomEquipe"] = equipe.NomEquipe;
+                    TempData["Descriptions"] = equipe.Descriptions;
+                    return RedirectToAction("Index");
                 }
 
-                // Si l'utilisateur confirme ou si aucun doublon n'existe
-                criticite.Statut = "Actif";
-                if (string.IsNullOrEmpty(criticite.Descriptions))
+                // Check if Descriptions is null or empty, and set it to "RAS" if so
+                if (string.IsNullOrEmpty(equipe.Descriptions))
                 {
-                    criticite.Descriptions = "RAS";
+                    equipe.Descriptions = "RAS";
                 }
 
-                _context.Add(criticite);
+                _context.Add(equipe);
                 await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
-            }
-            return View(criticite);
-        }
 
-
-
-        // GET: Criticite/Edit/5
-        public async Task<IActionResult> EditCriticite(int? id)
-        {
-            var breadcrumb = GetBreadcrumb("EditCriticite");
-            ViewBag.Breadcrumb = breadcrumb;
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var criticite = await _context.Criticites.FindAsync(id);
-            if (criticite == null)
-            {
-                return NotFound();
-            }
-            return View(criticite);
-        }
-
-        // POST: Criticite/Edit/5
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> EditCriticite(int id, Criticite criticite)
-        {
-            if (id != criticite.CriticiteId)
-            {
-                return NotFound();
-            }
-
-            if (ModelState.IsValid)
-            {
-                try
+                // Rattacher les utilisateurs sélectionnés
+                if (selectedUsers != null)
                 {
-                    // Récupérer la criticité existante depuis la base
-                    var existingCriticite = await _context.Criticites.FindAsync(id);
-                    if (existingCriticite == null)
+                    foreach (var userId in selectedUsers)
                     {
-                        return NotFound();
+                        var equipeUtilisateur = new EquipeUtilisateur
+                        {
+                            EquipeId = equipe.EquipeId,
+                            UtilisateursId = userId
+                        };
+                        _context.Add(equipeUtilisateur);
                     }
-
-                    // Mettre à jour les champs modifiables
-                    existingCriticite.CriticiteNom = criticite.CriticiteNom;
-                    existingCriticite.Couleur = criticite.Couleur;
-                    existingCriticite.Descriptions = criticite.Descriptions;
-
-                    _context.Update(existingCriticite);
                     await _context.SaveChangesAsync();
                 }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!CriticiteExists(criticite.CriticiteId))
-                    {
-                        return NotFound();
-                    }
-                    throw;
-                }
+
                 return RedirectToAction(nameof(Index));
             }
-            return View(criticite);
+
+            ViewBag.Utilisateurs = _context.Utilisateurs.ToList(); // Récupérer à nouveau les utilisateurs en cas d'erreur
+            return View(equipe);
         }
 
-
-        // GET: Criticite/Details/5
-        public async Task<IActionResult> Details(int? id)
+        // GET: Equipes/CheckEquipeExists
+        public async Task<IActionResult> CheckEquipeExists(string nomEquipe)
         {
-            var breadcrumb = GetBreadcrumb("Details");
-            ViewBag.Breadcrumb = breadcrumb;
-
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var criticite = await _context.Criticites
-                .FirstOrDefaultAsync(m => m.CriticiteId == id);
-
-            if (criticite == null)
-            {
-                return NotFound();
-            }
-
-            return View(criticite);
+            var existingEquipe = await _context.Equipes
+                .FirstOrDefaultAsync(c => c.NomEquipe == nomEquipe);
+            return Json(existingEquipe != null);
         }
-
-
-        // GET: Criticite/Delete/5
-        public async Task<IActionResult> DeleteCriticite(int? id)
-        {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var criticite = await _context.Criticites
-                .FirstOrDefaultAsync(m => m.CriticiteId == id);
-            if (criticite == null)
-            {
-                return NotFound();
-            }
-
-            return View(criticite);
-        }
-
-        // POST: Criticite/Delete/5
-        [HttpPost, ActionName("DeleteCriticite")]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(int id)
-        {
-            var criticite = await _context.Criticites.FindAsync(id);
-            if (criticite == null)
-            {
-                return NotFound();
-            }
-
-            var incidents = await _context.Incidents.Where(i => i.CriticiteId == id).ToListAsync();
-            _context.Incidents.RemoveRange(incidents);
-
-            _context.Criticites.Remove(criticite);
-            await _context.SaveChangesAsync();
-
-            return RedirectToAction(nameof(Index));
-        }
-
-        private bool CriticiteExists(int id)
-        {
-            return _context.Criticites.Any(e => e.CriticiteId == id);
-        }
-    }
-}
-
-==========================================================================================================================
-
-voici ma vue create 
-
-@model NotifApps.Models.Criticite
-
-@{
-    ViewData["Title"] = "Créer Criticité";
-}
-
-<div class="container mt-5">
-    <div class="card">
-        <div class="card-header bg-black text-white">
-            <h4>Créer une Criticité</h4>
-        </div>
-        <div class="card-body">
-            <form asp-action="CreateCriticite">
-                <!-- Nom de la Criticité -->
-                <div class="form-group">
-                    <label asp-for="CriticiteNom" class="form-label">Nom de la Criticité</label>
-                    <input asp-for="CriticiteNom" class="form-control" placeholder="Entrez le nom de la criticité" />
-                    <span asp-validation-for="CriticiteNom" class="text-danger"></span>
-                </div>
-
-                <!-- Couleur -->
-                <div class="form-group">
-                    <label asp-for="Couleur" class="form-label">Couleur</label>
-                    <select asp-for="Couleur" class="form-control">
-                        <option value="">-- Sélectionnez une couleur --</option>
-                        <option value="red">Rouge</option>
-                        <option value="orange">Orange</option>
-                        <option value="yellow">Jaune</option>
-                        <option value="blue">Bleu</option>
-                        <option value="green">Vert</option>
-                        <option value="purple">Violet</option>
-                        <option value="pink">Rose</option>
-                        <option value="gray">Gris</option>
-                        <option value="brown">Marron</option>
-                        <option value="cyan">Cyan</option>
-                        <option value="lime">Lime</option>
-                    </select>
-                    <span asp-validation-for="Couleur" class="text-danger"></span>
-                </div>
-
-                <!-- Description -->
-                <div class="form-group">
-                    <label asp-for="Descriptions" class="form-label">Description</label>
-                    <textarea asp-for="Descriptions" class="form-control" placeholder="Ajoutez une description si nécessaire"></textarea>
-                    <span asp-validation-for="Descriptions" class="text-danger"></span>
-                </div>
-
-                <!-- Boutons d'action -->
-                <div class="text-center mt-4">
-                    <button type="submit" class="btn btn-danger" title="Créer">
-                        <i class="fas fa-save"></i> Enregistrer
-                    </button>
-                    <a asp-action="Index" class="btn btn-black mx-2" title="Annuler">
-                        <i class="fas fa-ban"></i> Annuler
-                    </a>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-
-@if (ViewBag.ExistingCriticite != null && (bool)ViewBag.ExistingCriticite)
-{
-    <div class="modal fade show" tabindex="-1" role="dialog" style="display: block;" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered" role="document">
-            <div class="modal-content">
-                <div class="modal-header bg-warning-subtle border-black">
-                    <h5 class="modal-title">Duplication détectée</h5>
-                    <i class="fas fa-exclamation-triangle ms-4"></i>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close" onclick="closeModal()">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body bg-light-subtle">
-                    <p>La criticité avec le nom <strong>@ViewBag.CriticiteNom</strong> existe déjà. Voulez-vous continuer ?</p>
-                </div>
-                <div class="modal-footer bg-warning-subtle">
-
-                    <form asp-action="CreateCriticite" method="post">
-                        <input type="hidden" name="CriticiteNom" value="@ViewBag.CriticiteNom" />
-                        <input type="hidden" name="forceCreate" value="true" />
-                        <button type="submit" class="btn btn-danger">Oui</button>
-                    </form>
-                    <button type="button" class="btn btn-black" onclick="closeModal()">Non</button>
-                </div>
-            </div>
-        </div>
-    </div>
-}
-
-<script>
-    function closeModal() {
-        document.querySelector('.modal').style.display = 'none';
-    }
-</script>
-
-<style>
-    .card {
-        border-top: 5px solid red;
-        border-radius: 8px;
-    }
-
-    .form-label {
-        font-weight: bold;
-    }
-
-    .btn-success {
-        background-color: #28a745;
-        border-color: #28a745;
-    }
-
-    .btn-secondary {
-        background-color: #6c757d;
-        border-color: #6c757d;
-    }
-</style>
-
