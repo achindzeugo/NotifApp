@@ -1,74 +1,249 @@
-<div class="container mt-5">
-    <div class="card card">
-        <div class="card-header bg-black text-white">
-            <h4>Créer une Équipe</h4>
-        </div>
-        <div class="card-body">
-            <form asp-action="Create" method="post">
-                <div class="form-group">
-                    <label asp-for="NomEquipe" class="control-label"></label>
-                    <input asp-for="NomEquipe" class="form-control" placeholder="Entrez un nom" />
-                    <span asp-validation-for="NomEquipe" class="text-danger"></span>
-                </div>
-                <div class="form-group">
-                    <label asp-for="Descriptions" class="form-label">Description</label>
-                    <textarea asp-for="Descriptions" class="form-control" placeholder="Ajoutez une description si nécessaire"></textarea>
-                    <span asp-validation-for="Descriptions" class="text-danger"></span>
-                </div>
+@model IEnumerable<NotifApps.Models.Equipe>
 
-                <div class="form-group mt-3">
-                    <label>Souhaitez-vous rattacher des utilisateurs à cette équipe ?</label>
-                    <div>
-                        <button type="button" class="btn btn-primary" onclick="showUserForm()">Oui</button>
-                        <button type="button" class="btn btn-secondary" onclick="hideUserForm()">Non</button>
+<h1>Liste des Équipes</h1>
+
+<hr />
+<p>
+    <button class="btn btn-black" data-bs-toggle="modal" data-bs-target="#createModal">
+        Ajouter équipe
+    </button>
+</p>
+
+<div>
+    <input type="text" id="searchInput" class="form-control" placeholder="Rechercher par nom d'équipe...">
+    <button type="submit" class="btn btn-black mt-2 fas fa-search"></button>
+
+</div>
+<br />
+<table class="table table" style="border-collapse: collapse;">
+    <thead>
+        <tr>
+            <th class="bg-black text-white">ICONE</th>
+            <th class="bg-black text-white">NOM</th>
+            <th class="bg-black text-white">DESCRIPTION</th>
+            <th class="bg-black text-white">STATUT</th>
+
+            <th class="bg-black text-white">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var equipe in Model)
+        {
+            <tr>
+                <!--<tr style="border-bottom: 2px solid #000;">-->
+                <!-- Dark line -->
+                <td><i class="fas fa-users fa-2x"></td>
+                <td>@equipe.NomEquipe</td>
+
+                <td>
+                    @equipe.Descriptions
+                </td>
+                <td>
+                    <form method="post" asp-action="ToggleStatus">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@equipe.EquipeId" />
+                        <label class="switch">
+                            <input type="checkbox"
+                                   name="statut"
+                                   onchange="this.form.submit()"
+                                   @(equipe.Statut == "Actif" ? "checked" : "") />
+                            <span class="slider"></span>
+                        </label>
+                    </form>
+                </td>
+                <td>
+                    <a asp-action="Details" asp-route-id="@equipe.EquipeId" class="btn btn-black mx-2"><i class="fa fa-list-alt"></i></a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+
+<div class="modal fade" id="createModal" tabindex="-1" aria-labelledby="createModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-black text-white">
+                <h5 class="modal-title" id="createModalLabel">Créer une Équipe</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form asp-action="Create" method="post">
+                    <div class="form-group">
+                        <label for="NomEquipe"></label>
+                        <input id="NomEquipe" name="NomEquipe" class="form-control" placeholder="Entrez un nom" />
+                        <span id="NomEquipeError" class="text-danger"></span>
                     </div>
-                </div>
-
-                <div id="userForm" style="display:none;">
-                    <h5>Rattacher Utilisateur(s)</h5>
-                    <input type="text" id="searchInput" class="form-control" placeholder="Rechercher un utilisateur" onkeyup="filterUsers()" />
-
-                    <div id="userList" class="mb-4" style="display:none;">
-                        @if (ViewBag.Utilisateurs != null)
-                        { 
-                            @foreach (var utilisateur in ViewBag.Utilisateurs)
-                            {
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input"
-                                           name="selectedUsers"
-                                           value="@utilisateur.UtilisateursID"
-                                           id="user_@utilisateur.UtilisateursID" />
-                                    <label class="form-check-label" for="user_@utilisateur.UtilisateursID">
-                                        @utilisateur.NomUtilisateurs @utilisateur.PrenomUtilisateurs @utilisateur.AG
-                                    </label>
-                                </div>
-                            }
-                           }
+                    <div class="form-group">
+                        <label for="Descriptions" class="form-label">Description</label>
+                        <textarea id="Descriptions" name="Descriptions" class="form-control" placeholder="Ajoutez une description si nécessaire"></textarea>
+                        <span class="text-danger" id="descriptionError"></span>
                     </div>
-                </div>
+                    <div class="form-group mt-3">
+                        <label>Souhaitez-vous rattacher des utilisateurs à cette équipe ?</label>
+                        <div>
+                            <button type="button" class="btn btn-primary" onclick="showUserForm()">Oui</button>
+                            <button type="button" class="btn btn-secondary" onclick="hideUserForm()">Non</button>
+                        </div>
+                    </div>
 
-                <div class="d-flex justify-content-center mt-4">
-                    <button type="submit" class="btn btn-danger ms-3" title="Créer"><i class="fas fa-save"></i></button>
-                    <a asp-action="Index" class="btn btn-black ms-3" title="Annuler"><i class="fas fa-ban"></i></a>
-                </div>
-            </form>
+                    <div id="userForm" style="display:none;">
+                        <h5>Rattacher Utilisateur(s)</h5>
+                        <input type="text" id="searchInput" class="form-control" placeholder="Rechercher un utilisateur" onkeyup="filterUsers()" />
+
+                        <div id="userForm" style="display:none;">
+                            <h5>Rattacher Utilisateur(s)</h5>
+                            <input type="text" id="searchInput" class="form-control" placeholder="Rechercher un utilisateur" onkeyup="filterUsers()" />
+
+                            <div id="userList" class="mb-4" style="display:none;">
+                                @if (ViewBag.Utilisateurs != null)
+                                {
+                                    @foreach (var utilisateur in ViewBag.Utilisateurs)
+                                    {
+                                        <div class="form-check">
+                                            <input type="checkbox" class="form-check-input"
+                                                   name="selectedUsers"
+                                                   value="@utilisateur.UtilisateursID"
+                                                   id="user_@utilisateur.UtilisateursID" />
+                                            <label class="form-check-label" for="user_@utilisateur.UtilisateursID">
+                                                @utilisateur.NomUtilisateurs @utilisateur.PrenomUtilisateurs @utilisateur.AG
+                                            </label>
+                                        </div>
+                                    }
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-center mt-4">
+                        <button type="submit" class="btn btn-danger ms-3" title="Créer"><i class="fas fa-save"></i> Enregistrer</button>
+                        <button type="button" class="btn btn-black ms-3" data-bs-dismiss="modal" title="Annuler"><i class="fas fa-ban"></i> Annuler</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </div>
 
-mettez ca dans un modal, je veux pouvoir creer une equipe et je veux que lorsque j'appui sur ce bouton 
+<!-- Modal de confirmation -->
+<div class="modal fade" id="confirmationModal" tabindex="-1" aria-labelledby="confirmationModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="confirmationModalLabel">Confirmation</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Une équipe avec ce nom existe déjà. Voulez-vous continuer ?
+            </div>
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-primary ms-3" id="confirmCreate">Oui</button>
 
-<p>
-    <button class="btn btn-black" data-bs-toggle="modal" data-bs-target="#createModal">
-        Ajouter equipe
-    </button>
-</p>
+                <button type="button" class="btn btn-secondary ms-3" data-bs-dismiss="modal">Non</button>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
-en creant l'equipe je peur aussi rattacher l'utilisateur directement 
+<script>
+    $(document).ready(function () {
+        $('form').on('submit', function (e) {
+            e.preventDefault();
+            var form = $(this);
+
+            $.ajax({
+                type: form.attr('method'),
+                url: form.attr('action'),
+                data: form.serialize(),
+                success: function (response) {
+                    if (response.exists) {
+                        $('#confirmationModal').modal('show');
+                        $('#confirmCreate').off('click').on('click', function () {
+                            form.append('<input type="hidden" name="forceCreate" value="true" />');
+                            form.off('submit').submit();
+                        });
+                    } else if (response.success) {
+                        location.reload();
+                    }
+                }
+            });
+        });
+    });
+</script>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
+<script>
+    async function submitForm() {
+        const nomEquipe = document.getElementById('NomEquipe').value;
+        const response = await fetch(`/Equipe/CheckEquipeExists?nomEquipe=${nomEquipe}`);
+        const exists = await response.json();
+
+        if (exists) {
+            if (confirm("L'équipe avec le nom existe déjà. Voulez-vous continuer ?")) {
+                document.getElementById('forceCreate').value = "true";
+                document.getElementById('createForm').submit();
+            } else {
+                var myModal = new bootstrap.Modal(document.getElementById('createModal'));
+                myModal.show();
+            }
+        } else {
+            document.getElementById('createForm').submit();
+        }
+    }
+</script>
+
+<script type="text/javascript">
+        document.addEventListener("DOMContentLoaded", function() {
+            var message = '@TempData["Message"]';
+            if (message) {
+                alert(message);
+            }
+        });
+</script>
+<script type="text/javascript">
+    document.getElementById("saveEquipeBtn").addEventListener("click", function () {
+        // Récupérer les données du formulaire
+        var formData = {
+            NomEquipe: document.getElementById("NomEquipe").value,
+            Descriptions: document.getElementById("Descriptions").value
+        };
+</script>
+
+
+<style>
+    .table {
+        border-top-color: red;
+        border-top-style: solid;
+        border-top-width: 5px;
+        border-top-left-radius: 5px;
+        border-top-right-radius: 5px;
+    }
+</style>
+
+
+<script>
+    document.getElementById('searchInput').addEventListener('keyup', function () {
+        var searchString = this.value.toLowerCase();
+        var rows = document.querySelectorAll('tbody tr');
+
+        rows.forEach(function (row) {
+            var appName = row.querySelector('td:first-child').textContent.toLowerCase();
+            if (appName.includes(searchString)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+</script>
+
 <script>
     function showUserForm() {
         document.getElementById('userForm').style.display = 'block';
-        document.getElementById('userList').style.display = 'none'; // hide ysers initially
+        document.getElementById('userList').style.display = 'none'; // hide users initially
     }
 
     function hideUserForm() {
@@ -99,79 +274,49 @@ en creant l'equipe je peur aussi rattacher l'utilisateur directement
     }
 </script>
 
-le but c'est de ne plus avoir une page create, mais depuis la vue Index je clique sur ajouter equipe et le formulaire de creation sort dans un modal
+<style>
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 34px;
+        height: 20px;
+    }
 
-voici les methodes de creation 
-
- // GET: Equipes/Create
-        public IActionResult Create()
-        {
-            var breadcrumb = GetBreadcrumb("Create");
-            ViewBag.Breadcrumb = breadcrumb;
-            ViewBag.Utilisateurs = _context.Utilisateurs
-                .Where(u=>u.Statut == "Actif")
-                .ToList(); // Récupérer tous les utilisateurs
-            return View();
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
         }
 
-        // POST: Equipes/Create
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("NomEquipe,Descriptions")] Equipe equipe, int[] selectedUsers, bool forceCreate = false)
-        {
-            if (ModelState.IsValid)
-            {
-                equipe.Statut = "Actif";
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: .4s;
+        border-radius: 34px;
+    }
 
-                // Vérification de l'existence d'une criticité avec le même nom
-                var existingEquipe = await _context.Equipes
-                    .FirstOrDefaultAsync(c => c.NomEquipe == equipe.NomEquipe);
-
-                if (existingEquipe != null && !forceCreate)
-                {
-                    // Criticité existe déjà, demander confirmation
-                    TempData["ExistingEquipe"] = true;
-                    TempData["NomEquipe"] = equipe.NomEquipe;
-                    TempData["Descriptions"] = equipe.Descriptions;
-                    return RedirectToAction("Index");
-                }
-
-                // Check if Descriptions is null or empty, and set it to "RAS" if so
-                if (string.IsNullOrEmpty(equipe.Descriptions))
-                {
-                    equipe.Descriptions = "RAS";
-                }
-
-                _context.Add(equipe);
-                await _context.SaveChangesAsync();
-
-                // Rattacher les utilisateurs sélectionnés
-                if (selectedUsers != null)
-                {
-                    foreach (var userId in selectedUsers)
-                    {
-                        var equipeUtilisateur = new EquipeUtilisateur
-                        {
-                            EquipeId = equipe.EquipeId,
-                            UtilisateursId = userId
-                        };
-                        _context.Add(equipeUtilisateur);
-                    }
-                    await _context.SaveChangesAsync();
-                }
-
-                return RedirectToAction(nameof(Index));
-            }
-
-            ViewBag.Utilisateurs = _context.Utilisateurs.ToList(); // Récupérer à nouveau les utilisateurs en cas d'erreur
-            return View(equipe);
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 14px;
+            width: 14px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
         }
 
-        // GET: Equipes/CheckEquipeExists
-        public async Task<IActionResult> CheckEquipeExists(string nomEquipe)
-        {
-            var existingEquipe = await _context.Equipes
-                .FirstOrDefaultAsync(c => c.NomEquipe == nomEquipe);
-            return Json(existingEquipe != null);
-        }
+    input:checked + .slider {
+        background-color: #4CAF50;
+    }
 
+        input:checked + .slider:before {
+            transform: translateX(14px);
+        }
+</style>
