@@ -1,409 +1,221 @@
-@model IEnumerable<NotifApps.Models.Equipe>
+@model NotifApps.Models.Equipe
 
-<h1>Liste des Équipes</h1>
-
-<hr />
-<p>
-    <button class="btn btn-black" data-bs-toggle="modal" data-bs-target="#createModal">
-        Ajouter équipe
-    </button>
-</p>
-
-<div>
-    <input type="text" id="searchInput" class="form-control" placeholder="Rechercher par nom d'équipe...">
-    <button type="submit" class="btn btn-black mt-2 fas fa-search"></button>
-
-</div>
-<br />
-<table class="table table" style="border-collapse: collapse;">
-    <thead>
-        <tr>
-            <th class="bg-black text-white">ICONE</th>
-            <th class="bg-black text-white">NOM</th>
-            <th class="bg-black text-white">DESCRIPTION</th>
-            <th class="bg-black text-white">STATUT</th>
-
-            <th class="bg-black text-white">Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var equipe in Model)
-        {
-            <tr>
-                <!--<tr style="border-bottom: 2px solid #000;">-->
-                <!-- Dark line -->
-                <td><i class="fas fa-users fa-2x"></td>
-                <td>@equipe.NomEquipe</td>
-
-                <td>
-                    @equipe.Descriptions
-                </td>
-                <td>
-                    <form method="post" asp-action="ToggleStatus">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="id" value="@equipe.EquipeId" />
-                        <label class="switch">
-                            <input type="checkbox"
-                                   name="statut"
-                                   onchange="this.form.submit()"
-                                   @(equipe.Statut == "Actif" ? "checked" : "") />
-                            <span class="slider"></span>
-                        </label>
-                    </form>
-                </td>
-                <td>
-                    <a asp-action="Details" asp-route-id="@equipe.EquipeId" class="btn btn-black mx-2"><i class="fa fa-list-alt"></i></a>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
-
-
-<div class="modal fade" id="createModal" tabindex="-1" aria-labelledby="createModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-black text-white">
-                <h5 class="modal-title" id="createModalLabel">Créer une Équipe</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form asp-action="Create" method="post">
-                    <div class="form-group">
-                        <label for="NomEquipe"></label>
-                        <input id="NomEquipe" name="NomEquipe" class="form-control" placeholder="Entrez un nom" />
-                        <span id="NomEquipeError" class="text-danger"></span>
-                    </div>
-                    <div class="form-group">
-                        <label for="Descriptions" class="form-label">Description</label>
-                        <textarea id="Descriptions" name="Descriptions" class="form-control" placeholder="Ajoutez une description si nécessaire"></textarea>
-                        <span class="text-danger" id="descriptionError"></span>
-                    </div>
-                    <div class="form-group mt-3">
-                        <label>Souhaitez-vous rattacher des utilisateurs à cette équipe ?</label>
-                        <div>
-                            <button type="button" class="btn btn-primary" onclick="showUserForm()">Oui</button>
-                            <button type="button" class="btn btn-secondary" onclick="hideUserForm()">Non</button>
-                        </div>
-                    </div>
-
-                    <div id="userForm" style="display:none;">
-                        <h5>Rattacher Utilisateur(s)</h5>
-                        <input type="text" id="searchInput" class="form-control" placeholder="Rechercher un utilisateur" onkeyup="filterUsers()" />
-
-                        <div id="userForm" style="display:none;">
-                            <h5>Rattacher Utilisateur(s)</h5>
-                            <input type="text" id="searchInput" class="form-control" placeholder="Rechercher un utilisateur" onkeyup="filterUsers()" />
-
-                            <div id="userList" class="mb-4" style="display:none;">
-                                @if (ViewBag.Utilisateurs != null)
-                                {
-                                    @foreach (var utilisateur in ViewBag.Utilisateurs)
-                                    {
-                                        <div class="form-check">
-                                            <input type="checkbox" class="form-check-input"
-                                                   name="selectedUsers"
-                                                   value="@utilisateur.UtilisateursID"
-                                                   id="user_@utilisateur.UtilisateursID" />
-                                            <label class="form-check-label" for="user_@utilisateur.UtilisateursID">
-                                                @utilisateur.NomUtilisateurs @utilisateur.PrenomUtilisateurs @utilisateur.AG
-                                            </label>
-                                        </div>
-                                    }
-                                }
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="d-flex justify-content-center mt-4">
-                        <button type="submit" class="btn btn-danger ms-3" title="Créer"><i class="fas fa-save"></i> Enregistrer</button>
-                        <button type="button" class="btn btn-black ms-3" data-bs-dismiss="modal" title="Annuler"><i class="fas fa-ban"></i> Annuler</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal de confirmation -->
-<div class="modal fade" id="confirmationModal" tabindex="-1" aria-labelledby="confirmationModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-warning text-dark">
-                <h5 class="modal-title" id="confirmationModalLabel">Confirmation</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                Une équipe avec ce nom existe déjà. Voulez-vous continuer ?
-            </div>
-            <div class="modal-footer justify-content-center">
-                <button type="button" class="btn btn-primary ms-3" id="confirmCreate">Oui</button>
-
-                <button type="button" class="btn btn-secondary ms-3" data-bs-dismiss="modal">Non</button>
-            </div>
-        </div>
-    </div>
-</div>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
-<script>
-    $(document).ready(function () {
-        $('form').on('submit', function (e) {
-            e.preventDefault();
-            var form = $(this);
-
-            $.ajax({
-                type: form.attr('method'),
-                url: form.attr('action'),
-                data: form.serialize(),
-                success: function (response) {
-                    if (response.exists) {
-                        $('#confirmationModal').modal('show');
-                        $('#confirmCreate').off('click').on('click', function () {
-                            form.append('<input type="hidden" name="forceCreate" value="true" />');
-                            form.off('submit').submit();
-                        });
-                    } else if (response.success) {
-                        location.reload();
-                    }
-                }
-            });
-        });
-    });
-</script>
-
-@section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+@{
+    ViewData["Title"] = "Créer une Équipe";
 }
-<script>
-    async function submitForm() {
-        const nomEquipe = document.getElementById('NomEquipe').value;
-        const response = await fetch(`/Equipe/CheckEquipeExists?nomEquipe=${nomEquipe}`);
-        const exists = await response.json();
 
-        if (exists) {
-            if (confirm("L'équipe avec le nom existe déjà. Voulez-vous continuer ?")) {
-                document.getElementById('forceCreate').value = "true";
-                document.getElementById('createForm').submit();
-            } else {
-                var myModal = new bootstrap.Modal(document.getElementById('createModal'));
-                myModal.show();
-            }
-        } else {
-            document.getElementById('createForm').submit();
-        }
+<head>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.0.0-beta.1/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+</head>
+
+<div class="container mt-5">
+    <div class="card card">
+        <div class="card-header bg-black d-flex justify-content-lg-between text-white">
+            <h4> Créer une nouvelle équipe</h4>
+            <span><i class="fas fa-info-circle"></i></span>
+        </div>
+        <div class="card-body">
+            <form asp-action="Create" method="post">
+                <div class="form-group">
+                    <label asp-for="NomEquipe" class="control-label"></label>
+                    <input asp-for="NomEquipe" class="form-control" placeholder="Entrez un nom" />
+                    <span asp-validation-for="NomEquipe" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label asp-for="Descriptions" class="form-label">Description</label>
+                    <textarea asp-for="Descriptions" class="form-control" placeholder="Ajoutez une description si nécessaire"></textarea>
+                    <span asp-validation-for="Descriptions" class="text-danger"></span>
+                </div>
+
+                <div class="form-group mt-3">
+                    <label>Souhaitez-vous rattacher des utilisateurs à cette équipe ?</label>
+                    <div>
+                        <button type="button" class="btn btn-primary" onclick="showUserForm()">Oui</button>
+                        <button type="button" class="btn btn-secondary" onclick="hideUserForm()">Non</button>
+                    </div>
+                </div>
+
+                <div id="userForm" style="display:none;">
+                    <h5>Rattacher Utilisateur(s)</h5>
+                    <input type="text" id="searchInput" class="form-control" placeholder="Rechercher un utilisateur" onkeyup="filterUsers()" />
+                    <div id="search-results" class="mt-3"></div>
+                    <div id="selected-users" class="row mt-3"></div>
+                </div>
+
+                <div class="d-flex justify-content-center mt-4">
+                    <button type="submit" class="btn btn-danger ms-3" title="Créer"><i class="fas fa-save"></i> Enregistrer</button>
+                    <a asp-action="Index" class="btn btn-black ms-3" title="Annuler"><i class="fas fa-ban"></i> Annuler</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@if (ViewBag.ExistingEquipe != null && (bool)ViewBag.ExistingEquipe)
+{
+    <div class="modal fade show" tabindex="-1" role="dialog" style="display: block; top: 0;" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-warning-subtle border-black">
+                    <h5 class="modal-title">Duplication détectée</h5>
+                    <i class="fas fa-exclamation-triangle ms-4"></i>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close" onclick="closeModal()">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body bg-light-subtle">
+                    <p>L'equipe avec le nom <strong>@ViewBag.NomEquipe</strong> existe déjà. Voulez-vous continuer ?</p>
+                </div>
+                <div class="modal-footer bg-warning-subtle">
+                    <form asp-action="Create" method="post">
+                        <input type="hidden" name="NomEquipe" value="@ViewBag.NomEquipe" />
+                        <input type="hidden" name="forceCreate" value="true" />
+                        <button type="submit" class="btn btn-danger">Oui</button>
+                    </form>
+                    <a asp-action="Index" class="btn btn-black ms-3" title="Retour"><i class="fas fa-ban"></i> Annuler</a>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<script>
+    function closeModal() {
+        document.querySelector('.modal').style.display = 'none';
     }
 </script>
 
-<script type="text/javascript">
-        document.addEventListener("DOMContentLoaded", function() {
-            var message = '@TempData["Message"]';
-            if (message) {
-                alert(message);
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            // Afficher le formulaire des utilisateurs
+            window.showUserForm = function() {
+                document.getElementById('userForm').style.display = 'block';
             }
-        });
-</script>
-<script type="text/javascript">
-    document.getElementById("saveEquipeBtn").addEventListener("click", function () {
-        // Récupérer les données du formulaire
-        var formData = {
-            NomEquipe: document.getElementById("NomEquipe").value,
-            Descriptions: document.getElementById("Descriptions").value
-        };
-</script>
 
+            // Masquer le formulaire des utilisateurs
+            window.hideUserForm = function() {
+                document.getElementById('userForm').style.display = 'none';
+            }
+
+            // Filtrer les utilisateurs
+            window.filterUsers = function() {
+                var input, filter, userList, i, txtValue;
+                input = document.getElementById('searchInput');
+                filter = input.value.toLowerCase();
+                userList = document.getElementById("search-results");
+                userList.innerHTML = '';
+
+                if (filter.length > 2) {
+                    $.ajax({
+                        url: '@Url.Action("Search", "Equipes")',
+                        type: 'GET',
+                        data: { query: filter },
+                        success: function (data) {
+                            data.forEach(function (utilisateur) {
+                                const html = `
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input add-user" id="nouveau_utilisateur_${utilisateur.utilisateursId}" data-id="${utilisateur.utilisateursId}" data-nom="${utilisateur.nomUtilisateurs}" data-prenom="${utilisateur.prenomUtilisateurs}" />
+                                        <label class="form-check-label" for="nouveau_utilisateur_${utilisateur.utilisateursId}">
+                                            ${utilisateur.nomUtilisateurs} ${utilisateur.prenomUtilisateurs}
+                                        </label>
+                                    </div>`;
+                                userList.innerHTML += html;
+                            });
+                        },
+                        error: function () {
+                            userList.innerHTML = '<p class="text-danger">Erreur lors de la recherche.</p>';
+                        }
+                    });
+                }
+            }
+
+            // Ajouter un utilisateur sélectionné
+            $(document).on('change', '.add-user', function () {
+                if ($(this).is(':checked')) {
+                    const userId = $(this).data('id');
+                    const userNom = $(this).data('nom');
+                    const userPrenom = $(this).data('prenom');
+                    const html = `
+                        <div class="col-sm-2 selected-user" data-id="${userId}">
+                            <span>${userNom} ${userPrenom}</span>
+                            <button type="button" class="btn btn-danger btn-sm remove-user" data-id="${userId}">X</button>
+                            <input type="hidden" name="selectedUsers" value="${userId}" />
+                        </div>`;
+                    $('#selected-users').append(html);
+                }
+            });
+
+            // Supprimer un utilisateur sélectionné
+            $(document).on('click', '.remove-user', function () {
+                const userId = $(this).data('id');
+                $(`.selected-user[data-id="${userId}"]`).remove();
+                $(`#nouveau_utilisateur_${userId}`).prop('checked', false);
+            });
+        });
+    </script>
+}
 
 <style>
-    .table {
+    .card {
         border-top-color: red;
         border-top-style: solid;
         border-top-width: 5px;
         border-top-left-radius: 5px;
         border-top-right-radius: 5px;
     }
+
+    .selected-user {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 5px;
+        border: 1px solid #ddd;
+        margin-bottom: 10px;
+        border-radius: 5px;
+    }
+
+        .selected-user span {
+            flex-grow: 1;
+        }
+
+        .selected-user button {
+            margin-left: 10px;
+        }
 </style>
 
-
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
 <script>
-    document.getElementById('searchInput').addEventListener('keyup', function () {
-        var searchString = this.value.toLowerCase();
-        var rows = document.querySelectorAll('tbody tr');
+        $(document).ready(function () {
+            $('form').on('submit', function (e) {
+                if ($('input[name="forceCreate"]').length === 0) {
+                    e.preventDefault(); // Empêche le formulaire de se soumettre normalement
 
-        rows.forEach(function (row) {
-            var appName = row.querySelector('td:first-child').textContent.toLowerCase();
-            if (appName.includes(searchString)) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
+                    var form = $(this);
+                    $.ajax({
+                        type: form.attr('method'),
+                        url: form.attr('action'),
+                        data: form.serialize(),
+                        success: function (response) {
+                            if (response.exists) {
+                                var confirmCreate = confirm("L'équipe avec le nom " + response.nomEquipe + " existe déjà. Voulez-vous continuer ?");
+                                if (confirmCreate) {
+                                    $('<input>').attr({
+                                        type: 'hidden',
+                                        name: 'forceCreate',
+                                        value: 'true'
+                                    }).appendTo(form);
+                                    form.off('submit').submit(); // Soumet le formulaire normalement
+                                }
+                            } else if (response.success) {
+                                window.location.href = '@Url.Action("Index", "Equipes")';
+                            }
+                        }
+                    });
+                }
+            });
         });
-    });
 </script>
-
-<script>
-    function showUserForm() {
-        document.getElementById('userForm').style.display = 'block';
-        document.getElementById('userList').style.display = 'none'; // hide users initially
-    }
-
-    function hideUserForm() {
-        document.getElementById('userForm').style.display = 'none';
-    }
-
-    function filterUsers() {
-        var input, filter, userList, checkboxes, label, i, txtValue;
-        input = document.getElementById('searchInput');
-        filter = input.value.toLowerCase();
-        userList = document.getElementById("userList");
-        checkboxes = userList.getElementsByClassName('form-check');
-
-        // Show the user list if there's input
-        if (filter.length > 0) {
-            userList.style.display = 'block';
-        } else {
-            userList.style.display = 'none'; // Hide if no input
-        }
-
-        for (i = 0; i < checkboxes.length; i++) {
-            label = checkboxes[i].getElementsByTagName("label")[0];
-            if (label) {
-                txtValue = label.textContent || label.innerText;
-                checkboxes[i].style.display = txtValue.toLowerCase().indexOf(filter) > -1 ? "" : "none";
-            }
-        }
-    }
-</script>
-
-<style>
-    .switch {
-        position: relative;
-        display: inline-block;
-        width: 34px;
-        height: 20px;
-    }
-
-        .switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-    .slider {
-        position: absolute;
-        cursor: pointer;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: #ccc;
-        transition: .4s;
-        border-radius: 34px;
-    }
-
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 14px;
-            width: 14px;
-            left: 3px;
-            bottom: 3px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
-        }
-
-    input:checked + .slider {
-        background-color: #4CAF50;
-    }
-
-        input:checked + .slider:before {
-            transform: translateX(14px);
-        }
-</style>
-
-
-voici mes methodes 
-
- // GET: Equipes
-        public IActionResult Index(string searchString)
-        {
-            var breadcrumb = GetBreadcrumb("Index");
-            ViewBag.Breadcrumb = breadcrumb;
-            var equipes = _context.Equipes.ToList();
-            if (equipes == null || !equipes.Any())
-            {
-                // Retourne une liste vide si aucune equipe n'est trouvée
-                return View(new List<Equipe>());
-            }
-
-           
-
-            if (!string.IsNullOrEmpty(searchString))
-            {
-                equipes = equipes.Where(u => u.NomEquipe.Contains(searchString)).ToList();
-            }
-            ViewBag.Utilisateurs = _context.Utilisateurs
-               .Where(u => u.Statut == "Actif")
-               .ToList();
-            return View(equipes); 
-        }
-
-
- // GET: Equipes/Create
-        public IActionResult Create()
-        {
-            var breadcrumb = GetBreadcrumb("Create");
-            ViewBag.Breadcrumb = breadcrumb;
-            ViewBag.Utilisateurs = _context.Utilisateurs
-                .Where(u => u.Statut == "Actif")
-                .ToList(); // Récupérer tous les utilisateurs
-            return View();
-        }
-
-        // POST: Equipes/Create
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("NomEquipe,Descriptions")] Equipe equipe, int[] selectedUsers, bool forceCreate = false)
-        {
-            if (ModelState.IsValid)
-            {
-                var existingEquipe = await _context.Equipes
-                    .FirstOrDefaultAsync(c => c.NomEquipe == equipe.NomEquipe);
-
-                if (existingEquipe != null && !forceCreate)
-                {
-                    return Json(new { exists = true });
-                }
-
-                equipe.Statut = "Actif";
-
-                if (string.IsNullOrEmpty(equipe.Descriptions))
-                {
-                    equipe.Descriptions = "RAS";
-                }
-
-                _context.Add(equipe);
-                await _context.SaveChangesAsync();
-
-                if (selectedUsers != null)
-                {
-                    foreach (var userId in selectedUsers)
-                    {
-                        var equipeUtilisateur = new EquipeUtilisateur
-                        {
-                            EquipeId = equipe.EquipeId,
-                            UtilisateursId = userId
-                        };
-                        _context.Add(equipeUtilisateur);
-                    }
-                    await _context.SaveChangesAsync();
-                }
-
-                return Json(new { success = true });
-            }
-
-            ViewBag.Utilisateurs = _context.Utilisateurs
-            .Where(u => u.Statut == "Actif")
-            .ToList();
-            return View(equipe);
-        }
