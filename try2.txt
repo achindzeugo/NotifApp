@@ -1,67 +1,42 @@
-public IActionResult Index(string searchString)
-{
-    var breadcrumb = GetBreadcrumb("Index");
-    ViewBag.Breadcrumb = breadcrumb;
-
-    // Récupérer la liste des équipes
-    var equipes = _context.Equipes.ToList();
-
-    // Récupérer la liste des utilisateurs
-    ViewBag.Utilisateurs = _context.Utilisateurs.ToList();
-
-    if (!string.IsNullOrEmpty(searchString))
-    {
-        equipes = equipes.Where(e => e.NomEquipe.Contains(searchString, StringComparison.OrdinalIgnoreCase)).ToList();
+<style>
+    .modal {
+        display: block !important; /* Assure que le modal est visible si nécessaire */
+        position: fixed;
+        top: 10px; /* Ajustez cette valeur pour positionner le modal */
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1050;
     }
+    .modal-dialog {
+        margin: 0; /* Supprime le centrage vertical */
+    }
+</style>
 
-    return View(equipes);
-}
 
-
-
-<div id="userList" class="mb-4" style="display:none;">
-    @if (ViewBag.Utilisateurs != null && ViewBag.Utilisateurs.Any())
-    {
-        @foreach (var utilisateur in ViewBag.Utilisateurs)
-        {
-            <div class="form-check">
-                <input type="checkbox" class="form-check-input"
-                       name="selectedUsers"
-                       value="@utilisateur.UtilisateursID"
-                       id="user_@utilisateur.UtilisateursID" />
-                <label class="form-check-label" for="user_@utilisateur.UtilisateursID">
-                    @utilisateur.NomUtilisateurs @utilisateur.PrenomUtilisateurs @utilisateur.AG
-                </label>
+<div class="modal fade show" tabindex="-1" role="dialog" style="display: block;" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-warning-subtle border-black">
+                <h5 class="modal-title">Duplication détectée</h5>
+                <i class="fas fa-exclamation-triangle ms-4"></i>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" onclick="closeModal()">
+                    <span aria-hidden="true">&times;</span>
+                </button>
             </div>
-        }
-    }
-    else
-    {
-        <p class="text-muted">Aucun utilisateur disponible.</p>
-    }
+            <div class="modal-body bg-light-subtle">
+                <p>L'équipe avec le nom <strong>@ViewBag.NomEquipe</strong> existe déjà. Voulez-vous continuer ?</p>
+            </div>
+            <div class="modal-footer bg-warning-subtle">
+                <form asp-action="Create" method="post">
+                    <input type="hidden" name="NomEquipe" value="@ViewBag.NomEquipe" />
+                    <input type="hidden" name="forceCreate" value="true" />
+                    <button type="submit" class="btn btn-danger">Oui</button>
+                </form>
+                <a asp-action="Index" class="btn btn-black ms-3" title="Retour"><i class="fas fa-ban"></i> Annuler</a>
+            </div>
+        </div>
+    </div>
 </div>
 
 
-function filterUsers() {
-    var input = document.getElementById('searchInput');
-    var filter = input.value.toLowerCase();
-    var userList = document.getElementById("userList");
-    var checkboxes = userList.getElementsByClassName('form-check');
 
-    // Afficher la liste des utilisateurs si une saisie est faite
-    if (filter.length > 0) {
-        userList.style.display = 'block';
-    } else {
-        userList.style.display = 'none'; // Masquer si le champ est vide
-    }
-
-    // Filtrer les utilisateurs en fonction de la saisie
-    Array.from(checkboxes).forEach(function (checkbox) {
-        var label = checkbox.querySelector('label');
-        if (label && label.textContent.toLowerCase().includes(filter)) {
-            checkbox.style.display = ''; // Afficher si correspondance
-        } else {
-            checkbox.style.display = 'none'; // Masquer sinon
-        }
-    });
-}
