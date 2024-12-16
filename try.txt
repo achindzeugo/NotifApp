@@ -1,606 +1,66 @@
-@model IEnumerable<NotifApps.Models.Applicatif>
+[HttpGet]
+public async Task<IActionResult> TestConnectivity(int id)
+{
+    var applicatif = await _context.Applicatifs
+        .Include(a => a.Addresses)
+        .FirstOrDefaultAsync(a => a.AppId == id);
 
-<h2 class="">Applicatifs</h2>
-<hr />
-<div>
-    <a asp-action="Create" class="btn btn-black">Créer nouvel Applicatif</a>
-</div>
-<br />
-
-<div>
-    <input type="text" id="searchInput" class="form-control" placeholder="Rechercher par nom d'applicatif...">
-    <button type="submit" class="btn btn-black mt-2 fas fa-search"></button>
-
-</div>
-<br />
-
-<table class="table table-bordered">
-    <thead class="thead-danger bg-danger">
-        <tr>
-            <th class="bg-black text-white">Noms</th>
-            <th class="bg-black text-white">Descriptions</th>
-            <th class="bg-black text-white">Liens</th>
-            <th class="bg-black text-white">Statut</th>
-            <th class="bg-black text-white">Déploiement</th>
-            <th class="bg-black text-white">Addresses</th>
-            <th class="bg-black text-white">Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var item in Model)
-        {
-            <tr>
-                <td>@item.AppNom</td>
-                <td>@item.Descriptif</td>
-                <td><a href="@item.LienWeb" class="text-danger" target="_blank">@item.LienWeb</a></td>
-                <td>@item.StatutApplicatifs.StatutNom</td>
-                <td>@item.Hebergement</td>
-
-
-                <td>
-                    <ul>
-                        @foreach (var address in item.Addresses)
-                        {
-                            <li>@address.Type: @address.Value</li>
-                        }
-                    </ul>
-                </td>
-                <td>
-                    <div class="d-flex justify-content-between">
-                        <a asp-action="Details" asp-route-id="@item.AppId" class="btn btn-black ms-2 btn-sm" title="Détails"><i class="fas fa-list"></i></a>
-                        <a asp-action="Edit" asp-route-id="@item.AppId" class="btn btn-warning ms-2 btn-sm" title="Modifier"><i class="fas fa-edit"></i></a>
-
-                        <!--<a href="@item.LienWeb" class="text-danger" target="_blank"><i class="fa fa-link mx-4"></i></a>-->
-                    </div>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
-
-<style>
-    .table {
-        border-top-color: red;
-        border-top-style: solid;
-        border-top-width: 5px;
+    if (applicatif == null || applicatif.Addresses == null || !applicatif.Addresses.Any())
+    {
+        return Json(new { success = false, message = "Aucune adresse trouvée pour cet applicatif." });
     }
-</style>
 
-<script>
-    document.getElementById('searchInput').addEventListener('keyup', function() {
-        var searchString = this.value.toLowerCase();
-        var rows = document.querySelectorAll('tbody tr');
-
-        rows.forEach(function(row) {
-            var appName = row.querySelector('td:first-child').textContent.toLowerCase();
-            if (appName.includes(searchString)) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
+    var results = new List<object>();
+    foreach (var address in applicatif.Addresses)
+    {
+        try
+        {
+            using (var ping = new System.Net.NetworkInformation.Ping())
+            {
+                var reply = ping.Send(address.Value);
+                results.Add(new
+                {
+                    Type = address.Type,
+                    Address = address.Value,
+                    Status = reply.Status.ToString(),
+                    RoundTripTime = reply.RoundtripTime
+                });
             }
-        });
-    });
-</script>
+        }
+        catch (Exception ex)
+        {
+            results.Add(new
+            {
+                Type = address.Type,
+                Address = address.Value,
+                Status = "Erreur",
+                Message = ex.Message
+            });
+        }
+    }
 
-<div class="modal fade" id="pingResultsModal" tabindex="-1" aria-labelledby="pingResultsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    return Json(new { success = true, results });
+}
+
+
+
+<div class="modal fade" id="connectivityModal" tabindex="-1" aria-labelledby="connectivityModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header bg-black text-white">
-                <h5 class="modal-title" id="pingResultsModalLabel">Rapport des Pings</h5>
+            <div class="modal-header">
+                <h5 class="modal-title" id="connectivityModalLabel">Résultats de Connectivité</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <div id="pingResultsContent">
-                    <!-- Les résultats des pings seront chargés ici -->
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button id="downloadPingReport" class="btn btn-black">
-                    <i class="fas fa-file-download"></i> Télécharger Rapport PDF
-                </button>
+                <ul id="connectivityResults" class="list-group">
+                    <!-- Résultats des tests -->
+                </ul>
             </div>
         </div>
     </div>
 </div>
 
-=============================================================================================================================================================================================
 
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
 
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
-using NotifApps.Models;
-using OfficeOpenXml;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
-
-namespace NotifApps.Controllers
-{
-    public class ApplicatifController : Controller
-    {
-        private readonly NotifdbContext _context;
-
-        public ApplicatifController(NotifdbContext context)
-        {
-            _context = context;
-        }
-
-        //BREADCRUMB................................
-        public List<BreadcrumbItem> GetBreadcrumb(string page)
-        {
-            var breadcrumb = new List<BreadcrumbItem>
-       {
-           new BreadcrumbItem { Title = "Homes", Url = Url.Action("Index", "Homes"), IsActive = false }
-       };
-
-            switch (page)
-            {
-                case "Index":
-                    breadcrumb.Add(new BreadcrumbItem { Title = "Index", Url = Url.Action("Index", "Applicatif"), IsActive = true });
-                    break;
-                case "Create":
-                    breadcrumb.Add(new BreadcrumbItem { Title = "Index", Url = Url.Action("Index", "Applicatif"), IsActive = false });
-                    breadcrumb.Add(new BreadcrumbItem { Title = "Create", Url = Url.Action("Create", "tApplicatif"), IsActive = true });
-                    break;
-                case "Details":
-                    breadcrumb.Add(new BreadcrumbItem { Title = "Index", Url = Url.Action("Index", "Applicatif"), IsActive = false });
-                    breadcrumb.Add(new BreadcrumbItem { Title = "Details", Url = Url.Action("Details", "Applicatif"), IsActive = true });
-                    break;
-                case "Edit":
-                    breadcrumb.Add(new BreadcrumbItem { Title = "Index", Url = Url.Action("Index", "Applicatif"), IsActive = false });
-                    breadcrumb.Add(new BreadcrumbItem { Title = "Edit", Url = Url.Action("Edit", "Applicatif"), IsActive = true });
-                    break;
-                case "AttachEquipe":
-                    breadcrumb.Add(new BreadcrumbItem { Title = "Index", Url = Url.Action("Index", "Applicatif"), IsActive = false });
-                    breadcrumb.Add(new BreadcrumbItem { Title = "AttachEquipe", Url = Url.Action("AttachEquipe", "Applicatif"), IsActive = true });
-                    break;
-            }
-
-            return breadcrumb;
-        }
-
-
-        // INDEX: List of all applicatifs
-        public async Task<IActionResult> Index(string searchString)
-        {
-            var breadcrumb = GetBreadcrumb("Index");
-            ViewBag.Breadcrumb = breadcrumb;
-            var applicatifs = await _context.Applicatifs
-                .Include(a => a.Addresses)
-                .Include(i => i.StatutApplicatifs)
-                .ToListAsync();
-
-            
-            // Handle NULL values if necessary
-            foreach (var applicatif in applicatifs)
-            {
-                
-            
-                applicatif.StatutApplicatifs = applicatif.StatutApplicatifs ?? new StatutApplicatif();
-            }
-
-            if (!string.IsNullOrEmpty(searchString))
-            {
-                applicatifs = applicatifs.Where(u => u.AppNom.Contains(searchString)).ToList();
-            }
-            return View(applicatifs);
-        }
-
-        // GET: Create
-        public IActionResult Create()
-        {
-            ViewBag.HebergementOptions = new List<string> { "Centrale", "Locale" };
-            ViewBag.AddressTypes = _context.AddressTypes.ToList();
-            ViewBag.StatutId = _context.StatutApplicatifs.Select(s => new SelectListItem
-            {
-                Value = s.StatutId.ToString(),
-                Text = s.StatutNom
-            }).ToList();
-
-            return View();
-        }
-
-        //POST: Post
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(Applicatif applicatif, List<Address> addresses, bool forceCreate = false)
-        {
-            if (ModelState.IsValid)
-            {
-                ViewBag.HebergementOptions = new List<string> { "Centrale", "Locale" };
-                ViewBag.AddressTypes = _context.AddressTypes.ToList();
-                ViewBag.StatutId = _context.StatutApplicatifs.Select(s => new SelectListItem
-                {
-                    Value = s.StatutId.ToString(),
-                    Text = s.StatutNom
-                }).ToList();
-
-                using (var transaction = await _context.Database.BeginTransactionAsync())
-                {
-                    try
-                    {
-                        // Vérification de l'existence d'un applicatif avec le même nom
-                        var existingApplicatif = await _context.Applicatifs
-                            .FirstOrDefaultAsync(c => c.AppNom == applicatif.AppNom);
-
-                        if (existingApplicatif != null && !forceCreate)
-                        {
-                            ViewBag.ExistingApplicatif = true;
-                            ViewBag.AppNom = applicatif.AppNom;
-                            return View(applicatif);
-                        }
-
-                        // Vérification des adresses similaires
-                        foreach (var address in addresses)
-                        {
-                            var existingAddress = await _context.Addresses
-                                .FirstOrDefaultAsync(a => a.Type == address.Type && a.Value == address.Value);
-
-                            if (existingAddress != null && !forceCreate)
-                            {
-                                ViewBag.ExistingAddress = true;
-                                ViewBag.AddressType = address.Type;
-                                ViewBag.AddressValue = address.Value;
-                                ViewBag.Applicatif = applicatif;
-                                ViewBag.Addresses = addresses;
-                                return View(applicatif);
-                            }
-                        }
-
-                        _context.Add(applicatif);
-                        await _context.SaveChangesAsync();
-
-                       /* // Enregistrer les adresses
-                        foreach (var address in addresses)
-                        {
-                            address.AppId = applicatif.AppId;
-                            _context.Addresses.Add(address);
-                        }*/
-
-                        await _context.SaveChangesAsync();
-                        await transaction.CommitAsync();
-
-                        return RedirectToAction(nameof(Index));
-                    }
-                    catch (Exception)
-                    {
-                        await transaction.RollbackAsync();
-                        throw;
-                    }
-                }
-            }
-
-            ViewBag.HebergementOptions = new List<string> { "Centrale", "Locale" };
-            ViewBag.AddressTypes = _context.AddressTypes.ToList();
-            ViewBag.StatutId = _context.StatutApplicatifs.Select(s => new SelectListItem
-            {
-                Value = s.StatutId.ToString(),
-                Text = s.StatutNom
-            }).ToList();
-
-            return View(applicatif);
-        }
-
-
-        // GET: Applicatifs/Edit/5
-        public async Task<IActionResult> Edit(int? id)
-        {
-            var breadcrumb = GetBreadcrumb("Edit");
-            ViewBag.Breadcrumb = breadcrumb;
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var applicatif = await _context.Applicatifs
-                .Include(a => a.Addresses)
-                .FirstOrDefaultAsync(m => m.AppId == id);
-
-            if (applicatif == null)
-            {
-                return NotFound();
-            }
-
-            ViewBag.HebergementOptions = new List<string> { "Centrale", "Locale" };
-
-            // Charger les types d'adresse pour la liste déroulante
-            ViewBag.AddressTypes = await _context.AddressTypes.ToListAsync();
-
-            ViewBag.StatutId = _context.StatutApplicatifs.Select(s => new SelectListItem
-            {
-                Value = s.StatutId.ToString(),
-                Text = s.StatutNom
-            }).ToList();
-
-            return View(applicatif);
-        }
-
-        //POST:Applicatifs/Edit/5
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, Applicatif applicatif, List<Address> addresses)
-        {
-            if (id != applicatif.AppId)
-            {
-                return NotFound();
-            }
-
-            if (ModelState.IsValid)
-            {
-                using (var transaction = await _context.Database.BeginTransactionAsync())
-                {
-                    try
-                    {
-                        // Mise à jour de l'applicatif
-                        _context.Update(applicatif);
-                        await _context.SaveChangesAsync();
-
-                        // Vérifier les types valides
-                        var validTypes = await _context.AddressTypes.Select(t => t.TypeName).ToListAsync();
-                        foreach (var address in addresses)
-                        {
-                            if (!validTypes.Contains(address.Type))
-                            {
-                                ModelState.AddModelError("", $"Le type d'adresse '{address.Type}' n'est pas valide.");
-                                return View(applicatif);
-                            }
-                        }
-
-                        // Récupérer les adresses existantes
-                        var existingAddresses = await _context.Addresses
-                            .Where(a => a.AppId == applicatif.AppId)
-                            .ToListAsync();
-
-                        // Mettre à jour ou ajouter les adresses
-                        foreach (var address in addresses)
-                        {
-                            if (address.AddressId > 0)
-                            {
-                                // Mettre à jour l'adresse existante
-                                var existingAddress = existingAddresses.FirstOrDefault(a => a.AddressId == address.AddressId);
-                                if (existingAddress != null)
-                                {
-                                    existingAddress.Type = address.Type;
-                                    existingAddress.Value = address.Value;
-                                }
-                            }
-                            else
-                            {
-                                // Ajouter une nouvelle adresse
-                                address.AppId = applicatif.AppId;
-                                _context.Addresses.Add(address);
-                            }
-                        }
-
-                        // Supprimer les adresses obsolètes
-                        var addressesToRemove = existingAddresses
-                            .Where(e => !addresses.Any(a => a.AddressId == e.AddressId))
-                            .ToList();
-                        _context.Addresses.RemoveRange(addressesToRemove);
-
-                        await _context.SaveChangesAsync();
-                        await transaction.CommitAsync();
-
-                        return RedirectToAction(nameof(Index));
-                    }
-                    catch (Exception)
-                    {
-                        await transaction.RollbackAsync();
-                        throw;
-                    }
-                }
-            }
-
-            // Recharge les types en cas d'erreur
-            ViewBag.AddressTypes = await _context.AddressTypes.ToListAsync();
-            ViewBag.StatutId = _context.StatutApplicatifs.Select(s => new SelectListItem
-            {
-                Value = s.StatutId.ToString(),
-                Text = s.StatutNom
-            }).ToList();
-            return View(applicatif);
-
-           
-        }
-
-
-
-        private bool ApplicatifExists(int id)
-        {
-            return _context.Applicatifs.Any(e => e.AppId == id);
-        }
-
-        // DETAILS: GET method
-        public async Task<IActionResult> Details(int id)
-        {
-            var breadcrumb = GetBreadcrumb("Details");
-            ViewBag.Breadcrumb = breadcrumb;
-            var applicatif = await _context.Applicatifs
-                .Include(a => a.Addresses)
-                .Include(i => i.StatutApplicatifs)
-                .Include(a => a.EquipeApplicatifs) 
-                .ThenInclude(ea => ea.Equipe) 
-                .FirstOrDefaultAsync(a => a.AppId == id);
-
-            if (applicatif == null)
-            {
-                return NotFound();
-            }
-
-            return View(applicatif);
-        }
-
-        // ATTACHER EQUIPE A APPLICATIF
-        public IActionResult AttacheEquipe(int id)
-        {
-            var breadcrumb = GetBreadcrumb("AttachEquipe");
-            ViewBag.Breadcrumb = breadcrumb;
-            var applicatif = _context.Applicatifs.Find(id);
-            var equipes = _context.Equipes.ToList(); // Get all teams
-            ViewBag.ApplicatifId = id;
-
-            // Define criticality options
-            ViewBag.CriticiteOptions = new List<string> { "P0", "P1", "P2", "P3" };
-
-            return View(equipes);
-        }
-
-        //POST ATTACH
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> SaveEquipe(int applicatifId, int equipeId, string criticiteNom)
-        {
-            var applicatif = await _context.Applicatifs.FindAsync(applicatifId);
-            var equipe = await _context.Equipes.FindAsync(equipeId);
-
-            if (applicatif != null && equipe != null)// check si equipe est null ou pas 
-            {
-                var equipeApplicatif = new EquipeApplicatif
-                {
-                    AppId = applicatifId,
-                    EquipeId = equipeId,
-                    CriticiteNom = criticiteNom 
-                };
-
-                _context.Add(equipeApplicatif);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Details), new { id = applicatifId });
-            }
-
-            return NotFound();
-        }
-        // GET: Applicatif/EditCriticite
-        [HttpGet]
-        public async Task<IActionResult> EditCriticite(int applicatifId, int equipeId)
-        {
-            var equipeApplicatif = await _context.EquipeApplicatifs
-                .FirstOrDefaultAsync(ea => ea.AppId == applicatifId && ea.EquipeId == equipeId);
-
-            if (equipeApplicatif == null)
-            {
-                return NotFound();
-            }
-
-            ViewBag.CriticiteOptions = new List<string> { "P0", "P1", "P2", "P3" };
-            return View(equipeApplicatif);
-        }
-        // POST: Applicatif/EditCriticite
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> EditCriticite(int applicatifId, int equipeId, string criticiteNom)
-        {
-            var equipeApplicatif = await _context.EquipeApplicatifs
-                .FirstOrDefaultAsync(ea => ea.AppId == applicatifId && ea.EquipeId == equipeId);
-
-            if (equipeApplicatif == null)
-            {
-                
-                return NotFound();
-            }
-            equipeApplicatif.CriticiteNom = criticiteNom;
-
-            if (ModelState.IsValid)
-            {
-                try
-                {
-                    _context.Update(equipeApplicatif);
-                    await _context.SaveChangesAsync();
-                    return RedirectToAction("Details", new { id = applicatifId });
-                }
-                catch (DbUpdateConcurrencyException)
-                {                    if (!EquipeApplicatifExists(applicatifId, equipeId))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
-            }
-            ViewBag.CriticiteOptions = new List<string> { "P0", "P1", "P2", "P3" };
-            return View(equipeApplicatif);
-        }
-
-        // Méthode pour vérifier l'existence de l'association équipe-applicatif
-        private bool EquipeApplicatifExists(int applicatifId, int equipeId)
-        {
-            return _context.EquipeApplicatifs.Any(e => e.AppId == applicatifId && e.EquipeId == equipeId);
-        }
-
-        // GET: Delete
-        public async Task<IActionResult> Delete(int? id)
-        {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var applicatif = await _context.Applicatifs
-                .Include(a => a.Addresses)
-                .Include(i => i.StatutApplicatifs)
-                .Include(a => a.EquipeApplicatifs)
-                .FirstOrDefaultAsync(a => a.AppId == id);
-
-            if (applicatif == null)
-            {
-                return NotFound();
-            }
-
-            return View(applicatif);
-        }
-
-        // DELETE: POST method
-        [HttpPost, ActionName("Delete")]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(int id)
-        {
-            var applicatif = await _context.Applicatifs
-                .Include(a => a.Addresses)
-                .Include(i => i.StatutApplicatifs)
-                .Include(a => a.EquipeApplicatifs) 
-                .FirstOrDefaultAsync(a => a.AppId == id);
-
-            if (applicatif == null) return NotFound();
-
-            _context.Addresses.RemoveRange(applicatif.Addresses);
-
-            var equipesApplicatifs = await _context.EquipeApplicatifs
-                .Where(ea => ea.AppId == id)
-                .ToListAsync();
-
-            _context.EquipeApplicatifs.RemoveRange(equipesApplicatifs);
-
-            _context.Applicatifs.Remove(applicatif);
-
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
-        }
-
-
-        // POST: Applicatifs/DetachEquipe
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DetachEquipe(int applicatifId, int equipeId)
-        {
-            var equipeApplicatif = await _context.EquipeApplicatifs
-                .FirstOrDefaultAsync(ea => ea.AppId == applicatifId && ea.EquipeId == equipeId);
-
-            if (equipeApplicatif == null)
-            {
-                return NotFound();
-            }
-
-            _context.EquipeApplicatifs.Remove(equipeApplicatif);
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Details), new { id = applicatifId });
-        }
-
-
-
-    }
-
-}
