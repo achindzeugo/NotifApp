@@ -1,88 +1,62 @@
-@model IEnumerable<NotifApps.Models.StatutApplicatif>
+@model IEnumerable<NotifApps.Models.Applicatif>
 
-<h2>Statuts d'applicatifs</h2>
+<h2 class="">Applicatifs</h2>
 <hr />
-<p>
-    <button class="btn btn-black" data-bs-toggle="modal" data-bs-target="#createStatutModal">
-        Ajouter statut
-    </button>
-</p>
-
+<div>
+    <a asp-action="Create" class="btn btn-black">Créer nouvel Applicatif</a>
+</div>
+<br />
 
 <div>
-    <input type="text" id="searchInput" class="form-control" placeholder="Rechercher par statut...">
+    <input type="text" id="searchInput" class="form-control" placeholder="Rechercher par nom d'applicatif...">
     <button type="submit" class="btn btn-black mt-2 fas fa-search"></button>
 
 </div>
-
 <br />
 
 <table class="table table-bordered">
-    <thead>
+    <thead class="thead-danger bg-danger">
         <tr>
-            <th class="bg-black text-white">ICONE </th>
-            <th class="bg-black text-white">NOM </th>
-            <th class="bg-black text-white">DESCRIPTION</th>
-            <th class="bg-black text-white">STATUT</th>
-
-            <th class="bg-black text-white">ACTIONS</th>
+            <th class="bg-black text-white">Noms</th>
+            <th class="bg-black text-white">Descriptions</th>
+            <th class="bg-black text-white">Liens</th>
+            <th class="bg-black text-white">Statut</th>
+            <th class="bg-black text-white">Déploiement</th>
+            <th class="bg-black text-white">Addresses</th>
+            <th class="bg-black text-white">Actions</th>
         </tr>
     </thead>
     <tbody>
-        @foreach (var statutapplicatif in Model)
+        @foreach (var item in Model)
         {
             <tr>
-                <td><i class="fas fa-check-square fa-2x"></i></td>
-                <td>@statutapplicatif.StatutNom</td>
+                <td>@item.AppNom</td>
+                <td>@item.Descriptif</td>
+                <td><a href="@item.LienWeb" class="text-danger" target="_blank">@item.LienWeb</a></td>
+                <td>@item.StatutApplicatifs.StatutNom</td>
+                <td>@item.Hebergement</td>
+
+
                 <td>
-                    @if (statutapplicatif.Descriptions.Length > 50)
-                    {
-                        @statutapplicatif.Descriptions.Substring(0, 50)
-                    }
-                    else
-                    {
-                        @statutapplicatif.Descriptions
-                    }
+                    <ul>
+                        @foreach (var address in item.Addresses)
+                        {
+                            <li>@address.Type: @address.Value</li>
+                        }
+                    </ul>
                 </td>
                 <td>
-                    <form method="post" asp-action="ToggleStatus">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="id" value="@statutapplicatif.StatutId" />
-                        <label class="switch">
-                            <input type="checkbox"
-                                   name="statut"
-                                   onchange="this.form.submit()"
-                                   @(statutapplicatif.Statut == "Actif" ? "checked" : "") />
-                            <span class="slider"></span>
-                        </label>
-                    </form>
-                </td>
-                <td>
-                    <button class="btn btn-black ms-3" title="Détails" onclick="loadDetails(@statutapplicatif.StatutId)">
-                        <i class="fas fa-list"></i>
-                    </button>
-                    <button class="btn btn-warning ms-3" title="Modifier" onclick="loadEditStatutForm(@statutapplicatif.StatutId)">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <!--<a asp-action="DeleteStatut" asp-route-id="@statutapplicatif.StatutId" class="btn btn-danger"><i class="fas fa-trash"></i></a>-->
+                    <div class="d-flex justify-content-between">
+                        <a asp-action="Details" asp-route-id="@item.AppId" class="btn btn-black ms-2 btn-sm" title="Détails"><i class="fas fa-list"></i></a>
+                        <a asp-action="Edit" asp-route-id="@item.AppId" class="btn btn-warning ms-2 btn-sm" title="Modifier"><i class="fas fa-edit"></i></a>
+
+                        <!--<a href="@item.LienWeb" class="text-danger" target="_blank"><i class="fa fa-link mx-4"></i></a>-->
+                    </div>
                 </td>
             </tr>
         }
     </tbody>
 </table>
-
-@Html.Partial("_CreateStatut", new NotifApps.Models.StatutApplicatif())
-
-
-
-<script type="text/javascript">
-        document.addEventListener("DOMContentLoaded", function() {
-            var message = '@TempData["Message"]';
-            if (message) {
-                alert(message);
-            }
-        });
-</script>
 
 <style>
     .table {
@@ -93,11 +67,11 @@
 </style>
 
 <script>
-    document.getElementById('searchInput').addEventListener('keyup', function () {
+    document.getElementById('searchInput').addEventListener('keyup', function() {
         var searchString = this.value.toLowerCase();
         var rows = document.querySelectorAll('tbody tr');
 
-        rows.forEach(function (row) {
+        rows.forEach(function(row) {
             var appName = row.querySelector('td:first-child').textContent.toLowerCase();
             if (appName.includes(searchString)) {
                 row.style.display = '';
@@ -108,120 +82,26 @@
     });
 </script>
 
-
-
-<style>
-    .switch {
-        position: relative;
-        display: inline-block;
-        width: 34px;
-        height: 20px;
-    }
-
-        .switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-    .slider {
-        position: absolute;
-        cursor: pointer;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: #ccc;
-        transition: .4s;
-        border-radius: 34px;
-    }
-
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 14px;
-            width: 14px;
-            left: 3px;
-            bottom: 3px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
-        }
-
-    input:checked + .slider {
-        background-color: #4CAF50;
-    }
-
-        input:checked + .slider:before {
-            transform: translateX(14px);
-        }
-</style>
-
-
-<!-- Modal pour afficher les détails -->
-<div class="modal fade" id="detailsModal" tabindex="-1" aria-labelledby="detailsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-md">
-        <div class="modal-content">
-            <div class="modal-header bg-black text-white">
-                <h5 class="modal-title" id="detailsModalLabel">Détails du Statut</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <!-- Contenu des détails sera chargé ici -->
-                <div id="detailsContent"></div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-    function loadDetails(statutId) {
-        $.ajax({
-            url: '@Url.Action("Details", "StatutApplicatif")/' + statutId,
-            type: 'GET',
-            success: function (data) {
-                $('#detailsContent').html(data);
-                $('#detailsModal').modal('show');
-            },
-            error: function () {
-                alert('Erreur lors du chargement des détails.');
-            }
-        });
-    }
-</script>
-
-<!--EDIT===============================================-->
-<!-- Modal pour l'édition du statut -->
-<div class="modal fade" id="editStatutModal" tabindex="-1" aria-labelledby="editStatutModalLabel" aria-hidden="true">
+<div class="modal fade" id="pingResultsModal" tabindex="-1" aria-labelledby="pingResultsModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-black text-white">
-                <h5 class="modal-title" id="editStatutModalLabel">Modifier Statut</h5>
+                <h5 class="modal-title" id="pingResultsModalLabel">Rapport des Pings</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <!-- Contenu du formulaire d'édition sera chargé ici -->
-                <div id="editStatutContent"></div>
+                <div id="pingResultsContent">
+                    <!-- Les résultats des pings seront chargés ici -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="downloadPingReport" class="btn btn-black">
+                    <i class="fas fa-file-download"></i> Télécharger Rapport PDF
+                </button>
             </div>
         </div>
     </div>
 </div>
-
-<script>
-    function loadEditStatutForm(statutId) {
-        $.ajax({
-            url: '@Url.Action("EditStatut", "StatutApplicatif")/' + statutId,
-            type: 'GET',
-            success: function (data) {
-                $('#editStatutContent').html(data);
-                $('#editStatutModal').modal('show');
-            },
-            error: function () {
-                alert('Erreur lors du chargement du formulaire d\'édition.');
-            }
-        });
-    }
-</script>
 
 =============================================================================================================================================================================================
 
