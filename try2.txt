@@ -10,6 +10,7 @@
 <div>
     <input type="text" id="searchInput" class="form-control" placeholder="Rechercher par nom d'applicatif...">
     <button type="submit" class="btn btn-black mt-2 fas fa-search"></button>
+
 </div>
 <br />
 
@@ -35,6 +36,7 @@
                 <td>@item.StatutApplicatifs.StatutNom</td>
                 <td>@item.Hebergement</td>
 
+
                 <td>
                     <ul>
                         @foreach (var address in item.Addresses)
@@ -47,9 +49,8 @@
                     <div class="d-flex justify-content-between">
                         <a asp-action="Details" asp-route-id="@item.AppId" class="btn btn-black ms-2 btn-sm" title="Détails"><i class="fas fa-list"></i></a>
                         <a asp-action="Edit" asp-route-id="@item.AppId" class="btn btn-warning ms-2 btn-sm" title="Modifier"><i class="fas fa-edit"></i></a>
-                        <button class="btn btn-primary ms-2 btn-sm" title="Effectuer des pings" onclick="performPing(@item.AppId)">
-                            <i class="fas fa-network-wired"></i>
-                        </button>
+                        <button class="btn btn-info ms-2 btn-sm" title="Tester Connectivité" onclick="testConnectivity('@item.AppId')"><i class="fas fa-network-wired"></i></button>
+                        <!--<a href="@item.LienWeb" class="text-danger" target="_blank"><i class="fa fa-link mx-4"></i></a>-->
                     </div>
                 </td>
             </tr>
@@ -80,209 +81,72 @@
         });
     });
 
-    // Fonction pour effectuer des pings
-    function performPing(appId) {
-        $.ajax({
-            url: '@Url.Action("PingAddresses", "Applicatifs")/' + appId,
-            type: 'GET',
-            success: function (data) {
-                $('#pingResultsContent').html(data);
-                $('#pingResultsModal').modal('show');
-            },
-            error: function () {
-                alert('Erreur lors de l\'exécution des pings.');
-            }
-        });
-    }
 
-    // Téléchargement du rapport en PDF
-    document.getElementById('downloadPingReport').addEventListener('click', function() {
-        const appId = $('#pingResultsModal').data('app-id'); // Récupérer l'ID de l'applicatif
-        window.location.href = '@Url.Action("DownloadPingReport", "Applicatifs")?appId=' + appId;
-    });
+
+   
 </script>
 
-<!-- Modal pour afficher les résultats des pings -->
-<div class="modal fade" id="pingResultsModal" tabindex="-1" aria-labelledby="pingResultsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-black text-white">
-                <h5 class="modal-title" id="pingResultsModalLabel">Rapport des Pings</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div id="pingResultsContent">
-                    <!-- Les résultats des pings seront chargés ici -->
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button id="downloadPingReport" class="btn btn-black">
-                    <i class="fas fa-file-download"></i> Télécharger Rapport PDF
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
+  // INDEX: List of all applicatifs
+        public async Task<IActionResult> Index(string searchString)
+        {
+            var breadcrumb = GetBreadcrumb("Index");
+            ViewBag.Breadcrumb = breadcrumb;
+            var applicatifs = await _context.Applicatifs
+                .Include(a => a.Addresses)
+                .Include(i => i.StatutApplicatifs)
+                .ToListAsync();
+
+            
+            // Handle NULL values if necessary
+            foreach (var applicatif in applicatifs)
+            {
+                
+            
+                applicatif.StatutApplicatifs = applicatif.StatutApplicatifs ?? new StatutApplicatif();
+            }
+
+            if (!string.IsNullOrEmpty(searchString))
+            {
+                applicatifs = applicatifs.Where(u => u.AppNom.Contains(searchString)).ToList();
+            }
+            return View(applicatifs);
+        }
 
 
+using System;
+using System.Collections.Generic;
 
+#nullable disable
 
-
-using System.Diagnostics;
-using System.Text;
-
-public IActionResult PingAddresses(int id)
+namespace NotifApps.Models
 {
-    // Récupération de l'applicatif par ID
-    var applicatif = _context.Applicatifs
-        .Include(a => a.Addresses) // Inclure les adresses associées
-        .FirstOrDefault(a => a.AppId == id);
-
-    if (applicatif == null)
+    public partial class Applicatif
     {
-        return NotFound("Applicatif introuvable.");
-    }
-
-    // Liste pour stocker les résultats des pings
-    var pingResults = new List<string>();
-
-    foreach (var address in applicatif.Addresses)
-    {
-        // Exécution du ping
-        var ping = new Ping();
-        try
+        public Applicatif()
         {
-            var reply = ping.Send(address.Value);
-            if (reply.Status == IPStatus.Success)
-            {
-                pingResults.Add($"Adresse {address.Value} : Réussi en {reply.RoundtripTime} ms.");
-            }
-            else
-            {
-                pingResults.Add($"Adresse {address.Value} : Échec (Statut : {reply.Status}).");
-            }
+            Addresses = new HashSet<Address>();
+            ApplicationIncidents = new HashSet<ApplicationIncident>();
+            EquipeApplicatifs = new HashSet<EquipeApplicatif>();
+            Incidents = new HashSet<Incident>();
         }
-        catch (Exception ex)
-        {
-            pingResults.Add($"Adresse {address.Value} : Erreur - {ex.Message}");
-        }
-    }
 
-    // Retour des résultats dans un format HTML pour le modal
-    var resultHtml = new StringBuilder("<ul>");
-    foreach (var result in pingResults)
-    {
-        resultHtml.Append($"<li>{result}</li>");
-    }
-    resultHtml.Append("</ul>");
+        public int AppId { get; set; }
+        public string AppNom { get; set; }
+        public string Descriptif { get; set; }
+        public string LienWeb { get; set; }
+      /*  public string Statut { get; set; }*/
+        public int? EquipeId { get; set; }
+        public string? Hebergement { get; set; }
+        public int? GroupId { get; set; }
 
-    return Content(resultHtml.ToString(), "text/html");
+        public int? StatutId { get; set; }
+
+
+        public virtual ICollection<Address> Addresses { get; set; }
+        public virtual ICollection<ApplicationIncident> ApplicationIncidents { get; set; }
+        public virtual ICollection<EquipeApplicatif> EquipeApplicatifs { get; set; }
+        public virtual ICollection<Incident> Incidents { get; set; }
+        public virtual StatutApplicatif StatutApplicatifs { get; set; }
+
+    }
 }
-
-
-
-using System.Diagnostics;
-using System.Text;
-
-public IActionResult PingAddresses(int id)
-{
-    // Récupération de l'applicatif par ID
-    var applicatif = _context.Applicatifs
-        .Include(a => a.Addresses) // Inclure les adresses associées
-        .FirstOrDefault(a => a.AppId == id);
-
-    if (applicatif == null)
-    {
-        return NotFound("Applicatif introuvable.");
-    }
-
-    // Liste pour stocker les résultats des pings
-    var pingResults = new List<string>();
-
-    foreach (var address in applicatif.Addresses)
-    {
-        // Exécution du ping
-        var ping = new Ping();
-        try
-        {
-            var reply = ping.Send(address.Value);
-            if (reply.Status == IPStatus.Success)
-            {
-                pingResults.Add($"Adresse {address.Value} : Réussi en {reply.RoundtripTime} ms.");
-            }
-            else
-            {
-                pingResults.Add($"Adresse {address.Value} : Échec (Statut : {reply.Status}).");
-            }
-        }
-        catch (Exception ex)
-        {
-            pingResults.Add($"Adresse {address.Value} : Erreur - {ex.Message}");
-        }
-    }
-
-    // Retour des résultats dans un format HTML pour le modal
-    var resultHtml = new StringBuilder("<ul>");
-    foreach (var result in pingResults)
-    {
-        resultHtml.Append($"<li>{result}</li>");
-    }
-    resultHtml.Append("</ul>");
-
-    return Content(resultHtml.ToString(), "text/html");
-}
-
-
-
-
-using System.Diagnostics;
-using System.Text;
-
-public IActionResult PingAddresses(int id)
-{
-    // Récupération de l'applicatif par ID
-    var applicatif = _context.Applicatifs
-        .Include(a => a.Addresses) // Inclure les adresses associées
-        .FirstOrDefault(a => a.AppId == id);
-
-    if (applicatif == null)
-    {
-        return NotFound("Applicatif introuvable.");
-    }
-
-    // Liste pour stocker les résultats des pings
-    var pingResults = new List<string>();
-
-    foreach (var address in applicatif.Addresses)
-    {
-        // Exécution du ping
-        var ping = new Ping();
-        try
-        {
-            var reply = ping.Send(address.Value);
-            if (reply.Status == IPStatus.Success)
-            {
-                pingResults.Add($"Adresse {address.Value} : Réussi en {reply.RoundtripTime} ms.");
-            }
-            else
-            {
-                pingResults.Add($"Adresse {address.Value} : Échec (Statut : {reply.Status}).");
-            }
-        }
-        catch (Exception ex)
-        {
-            pingResults.Add($"Adresse {address.Value} : Erreur - {ex.Message}");
-        }
-    }
-
-    // Retour des résultats dans un format HTML pour le modal
-    var resultHtml = new StringBuilder("<ul>");
-    foreach (var result in pingResults)
-    {
-        resultHtml.Append($"<li>{result}</li>");
-    }
-    resultHtml.Append("</ul>");
-
-    return Content(resultHtml.ToString(), "text/html");
-}
-
