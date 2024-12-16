@@ -1,151 +1,168 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Formulaire Stepper</title>
-    <!-- CSS Bootstrap -->
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <style>
-        /* Étapes du stepper */
-        .stepper {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 30px;
-        }
+<button class="btn btn-info ms-3" title="Pings" onclick="loadPingResults(@statutapplicatif.StatutId)">
+        <i class="fas fa-network-wired"></i>
+    </button>
 
-        .step {
-            flex: 1;
-            text-align: center;
-            border: 2px solid #ccc;
-            padding: 10px;
-            border-radius: 5px;
-            background-color: #f5f5f5;
-            cursor: pointer;
-        }
-
-        .step.active {
-            border-color: #007bff;
-            background-color: #007bff;
-            color: #fff;
-            font-weight: bold;
-        }
-
-        .step.complete {
-            background-color: #28a745;
-            border-color: #28a745;
-            color: #fff;
-        }
-
-        .step:not(:last-child) {
-            margin-right: 10px;
-        }
-    </style>
-</head>
-<body>
-<div class="container mt-5">
-    <h2 class="text-center">Formulaire Stepper</h2>
-
-    <!-- Stepper Navigation -->
-    <div class="stepper">
-        <div class="step active" id="step1-tab" onclick="showStep(1)">1. Mockup</div>
-        <div class="step" id="step2-tab" onclick="showStep(2)">2. In Progress</div>
-        <div class="step" id="step3-tab" onclick="showStep(3)">3. Complete</div>
+<div class="modal fade" id="pingResultsModal" tabindex="-1" aria-labelledby="pingResultsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-black text-white">
+                <h5 class="modal-title" id="pingResultsModalLabel">Rapport des Pings</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="pingResultsContent">
+                    <!-- Les résultats des pings seront chargés ici -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="downloadPingReport" class="btn btn-black">
+                    <i class="fas fa-file-download"></i> Télécharger Rapport PDF
+                </button>
+            </div>
+        </div>
     </div>
-
-    <!-- Contenu des Étapes -->
-    <form id="multiStepForm">
-        <!-- Étape 1 -->
-        <div class="step-content" id="step1">
-            <h4>Étape 1: Mockup</h4>
-            <div class="form-group">
-                <label for="name">Nom</label>
-                <input type="text" class="form-control" id="name" placeholder="Entrez votre nom">
-            </div>
-        </div>
-
-        <!-- Étape 2 -->
-        <div class="step-content d-none" id="step2">
-            <h4>Étape 2: In Progress</h4>
-            <div class="form-group">
-                <label for="email">Email</label>
-                <input type="email" class="form-control" id="email" placeholder="Entrez votre email">
-            </div>
-        </div>
-
-        <!-- Étape 3 -->
-        <div class="step-content d-none" id="step3">
-            <h4>Étape 3: Complete</h4>
-            <div class="form-group">
-                <label for="comments">Commentaires</label>
-                <textarea class="form-control" id="comments" rows="3" placeholder="Ajoutez un commentaire"></textarea>
-            </div>
-        </div>
-
-        <!-- Boutons Navigation -->
-        <div class="d-flex justify-content-between mt-4">
-            <button type="button" class="btn btn-secondary" id="prevBtn" onclick="prevStep()">Retour</button>
-            <button type="button" class="btn btn-primary" id="nextBtn" onclick="nextStep()">Suivant</button>
-            <button type="submit" class="btn btn-success d-none" id="saveBtn">Enregistrer</button>
-        </div>
-    </form>
 </div>
 
-<!-- JavaScript Bootstrap -->
-<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 
-<script>
-    let currentStep = 1;
 
-    function showStep(step) {
-        // Masquer toutes les étapes
-        document.querySelectorAll('.step-content').forEach(el => el.classList.add('d-none'));
-        document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
-
-        // Afficher l'étape actuelle
-        document.getElementById(`step${step}`).classList.remove('d-none');
-        document.getElementById(`step${step}-tab`).classList.add('active');
-
-        // Mettre à jour le bouton Enregistrer
-        currentStep = step;
-        updateButtons();
-    }
-
-    function nextStep() {
-        if (currentStep < 3) {
-            currentStep++;
-            showStep(currentStep);
-        }
-    }
-
-    function prevStep() {
-        if (currentStep > 1) {
-            currentStep--;
-            showStep(currentStep);
-        }
-    }
-
-    function updateButtons() {
-        document.getElementById('prevBtn').style.display = currentStep === 1 ? 'none' : 'inline-block';
-        document.getElementById('nextBtn').style.display = currentStep === 3 ? 'none' : 'inline-block';
-        document.getElementById('saveBtn').classList.toggle('d-none', currentStep !== 3);
-
-        // Marquer les étapes complétées
-        for (let i = 1; i <= 3; i++) {
-            const stepTab = document.getElementById(`step${i}-tab`);
-            if (i < currentStep) {
-                stepTab.classList.add('complete');
-            } else {
-                stepTab.classList.remove('complete');
+  <script>
+    function loadPingResults(statutId) {
+        $.ajax({
+            url: '@Url.Action("PingAddresses", "StatutApplicatif")/' + statutId,
+            type: 'GET',
+            success: function (data) {
+                $('#pingResultsContent').html(data);
+                $('#pingResultsModal').modal('show');
+            },
+            error: function () {
+                alert('Erreur lors de l\'exécution des pings.');
             }
-        }
+        });
     }
 
-    // Initialisation
-    document.addEventListener('DOMContentLoaded', function () {
-        updateButtons();
+    // Télécharger le rapport PDF
+    document.getElementById("downloadPingReport").addEventListener("click", function () {
+        var statutId = $('#pingResultsContent').data('statut-id');
+        window.location.href = '@Url.Action("DownloadPingReport", "StatutApplicatif")?id=' + statutId;
     });
 </script>
-</body>
-</html>
+[HttpGet]
+public IActionResult PingAddresses(int id)
+{
+    var addresses = _context.ApplicatifAddresses
+        .Where(a => a.StatutId == id)
+        .Select(a => a.Address)
+        .ToList();
+
+    var pingResults = new List<PingResult>();
+    foreach (var address in addresses)
+    {
+        var result = PingAddress(address);
+        pingResults.Add(result);
+    }
+
+    // Renvoyer les résultats sous forme partielle
+    return PartialView("_PingResults", pingResults);
+}
+
+[HttpGet]
+public IActionResult DownloadPingReport(int id)
+{
+    var addresses = _context.ApplicatifAddresses
+        .Where(a => a.StatutId == id)
+        .Select(a => a.Address)
+        .ToList();
+
+    var pingResults = new List<PingResult>();
+    foreach (var address in addresses)
+    {
+        var result = PingAddress(address);
+        pingResults.Add(result);
+    }
+
+    var pdfBytes = GeneratePingReportPDF(pingResults);
+    return File(pdfBytes, "application/pdf", "PingReport.pdf");
+}
+
+// Méthode pour exécuter un ping
+private PingResult PingAddress(string address)
+{
+    var ping = new Ping();
+    try
+    {
+        var reply = ping.Send(address);
+        return new PingResult
+        {
+            Address = address,
+            Status = reply.Status.ToString(),
+            RoundtripTime = reply.RoundtripTime
+        };
+    }
+    catch
+    {
+        return new PingResult
+        {
+            Address = address,
+            Status = "Erreur",
+            RoundtripTime = -1
+        };
+    }
+}
+
+// Méthode pour générer le rapport PDF
+private byte[] GeneratePingReportPDF(List<PingResult> pingResults)
+{
+    using var stream = new MemoryStream();
+    var writer = new PdfWriter(stream);
+    var pdf = new PdfDocument(writer);
+    var document = new Document(pdf);
+
+    document.Add(new Paragraph("Rapport des Pings").SetFontSize(18).SetBold());
+    document.Add(new Paragraph("Date: " + DateTime.Now.ToString("dd/MM/yyyy HH:mm")));
+
+    var table = new Table(3);
+    table.AddHeaderCell("Adresse");
+    table.AddHeaderCell("Statut");
+    table.AddHeaderCell("Temps aller-retour (ms)");
+
+    foreach (var result in pingResults)
+    {
+        table.AddCell(result.Address);
+        table.AddCell(result.Status);
+        table.AddCell(result.RoundtripTime >= 0 ? result.RoundtripTime.ToString() : "N/A");
+    }
+
+    document.Add(table);
+    document.Close();
+
+    return stream.ToArray();
+}
+
+
+
+
+@model IEnumerable<PingResult>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Adresse</th>
+            <th>Statut</th>
+            <th>Temps aller-retour (ms)</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var result in Model)
+        {
+            <tr>
+                <td>@result.Address</td>
+                <td>@result.Status</td>
+                <td>@(result.RoundtripTime >= 0 ? result.RoundtripTime.ToString() : "N/A")</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+
+
+
