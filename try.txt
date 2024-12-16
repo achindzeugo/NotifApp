@@ -1,3 +1,42 @@
+<button class="btn btn-info ms-2 btn-sm" title="Tester Connectivité" onclick="testConnectivity(@item.AppId)">
+    <i class="fas fa-network-wired"></i> Tester
+</button>
+
+
+<script>
+    function testConnectivity(appId) {
+        fetch(`/Applicatifs/TestConnectivity?id=${appId}`)
+            .then(response => response.json())
+            .then(data => {
+                const resultsList = document.getElementById('connectivityResults');
+                resultsList.innerHTML = ''; // Clear previous results
+
+                if (data.success) {
+                    data.results.forEach(result => {
+                        const listItem = document.createElement('li');
+                        listItem.className = 'list-group-item';
+                        listItem.textContent = `Adresse: ${result.Address}, Type: ${result.Type}, Statut: ${result.Status}, Temps: ${result.RoundTripTime || 'N/A'}ms`;
+                        resultsList.appendChild(listItem);
+                    });
+                } else {
+                    const listItem = document.createElement('li');
+                    listItem.className = 'list-group-item text-danger';
+                    listItem.textContent = data.message;
+                    resultsList.appendChild(listItem);
+                }
+
+                // Show the modal
+                new bootstrap.Modal(document.getElementById('connectivityModal')).show();
+            })
+            .catch(error => {
+                console.error('Erreur lors du test de connectivité:', error);
+                alert('Une erreur est survenue lors du test de connectivité.');
+            });
+    }
+</script>
+
+
+
 [HttpGet]
 public async Task<IActionResult> TestConnectivity(int id)
 {
