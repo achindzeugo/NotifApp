@@ -1,286 +1,726 @@
-@model NotifApps.Models.Incident
+@model IEnumerable<NotifApps.Models.StatutApplicatif>
 
-@{
-    ViewData["Title"] = "Create";
-}
+<h2>Statuts d'applicatifs</h2>
+<hr />
+<p>
+    <button class="btn btn-black" data-bs-toggle="modal" data-bs-target="#createStatutModal">
+        Ajouter statut
+    </button>
+</p>
 
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Formulaire Stepper</title>
-        <!-- CSS Bootstrap -->
-        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
-        <style>
-            /* Étapes du stepper */
-            .stepper {
-                display: flex;
-                justify-content: space-between;
-                margin-bottom: 30px;
-            }
 
-            .step {
-                flex: 1;
-                text-align: center;
-                border: 2px solid #ccc;
-                padding: 10px;
-                border-radius: 5px;
-                background-color: #f5f5f5;
-                cursor: pointer;
-                position: relative;
-            }
+<div>
+    <input type="text" id="searchInput" class="form-control" placeholder="Rechercher par statut...">
+    <button type="submit" class="btn btn-black mt-2 fas fa-search"></button>
 
-                .step::after {
-                    content: '';
-                    position: absolute;
-                    top: 50%;
-                    right: -20px;
-                    width: 0;
-                    height: 0;
-                    border-top: 10px solid transparent;
-                    border-bottom: 10px solid transparent;
-                    border-left: 20px solid #ccc;
-                }
+</div>
 
-                .step.active {
-                    border-color: #007bff;
-                    background-color: #007bff;
-                    color: #fff;
-                    font-weight: bold;
-                }
+<br />
 
-                    .step.active::after {
-                        border-left-color: #007bff;
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th class="bg-black text-white">ICONE </th>
+            <th class="bg-black text-white">NOM </th>
+            <th class="bg-black text-white">DESCRIPTION</th>
+            <th class="bg-black text-white">STATUT</th>
+
+            <th class="bg-black text-white">ACTIONS</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var statutapplicatif in Model)
+        {
+            <tr>
+                <td><i class="fas fa-check-square fa-2x"></i></td>
+                <td>@statutapplicatif.StatutNom</td>
+                <td>
+                    @if (statutapplicatif.Descriptions.Length > 50)
+                    {
+                        @statutapplicatif.Descriptions.Substring(0, 50)
                     }
-
-                .step.complete {
-                    background-color: #28a745;
-                    border-color: #28a745;
-                    color: #fff;
-                }
-
-                    .step.complete::after {
-                        border-left-color: #28a745;
+                    else
+                    {
+                        @statutapplicatif.Descriptions
                     }
+                </td>
+                <td>
+                    <form method="post" asp-action="ToggleStatus">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@statutapplicatif.StatutId" />
+                        <label class="switch">
+                            <input type="checkbox"
+                                   name="statut"
+                                   onchange="this.form.submit()"
+                                   @(statutapplicatif.Statut == "Actif" ? "checked" : "") />
+                            <span class="slider"></span>
+                        </label>
+                    </form>
+                </td>
+                <td>
+                    <button class="btn btn-black ms-3" title="Détails" onclick="loadDetails(@statutapplicatif.StatutId)">
+                        <i class="fas fa-list"></i>
+                    </button>
+                    <button class="btn btn-warning ms-3" title="Modifier" onclick="loadEditStatutForm(@statutapplicatif.StatutId)">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <!--<a asp-action="DeleteStatut" asp-route-id="@statutapplicatif.StatutId" class="btn btn-danger"><i class="fas fa-trash"></i></a>-->
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
 
-                .step:not(:last-child) {
-                    margin-right: 10px;
-                }
-
-                .step:last-child::after {
-                    display: none;
-                }
-        </style>
-    </head>
-
-    <h1>Déclarer un Incident</h1>
-    <hr />
-
-    <body>
-        <div class="container mt-5">
-            <div class="card">
-                <div class="card-body">
-                    <h2 class="text-center">Formulaire de déclaration d'incident</h2>
-                    <hr />
-                    <!-- Stepper Navigation -->
-                    <div class="stepper">
-                        <div class="step active" id="step1-tab" onclick="showStep(1)"><i class="fas fa-info-circle"></i> Informations</div>
-                        <div class="step" id="step2-tab" onclick="showStep(2)"><i class="fas fa-file-alt"></i> Resumé</div>
-                        <div class="step" id="step3-tab" onclick="showStep(3)"><i class="fas fa-puzzle-piece"></i> Impact</div>
-                    </div>
-
-                    <!-- Contenu des Étapes -->
-                    <div class="card-body">
-                        <form asp-action="Create" id="incidentForm">
-                            <!-- Étape 1 -->
-                            <div class="step-content" id="step1">
-
-                                <div class="form-group">
-                                    <label class="control-label">Titre <span class="text-danger">*</span></label>
-                                    <textarea asp-for="Titre" class="form-control" placeholder="Entrez un Titre"></textarea>
-                                    <span asp-validation-for="Titre" class="text-danger"></span>
-                                </div>
-                                <div class="form-group">
-                                    <label class="control-label">Applicatif <span class="text-danger">*</span></label>
-                                    <select asp-for="AppId" class="form-control" asp-items="ViewBag.AppId"></select>
-                                    <span asp-validation-for="AppId" class="text-danger"></span>
-                                </div>
-                                <div class="form-group d-flex justify-content-between">
-                                    <div class="flex-fill me-2">
-                                        <label class="control-label">Criticité <span class="text-danger">*</span></label>
-                                        <select asp-for="CriticiteId" class="form-control" asp-items="ViewBag.CriticiteId"></select>
-                                        <span asp-validation-for="CriticiteId" class="text-danger"></span>
-                                    </div>
-                                    <div class="flex-fill">
-                                        <label class="control-label">Statut <span class="text-danger">*</span></label>
-                                        <select asp-for="StatutId" class="form-control" asp-items="ViewBag.StatutId"></select>
-                                        <span asp-validation-for="StatutId" class="text-danger"></span>
-                                    </div>
-                                </div>
-                                <div class="form-group d-flex justify-content-between">
-                                    <div class="flex-fill me-2">
-                                        <label class="control-label">Référence du ticket </label>
-                                        <input asp-for="RefTicket" class="form-control" placeholder="Entrez une référence" />
-                                        <span asp-validation-for="RefTicket" class="text-danger"></span>
-                                    </div>
-                                    <div class="flex-fill">
-                                        <label class="control-label">Lien du ticket </label>
-                                        <input asp-for="LienTicket" class="form-control" placeholder="Entrez un lien" />
-                                        <span asp-validation-for="LienTicket" class="text-danger"></span>
-                                    </div>
-                                </div>
-                                <div class="form-group flex-fill me">
-                                    <label class="control-label">Equipe en charge <span class="text-danger">*</span></label>
-                                    <div class="input-group">
-                                        <select asp-for="EquipeId" class="form-control" asp-items="ViewBag.EquipeId"></select>
-                                        <span class="input-group-text" style="cursor: pointer;">
-                                            <i class="fas fa-chevron-down"></i>
-                                        </span>
-                                    </div>
-                                    <span asp-validation-for="EquipeId" class="text-danger"></span>
-                                </div>
-                            </div>
+@Html.Partial("_CreateStatut", new NotifApps.Models.StatutApplicatif())
 
 
-                            <!-- Étape 2 -->
-                            <div class="step-content d-none" id="step2">
-                                <div class="form-group d-flex justify-content-between">
-                                    <div class="flex-fill me-2">
-                                        <label class="control-label">Début d'impact </label>
-                                        <input asp-for="Debutdimpact" class="form-control" type="datetime-local" placeholder="Selectionnez une date" />
-                                        <span asp-validation-for="Debutdimpact" class="text-danger"></span>
-                                    </div>
 
-                                    <!--DATE DE PRISE EN CHARGE-->
-                                    <div class="flex-fill">
-                                        <label class="control-label">Date de prise en charge <span class="text-danger">*</span></label>
-                                        <input asp-for="Datepriseencharge" class="form-control" type="datetime-local" placeholder="Selectionnez une date" />
-                                        <span asp-validation-for="Datepriseencharge" class="text-danger"></span>
-                                    </div>
-                                </div>
+<script type="text/javascript">
+        document.addEventListener("DOMContentLoaded", function() {
+            var message = '@TempData["Message"]';
+            if (message) {
+                alert(message);
+            }
+        });
+</script>
 
+<style>
+    .table {
+        border-top-color: red;
+        border-top-style: solid;
+        border-top-width: 5px;
+    }
+</style>
 
-                                <!--DESCRIPTION-->
-                                <div class="form-group mb-3">
+<script>
+    document.getElementById('searchInput').addEventListener('keyup', function () {
+        var searchString = this.value.toLowerCase();
+        var rows = document.querySelectorAll('tbody tr');
 
-                                    <label asp-for="Description" class="form-label">Description</label>
-                                    <textarea asp-for="Description" class="form-control" placeholder="Ajoutez une description"></textarea>
-                                    <span asp-validation-for="Description" class="text-danger"></span>
-                                </div>
-
-                                <!--ORIGINE-->
-                                <div class="form-group">
-                                    <label class="control-label">Origine <span class="text-danger">*</span></label>
-                                    <div class="input-group">
-                                        <input type="text" id="OrigineNom" name="OrigineNom" class="form-control" placeholder="Saisir ou selectionnez une origine" />
-                                        <div class="input-group-append">
-                                            <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Sélectionner</button>
-                                            <div class="dropdown-menu">
-                                                @foreach (var origine in ViewBag.OrigineId)
-                                                {
-                                                    <a class="dropdown-item" href="#" onclick="selectOrigine('@origine.Text')">@origine.Text</a>
-                                                }
-                                            </div>
-                                        </div>
-                                    </div>
-                                    @if (ViewData.ModelState["OrigineNom"] != null)
-                                    {
-                                        <span class="text-danger">@ViewData.ModelState["OrigineNom"].Errors.FirstOrDefault()?.ErrorMessage</span>
-                                    }
-                                </div>
-
-                            </div>
-
-                            <!-- Étape 3 -->
-                            <div class="step-content d-none" id="step3">
-                                <div class="form-group">
-                                    <label class="control-label">Impact <span class="text-danger">*</span></label>
-                                    <textarea asp-for="Impact" class="form-control" placeholder="Saisissez un impact"></textarea>
-                                    <span asp-validation-for="Impact" class="text-danger"></span>
-                                </div>
+        rows.forEach(function (row) {
+            var appName = row.querySelector('td:first-child').textContent.toLowerCase();
+            if (appName.includes(searchString)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+</script>
 
 
-                            </div>
-                            <hr />
-                            <!-- Boutons Navigation -->
-                            <div class="d-flex justify-content-center mt-4">
-                                <button type="button" class="btn btn-black mr-2 ms-3" id="prevBtn" onclick="prevStep()">
-                                    <i class="fas fa-arrow-left"></i> Retour
-                                </button>
-                                <button type="button" class="btn btn-black ms-3" id="nextBtn" onclick="nextStep()">
-                                    Suivant <i class="fas fa-arrow-right"></i>
-                                </button>
-                                <button type="submit" class="btn btn-danger ms-3">
-                                    <i class="fas fa-save"></i> Déclarer
-                                </button>
-                            </div>
-                        </form>
-                    </div>
 
-                </div>
+<style>
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 34px;
+        height: 20px;
+    }
 
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: .4s;
+        border-radius: 34px;
+    }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 14px;
+            width: 14px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+    input:checked + .slider {
+        background-color: #4CAF50;
+    }
+
+        input:checked + .slider:before {
+            transform: translateX(14px);
+        }
+</style>
+
+
+<!-- Modal pour afficher les détails -->
+<div class="modal fade" id="detailsModal" tabindex="-1" aria-labelledby="detailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-md">
+        <div class="modal-content">
+            <div class="modal-header bg-black text-white">
+                <h5 class="modal-title" id="detailsModalLabel">Détails du Statut</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Contenu des détails sera chargé ici -->
+                <div id="detailsContent"></div>
             </div>
         </div>
+    </div>
+</div>
 
-        <!-- JavaScript Bootstrap -->
-        <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/js/all.min.js"></script>
+<script>
+    function loadDetails(statutId) {
+        $.ajax({
+            url: '@Url.Action("Details", "StatutApplicatif")/' + statutId,
+            type: 'GET',
+            success: function (data) {
+                $('#detailsContent').html(data);
+                $('#detailsModal').modal('show');
+            },
+            error: function () {
+                alert('Erreur lors du chargement des détails.');
+            }
+        });
+    }
+</script>
 
-        <script>
-            let currentStep = 1;
+<!--EDIT===============================================-->
+<!-- Modal pour l'édition du statut -->
+<div class="modal fade" id="editStatutModal" tabindex="-1" aria-labelledby="editStatutModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-black text-white">
+                <h5 class="modal-title" id="editStatutModalLabel">Modifier Statut</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Contenu du formulaire d'édition sera chargé ici -->
+                <div id="editStatutContent"></div>
+            </div>
+        </div>
+    </div>
+</div>
 
-            function showStep(step) {
-                // Masquer toutes les étapes
-                document.querySelectorAll('.step-content').forEach(el => el.classList.add('d-none'));
-                document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
+<script>
+    function loadEditStatutForm(statutId) {
+        $.ajax({
+            url: '@Url.Action("EditStatut", "StatutApplicatif")/' + statutId,
+            type: 'GET',
+            success: function (data) {
+                $('#editStatutContent').html(data);
+                $('#editStatutModal').modal('show');
+            },
+            error: function () {
+                alert('Erreur lors du chargement du formulaire d\'édition.');
+            }
+        });
+    }
+</script>
 
-                // Afficher l'étape actuelle
-                document.getElementById(`step${step}`).classList.remove('d-none');
-                document.getElementById(`step${step}-tab`).classList.add('active');
+=============================================================================================================================================================================================
 
-                // Mettre à jour le bouton Enregistrer
-                currentStep = step;
-                updateButtons();
+
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
+using NotifApps.Models;
+using OfficeOpenXml;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace NotifApps.Controllers
+{
+    public class ApplicatifController : Controller
+    {
+        private readonly NotifdbContext _context;
+
+        public ApplicatifController(NotifdbContext context)
+        {
+            _context = context;
+        }
+
+        //BREADCRUMB................................
+        public List<BreadcrumbItem> GetBreadcrumb(string page)
+        {
+            var breadcrumb = new List<BreadcrumbItem>
+       {
+           new BreadcrumbItem { Title = "Homes", Url = Url.Action("Index", "Homes"), IsActive = false }
+       };
+
+            switch (page)
+            {
+                case "Index":
+                    breadcrumb.Add(new BreadcrumbItem { Title = "Index", Url = Url.Action("Index", "Applicatif"), IsActive = true });
+                    break;
+                case "Create":
+                    breadcrumb.Add(new BreadcrumbItem { Title = "Index", Url = Url.Action("Index", "Applicatif"), IsActive = false });
+                    breadcrumb.Add(new BreadcrumbItem { Title = "Create", Url = Url.Action("Create", "tApplicatif"), IsActive = true });
+                    break;
+                case "Details":
+                    breadcrumb.Add(new BreadcrumbItem { Title = "Index", Url = Url.Action("Index", "Applicatif"), IsActive = false });
+                    breadcrumb.Add(new BreadcrumbItem { Title = "Details", Url = Url.Action("Details", "Applicatif"), IsActive = true });
+                    break;
+                case "Edit":
+                    breadcrumb.Add(new BreadcrumbItem { Title = "Index", Url = Url.Action("Index", "Applicatif"), IsActive = false });
+                    breadcrumb.Add(new BreadcrumbItem { Title = "Edit", Url = Url.Action("Edit", "Applicatif"), IsActive = true });
+                    break;
+                case "AttachEquipe":
+                    breadcrumb.Add(new BreadcrumbItem { Title = "Index", Url = Url.Action("Index", "Applicatif"), IsActive = false });
+                    breadcrumb.Add(new BreadcrumbItem { Title = "AttachEquipe", Url = Url.Action("AttachEquipe", "Applicatif"), IsActive = true });
+                    break;
             }
 
-            function nextStep() {
-                if (currentStep < 3) {
-                    currentStep++;
-                    showStep(currentStep);
-                }
+            return breadcrumb;
+        }
+
+
+        // INDEX: List of all applicatifs
+        public async Task<IActionResult> Index(string searchString)
+        {
+            var breadcrumb = GetBreadcrumb("Index");
+            ViewBag.Breadcrumb = breadcrumb;
+            var applicatifs = await _context.Applicatifs
+                .Include(a => a.Addresses)
+                .Include(i => i.StatutApplicatifs)
+                .ToListAsync();
+
+            
+            // Handle NULL values if necessary
+            foreach (var applicatif in applicatifs)
+            {
+                
+            
+                applicatif.StatutApplicatifs = applicatif.StatutApplicatifs ?? new StatutApplicatif();
             }
 
-            function prevStep() {
-                if (currentStep > 1) {
-                    currentStep--;
-                    showStep(currentStep);
-                }
+            if (!string.IsNullOrEmpty(searchString))
+            {
+                applicatifs = applicatifs.Where(u => u.AppNom.Contains(searchString)).ToList();
             }
+            return View(applicatifs);
+        }
 
-            function updateButtons() {
-                document.getElementById('prevBtn').style.display = currentStep === 1 ? 'none' : 'inline-block';
-                document.getElementById('nextBtn').style.display = currentStep === 3 ? 'none' : 'inline-block';
-                document.getElementById('saveBtn').classList.toggle('d-none', currentStep == 3);
+        // GET: Create
+        public IActionResult Create()
+        {
+            ViewBag.HebergementOptions = new List<string> { "Centrale", "Locale" };
+            ViewBag.AddressTypes = _context.AddressTypes.ToList();
+            ViewBag.StatutId = _context.StatutApplicatifs.Select(s => new SelectListItem
+            {
+                Value = s.StatutId.ToString(),
+                Text = s.StatutNom
+            }).ToList();
 
-                // Marquer les étapes complétées
-                for (let i = 1; i <= 3; i++) {
-                    const stepTab = document.getElementById(`step${i}-tab`);
-                    if (i < currentStep) {
-                        stepTab.classList.add('complete');
-                    } else {
-                        stepTab.classList.remove('complete');
+            return View();
+        }
+
+        //POST: Post
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create(Applicatif applicatif, List<Address> addresses, bool forceCreate = false)
+        {
+            if (ModelState.IsValid)
+            {
+                ViewBag.HebergementOptions = new List<string> { "Centrale", "Locale" };
+                ViewBag.AddressTypes = _context.AddressTypes.ToList();
+                ViewBag.StatutId = _context.StatutApplicatifs.Select(s => new SelectListItem
+                {
+                    Value = s.StatutId.ToString(),
+                    Text = s.StatutNom
+                }).ToList();
+
+                using (var transaction = await _context.Database.BeginTransactionAsync())
+                {
+                    try
+                    {
+                        // Vérification de l'existence d'un applicatif avec le même nom
+                        var existingApplicatif = await _context.Applicatifs
+                            .FirstOrDefaultAsync(c => c.AppNom == applicatif.AppNom);
+
+                        if (existingApplicatif != null && !forceCreate)
+                        {
+                            ViewBag.ExistingApplicatif = true;
+                            ViewBag.AppNom = applicatif.AppNom;
+                            return View(applicatif);
+                        }
+
+                        // Vérification des adresses similaires
+                        foreach (var address in addresses)
+                        {
+                            var existingAddress = await _context.Addresses
+                                .FirstOrDefaultAsync(a => a.Type == address.Type && a.Value == address.Value);
+
+                            if (existingAddress != null && !forceCreate)
+                            {
+                                ViewBag.ExistingAddress = true;
+                                ViewBag.AddressType = address.Type;
+                                ViewBag.AddressValue = address.Value;
+                                ViewBag.Applicatif = applicatif;
+                                ViewBag.Addresses = addresses;
+                                return View(applicatif);
+                            }
+                        }
+
+                        _context.Add(applicatif);
+                        await _context.SaveChangesAsync();
+
+                       /* // Enregistrer les adresses
+                        foreach (var address in addresses)
+                        {
+                            address.AppId = applicatif.AppId;
+                            _context.Addresses.Add(address);
+                        }*/
+
+                        await _context.SaveChangesAsync();
+                        await transaction.CommitAsync();
+
+                        return RedirectToAction(nameof(Index));
+                    }
+                    catch (Exception)
+                    {
+                        await transaction.RollbackAsync();
+                        throw;
                     }
                 }
             }
 
-            // Initialisation
-            document.addEventListener('DOMContentLoaded', function () {
-                updateButtons();
-            });
-        </script>
-    </body>
- j' veux que le bouton déclarer n'apparaisse que a step 3
-et faite en sorte que lorsquez je suis sur la premiere etape, c'est active, et lorsque je suis sur la deuxieme etape , la premiere et la deuxieme soient active, et lorsque je suis sur la troisieme etape, la premiere, deuxieme et troisieme restenet active 
-et mettez les required ou il ya les etoiles 
-pour montrer la progression 
+            ViewBag.HebergementOptions = new List<string> { "Centrale", "Locale" };
+            ViewBag.AddressTypes = _context.AddressTypes.ToList();
+            ViewBag.StatutId = _context.StatutApplicatifs.Select(s => new SelectListItem
+            {
+                Value = s.StatutId.ToString(),
+                Text = s.StatutNom
+            }).ToList();
+
+            return View(applicatif);
+        }
+
+
+        // GET: Applicatifs/Edit/5
+        public async Task<IActionResult> Edit(int? id)
+        {
+            var breadcrumb = GetBreadcrumb("Edit");
+            ViewBag.Breadcrumb = breadcrumb;
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var applicatif = await _context.Applicatifs
+                .Include(a => a.Addresses)
+                .FirstOrDefaultAsync(m => m.AppId == id);
+
+            if (applicatif == null)
+            {
+                return NotFound();
+            }
+
+            ViewBag.HebergementOptions = new List<string> { "Centrale", "Locale" };
+
+            // Charger les types d'adresse pour la liste déroulante
+            ViewBag.AddressTypes = await _context.AddressTypes.ToListAsync();
+
+            ViewBag.StatutId = _context.StatutApplicatifs.Select(s => new SelectListItem
+            {
+                Value = s.StatutId.ToString(),
+                Text = s.StatutNom
+            }).ToList();
+
+            return View(applicatif);
+        }
+
+        //POST:Applicatifs/Edit/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(int id, Applicatif applicatif, List<Address> addresses)
+        {
+            if (id != applicatif.AppId)
+            {
+                return NotFound();
+            }
+
+            if (ModelState.IsValid)
+            {
+                using (var transaction = await _context.Database.BeginTransactionAsync())
+                {
+                    try
+                    {
+                        // Mise à jour de l'applicatif
+                        _context.Update(applicatif);
+                        await _context.SaveChangesAsync();
+
+                        // Vérifier les types valides
+                        var validTypes = await _context.AddressTypes.Select(t => t.TypeName).ToListAsync();
+                        foreach (var address in addresses)
+                        {
+                            if (!validTypes.Contains(address.Type))
+                            {
+                                ModelState.AddModelError("", $"Le type d'adresse '{address.Type}' n'est pas valide.");
+                                return View(applicatif);
+                            }
+                        }
+
+                        // Récupérer les adresses existantes
+                        var existingAddresses = await _context.Addresses
+                            .Where(a => a.AppId == applicatif.AppId)
+                            .ToListAsync();
+
+                        // Mettre à jour ou ajouter les adresses
+                        foreach (var address in addresses)
+                        {
+                            if (address.AddressId > 0)
+                            {
+                                // Mettre à jour l'adresse existante
+                                var existingAddress = existingAddresses.FirstOrDefault(a => a.AddressId == address.AddressId);
+                                if (existingAddress != null)
+                                {
+                                    existingAddress.Type = address.Type;
+                                    existingAddress.Value = address.Value;
+                                }
+                            }
+                            else
+                            {
+                                // Ajouter une nouvelle adresse
+                                address.AppId = applicatif.AppId;
+                                _context.Addresses.Add(address);
+                            }
+                        }
+
+                        // Supprimer les adresses obsolètes
+                        var addressesToRemove = existingAddresses
+                            .Where(e => !addresses.Any(a => a.AddressId == e.AddressId))
+                            .ToList();
+                        _context.Addresses.RemoveRange(addressesToRemove);
+
+                        await _context.SaveChangesAsync();
+                        await transaction.CommitAsync();
+
+                        return RedirectToAction(nameof(Index));
+                    }
+                    catch (Exception)
+                    {
+                        await transaction.RollbackAsync();
+                        throw;
+                    }
+                }
+            }
+
+            // Recharge les types en cas d'erreur
+            ViewBag.AddressTypes = await _context.AddressTypes.ToListAsync();
+            ViewBag.StatutId = _context.StatutApplicatifs.Select(s => new SelectListItem
+            {
+                Value = s.StatutId.ToString(),
+                Text = s.StatutNom
+            }).ToList();
+            return View(applicatif);
+
+           
+        }
+
+
+
+        private bool ApplicatifExists(int id)
+        {
+            return _context.Applicatifs.Any(e => e.AppId == id);
+        }
+
+        // DETAILS: GET method
+        public async Task<IActionResult> Details(int id)
+        {
+            var breadcrumb = GetBreadcrumb("Details");
+            ViewBag.Breadcrumb = breadcrumb;
+            var applicatif = await _context.Applicatifs
+                .Include(a => a.Addresses)
+                .Include(i => i.StatutApplicatifs)
+                .Include(a => a.EquipeApplicatifs) 
+                .ThenInclude(ea => ea.Equipe) 
+                .FirstOrDefaultAsync(a => a.AppId == id);
+
+            if (applicatif == null)
+            {
+                return NotFound();
+            }
+
+            return View(applicatif);
+        }
+
+        // ATTACHER EQUIPE A APPLICATIF
+        public IActionResult AttacheEquipe(int id)
+        {
+            var breadcrumb = GetBreadcrumb("AttachEquipe");
+            ViewBag.Breadcrumb = breadcrumb;
+            var applicatif = _context.Applicatifs.Find(id);
+            var equipes = _context.Equipes.ToList(); // Get all teams
+            ViewBag.ApplicatifId = id;
+
+            // Define criticality options
+            ViewBag.CriticiteOptions = new List<string> { "P0", "P1", "P2", "P3" };
+
+            return View(equipes);
+        }
+
+        //POST ATTACH
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SaveEquipe(int applicatifId, int equipeId, string criticiteNom)
+        {
+            var applicatif = await _context.Applicatifs.FindAsync(applicatifId);
+            var equipe = await _context.Equipes.FindAsync(equipeId);
+
+            if (applicatif != null && equipe != null)// check si equipe est null ou pas 
+            {
+                var equipeApplicatif = new EquipeApplicatif
+                {
+                    AppId = applicatifId,
+                    EquipeId = equipeId,
+                    CriticiteNom = criticiteNom 
+                };
+
+                _context.Add(equipeApplicatif);
+                await _context.SaveChangesAsync();
+                return RedirectToAction(nameof(Details), new { id = applicatifId });
+            }
+
+            return NotFound();
+        }
+        // GET: Applicatif/EditCriticite
+        [HttpGet]
+        public async Task<IActionResult> EditCriticite(int applicatifId, int equipeId)
+        {
+            var equipeApplicatif = await _context.EquipeApplicatifs
+                .FirstOrDefaultAsync(ea => ea.AppId == applicatifId && ea.EquipeId == equipeId);
+
+            if (equipeApplicatif == null)
+            {
+                return NotFound();
+            }
+
+            ViewBag.CriticiteOptions = new List<string> { "P0", "P1", "P2", "P3" };
+            return View(equipeApplicatif);
+        }
+        // POST: Applicatif/EditCriticite
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditCriticite(int applicatifId, int equipeId, string criticiteNom)
+        {
+            var equipeApplicatif = await _context.EquipeApplicatifs
+                .FirstOrDefaultAsync(ea => ea.AppId == applicatifId && ea.EquipeId == equipeId);
+
+            if (equipeApplicatif == null)
+            {
+                
+                return NotFound();
+            }
+            equipeApplicatif.CriticiteNom = criticiteNom;
+
+            if (ModelState.IsValid)
+            {
+                try
+                {
+                    _context.Update(equipeApplicatif);
+                    await _context.SaveChangesAsync();
+                    return RedirectToAction("Details", new { id = applicatifId });
+                }
+                catch (DbUpdateConcurrencyException)
+                {                    if (!EquipeApplicatifExists(applicatifId, equipeId))
+                    {
+                        return NotFound();
+                    }
+                    else
+                    {
+                        throw;
+                    }
+                }
+            }
+            ViewBag.CriticiteOptions = new List<string> { "P0", "P1", "P2", "P3" };
+            return View(equipeApplicatif);
+        }
+
+        // Méthode pour vérifier l'existence de l'association équipe-applicatif
+        private bool EquipeApplicatifExists(int applicatifId, int equipeId)
+        {
+            return _context.EquipeApplicatifs.Any(e => e.AppId == applicatifId && e.EquipeId == equipeId);
+        }
+
+        // GET: Delete
+        public async Task<IActionResult> Delete(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var applicatif = await _context.Applicatifs
+                .Include(a => a.Addresses)
+                .Include(i => i.StatutApplicatifs)
+                .Include(a => a.EquipeApplicatifs)
+                .FirstOrDefaultAsync(a => a.AppId == id);
+
+            if (applicatif == null)
+            {
+                return NotFound();
+            }
+
+            return View(applicatif);
+        }
+
+        // DELETE: POST method
+        [HttpPost, ActionName("Delete")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            var applicatif = await _context.Applicatifs
+                .Include(a => a.Addresses)
+                .Include(i => i.StatutApplicatifs)
+                .Include(a => a.EquipeApplicatifs) 
+                .FirstOrDefaultAsync(a => a.AppId == id);
+
+            if (applicatif == null) return NotFound();
+
+            _context.Addresses.RemoveRange(applicatif.Addresses);
+
+            var equipesApplicatifs = await _context.EquipeApplicatifs
+                .Where(ea => ea.AppId == id)
+                .ToListAsync();
+
+            _context.EquipeApplicatifs.RemoveRange(equipesApplicatifs);
+
+            _context.Applicatifs.Remove(applicatif);
+
+            await _context.SaveChangesAsync();
+            return RedirectToAction(nameof(Index));
+        }
+
+
+        // POST: Applicatifs/DetachEquipe
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DetachEquipe(int applicatifId, int equipeId)
+        {
+            var equipeApplicatif = await _context.EquipeApplicatifs
+                .FirstOrDefaultAsync(ea => ea.AppId == applicatifId && ea.EquipeId == equipeId);
+
+            if (equipeApplicatif == null)
+            {
+                return NotFound();
+            }
+
+            _context.EquipeApplicatifs.Remove(equipeApplicatif);
+            await _context.SaveChangesAsync();
+            return RedirectToAction(nameof(Details), new { id = applicatifId });
+        }
+
+
+
+    }
+
+}
