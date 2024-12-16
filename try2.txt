@@ -123,3 +123,166 @@
         </div>
     </div>
 </div>
+
+
+
+
+
+using System.Diagnostics;
+using System.Text;
+
+public IActionResult PingAddresses(int id)
+{
+    // Récupération de l'applicatif par ID
+    var applicatif = _context.Applicatifs
+        .Include(a => a.Addresses) // Inclure les adresses associées
+        .FirstOrDefault(a => a.AppId == id);
+
+    if (applicatif == null)
+    {
+        return NotFound("Applicatif introuvable.");
+    }
+
+    // Liste pour stocker les résultats des pings
+    var pingResults = new List<string>();
+
+    foreach (var address in applicatif.Addresses)
+    {
+        // Exécution du ping
+        var ping = new Ping();
+        try
+        {
+            var reply = ping.Send(address.Value);
+            if (reply.Status == IPStatus.Success)
+            {
+                pingResults.Add($"Adresse {address.Value} : Réussi en {reply.RoundtripTime} ms.");
+            }
+            else
+            {
+                pingResults.Add($"Adresse {address.Value} : Échec (Statut : {reply.Status}).");
+            }
+        }
+        catch (Exception ex)
+        {
+            pingResults.Add($"Adresse {address.Value} : Erreur - {ex.Message}");
+        }
+    }
+
+    // Retour des résultats dans un format HTML pour le modal
+    var resultHtml = new StringBuilder("<ul>");
+    foreach (var result in pingResults)
+    {
+        resultHtml.Append($"<li>{result}</li>");
+    }
+    resultHtml.Append("</ul>");
+
+    return Content(resultHtml.ToString(), "text/html");
+}
+
+
+
+using System.Diagnostics;
+using System.Text;
+
+public IActionResult PingAddresses(int id)
+{
+    // Récupération de l'applicatif par ID
+    var applicatif = _context.Applicatifs
+        .Include(a => a.Addresses) // Inclure les adresses associées
+        .FirstOrDefault(a => a.AppId == id);
+
+    if (applicatif == null)
+    {
+        return NotFound("Applicatif introuvable.");
+    }
+
+    // Liste pour stocker les résultats des pings
+    var pingResults = new List<string>();
+
+    foreach (var address in applicatif.Addresses)
+    {
+        // Exécution du ping
+        var ping = new Ping();
+        try
+        {
+            var reply = ping.Send(address.Value);
+            if (reply.Status == IPStatus.Success)
+            {
+                pingResults.Add($"Adresse {address.Value} : Réussi en {reply.RoundtripTime} ms.");
+            }
+            else
+            {
+                pingResults.Add($"Adresse {address.Value} : Échec (Statut : {reply.Status}).");
+            }
+        }
+        catch (Exception ex)
+        {
+            pingResults.Add($"Adresse {address.Value} : Erreur - {ex.Message}");
+        }
+    }
+
+    // Retour des résultats dans un format HTML pour le modal
+    var resultHtml = new StringBuilder("<ul>");
+    foreach (var result in pingResults)
+    {
+        resultHtml.Append($"<li>{result}</li>");
+    }
+    resultHtml.Append("</ul>");
+
+    return Content(resultHtml.ToString(), "text/html");
+}
+
+
+
+
+using System.Diagnostics;
+using System.Text;
+
+public IActionResult PingAddresses(int id)
+{
+    // Récupération de l'applicatif par ID
+    var applicatif = _context.Applicatifs
+        .Include(a => a.Addresses) // Inclure les adresses associées
+        .FirstOrDefault(a => a.AppId == id);
+
+    if (applicatif == null)
+    {
+        return NotFound("Applicatif introuvable.");
+    }
+
+    // Liste pour stocker les résultats des pings
+    var pingResults = new List<string>();
+
+    foreach (var address in applicatif.Addresses)
+    {
+        // Exécution du ping
+        var ping = new Ping();
+        try
+        {
+            var reply = ping.Send(address.Value);
+            if (reply.Status == IPStatus.Success)
+            {
+                pingResults.Add($"Adresse {address.Value} : Réussi en {reply.RoundtripTime} ms.");
+            }
+            else
+            {
+                pingResults.Add($"Adresse {address.Value} : Échec (Statut : {reply.Status}).");
+            }
+        }
+        catch (Exception ex)
+        {
+            pingResults.Add($"Adresse {address.Value} : Erreur - {ex.Message}");
+        }
+    }
+
+    // Retour des résultats dans un format HTML pour le modal
+    var resultHtml = new StringBuilder("<ul>");
+    foreach (var result in pingResults)
+    {
+        resultHtml.Append($"<li>{result}</li>");
+    }
+    resultHtml.Append("</ul>");
+
+    return Content(resultHtml.ToString(), "text/html");
+}
+
