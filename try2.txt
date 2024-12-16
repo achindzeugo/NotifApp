@@ -1,7 +1,108 @@
-<button class="btn btn-info ms-3" title="Pings" onclick="loadPingResults(@statutapplicatif.StatutId)">
-        <i class="fas fa-network-wired"></i>
-    </button>
+@model IEnumerable<NotifApps.Models.Applicatif>
 
+<h2 class="">Applicatifs</h2>
+<hr />
+<div>
+    <a asp-action="Create" class="btn btn-black">Créer nouvel Applicatif</a>
+</div>
+<br />
+
+<div>
+    <input type="text" id="searchInput" class="form-control" placeholder="Rechercher par nom d'applicatif...">
+    <button type="submit" class="btn btn-black mt-2 fas fa-search"></button>
+</div>
+<br />
+
+<table class="table table-bordered">
+    <thead class="thead-danger bg-danger">
+        <tr>
+            <th class="bg-black text-white">Noms</th>
+            <th class="bg-black text-white">Descriptions</th>
+            <th class="bg-black text-white">Liens</th>
+            <th class="bg-black text-white">Statut</th>
+            <th class="bg-black text-white">Déploiement</th>
+            <th class="bg-black text-white">Addresses</th>
+            <th class="bg-black text-white">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.AppNom</td>
+                <td>@item.Descriptif</td>
+                <td><a href="@item.LienWeb" class="text-danger" target="_blank">@item.LienWeb</a></td>
+                <td>@item.StatutApplicatifs.StatutNom</td>
+                <td>@item.Hebergement</td>
+
+                <td>
+                    <ul>
+                        @foreach (var address in item.Addresses)
+                        {
+                            <li>@address.Type: @address.Value</li>
+                        }
+                    </ul>
+                </td>
+                <td>
+                    <div class="d-flex justify-content-between">
+                        <a asp-action="Details" asp-route-id="@item.AppId" class="btn btn-black ms-2 btn-sm" title="Détails"><i class="fas fa-list"></i></a>
+                        <a asp-action="Edit" asp-route-id="@item.AppId" class="btn btn-warning ms-2 btn-sm" title="Modifier"><i class="fas fa-edit"></i></a>
+                        <button class="btn btn-primary ms-2 btn-sm" title="Effectuer des pings" onclick="performPing(@item.AppId)">
+                            <i class="fas fa-network-wired"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<style>
+    .table {
+        border-top-color: red;
+        border-top-style: solid;
+        border-top-width: 5px;
+    }
+</style>
+
+<script>
+    document.getElementById('searchInput').addEventListener('keyup', function() {
+        var searchString = this.value.toLowerCase();
+        var rows = document.querySelectorAll('tbody tr');
+
+        rows.forEach(function(row) {
+            var appName = row.querySelector('td:first-child').textContent.toLowerCase();
+            if (appName.includes(searchString)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+
+    // Fonction pour effectuer des pings
+    function performPing(appId) {
+        $.ajax({
+            url: '@Url.Action("PingAddresses", "Applicatifs")/' + appId,
+            type: 'GET',
+            success: function (data) {
+                $('#pingResultsContent').html(data);
+                $('#pingResultsModal').modal('show');
+            },
+            error: function () {
+                alert('Erreur lors de l\'exécution des pings.');
+            }
+        });
+    }
+
+    // Téléchargement du rapport en PDF
+    document.getElementById('downloadPingReport').addEventListener('click', function() {
+        const appId = $('#pingResultsModal').data('app-id'); // Récupérer l'ID de l'applicatif
+        window.location.href = '@Url.Action("DownloadPingReport", "Applicatifs")?appId=' + appId;
+    });
+</script>
+
+<!-- Modal pour afficher les résultats des pings -->
 <div class="modal fade" id="pingResultsModal" tabindex="-1" aria-labelledby="pingResultsModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -22,147 +123,3 @@
         </div>
     </div>
 </div>
-
-
-
-  <script>
-    function loadPingResults(statutId) {
-        $.ajax({
-            url: '@Url.Action("PingAddresses", "StatutApplicatif")/' + statutId,
-            type: 'GET',
-            success: function (data) {
-                $('#pingResultsContent').html(data);
-                $('#pingResultsModal').modal('show');
-            },
-            error: function () {
-                alert('Erreur lors de l\'exécution des pings.');
-            }
-        });
-    }
-
-    // Télécharger le rapport PDF
-    document.getElementById("downloadPingReport").addEventListener("click", function () {
-        var statutId = $('#pingResultsContent').data('statut-id');
-        window.location.href = '@Url.Action("DownloadPingReport", "StatutApplicatif")?id=' + statutId;
-    });
-</script>
-[HttpGet]
-public IActionResult PingAddresses(int id)
-{
-    var addresses = _context.ApplicatifAddresses
-        .Where(a => a.StatutId == id)
-        .Select(a => a.Address)
-        .ToList();
-
-    var pingResults = new List<PingResult>();
-    foreach (var address in addresses)
-    {
-        var result = PingAddress(address);
-        pingResults.Add(result);
-    }
-
-    // Renvoyer les résultats sous forme partielle
-    return PartialView("_PingResults", pingResults);
-}
-
-[HttpGet]
-public IActionResult DownloadPingReport(int id)
-{
-    var addresses = _context.ApplicatifAddresses
-        .Where(a => a.StatutId == id)
-        .Select(a => a.Address)
-        .ToList();
-
-    var pingResults = new List<PingResult>();
-    foreach (var address in addresses)
-    {
-        var result = PingAddress(address);
-        pingResults.Add(result);
-    }
-
-    var pdfBytes = GeneratePingReportPDF(pingResults);
-    return File(pdfBytes, "application/pdf", "PingReport.pdf");
-}
-
-// Méthode pour exécuter un ping
-private PingResult PingAddress(string address)
-{
-    var ping = new Ping();
-    try
-    {
-        var reply = ping.Send(address);
-        return new PingResult
-        {
-            Address = address,
-            Status = reply.Status.ToString(),
-            RoundtripTime = reply.RoundtripTime
-        };
-    }
-    catch
-    {
-        return new PingResult
-        {
-            Address = address,
-            Status = "Erreur",
-            RoundtripTime = -1
-        };
-    }
-}
-
-// Méthode pour générer le rapport PDF
-private byte[] GeneratePingReportPDF(List<PingResult> pingResults)
-{
-    using var stream = new MemoryStream();
-    var writer = new PdfWriter(stream);
-    var pdf = new PdfDocument(writer);
-    var document = new Document(pdf);
-
-    document.Add(new Paragraph("Rapport des Pings").SetFontSize(18).SetBold());
-    document.Add(new Paragraph("Date: " + DateTime.Now.ToString("dd/MM/yyyy HH:mm")));
-
-    var table = new Table(3);
-    table.AddHeaderCell("Adresse");
-    table.AddHeaderCell("Statut");
-    table.AddHeaderCell("Temps aller-retour (ms)");
-
-    foreach (var result in pingResults)
-    {
-        table.AddCell(result.Address);
-        table.AddCell(result.Status);
-        table.AddCell(result.RoundtripTime >= 0 ? result.RoundtripTime.ToString() : "N/A");
-    }
-
-    document.Add(table);
-    document.Close();
-
-    return stream.ToArray();
-}
-
-
-
-
-@model IEnumerable<PingResult>
-
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>Adresse</th>
-            <th>Statut</th>
-            <th>Temps aller-retour (ms)</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var result in Model)
-        {
-            <tr>
-                <td>@result.Address</td>
-                <td>@result.Status</td>
-                <td>@(result.RoundtripTime >= 0 ? result.RoundtripTime.ToString() : "N/A")</td>
-            </tr>
-        }
-    </tbody>
-</table>
-
-
-
-
