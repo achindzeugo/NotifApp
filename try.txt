@@ -1,859 +1,120 @@
-pourquoi je ne vois aucun resultat ?
-
-voici comment ils sont enregistrés dans la BD, colonne Debutdimpact
-NULL
-2024-10-30 13:49:00.000
-2024-11-11 15:12:00.000
-2024-11-19 08:37:00.000
-2024-12-13 08:58:00.000
-
-et vici mon controller incident,
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
-using NotifApps.Models;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
-
-namespace NotifApps.Controllers
+public async Task<IActionResult> Dashboard()
 {
-    public class IncidentController : Controller
-    {
-        private readonly NotifdbContext _context;
+    var breadcrumb = GetBreadcrumb("Dashboard");
+    ViewBag.Breadcrumb = breadcrumb;
 
-        public IncidentController(NotifdbContext context)
+    // Récupérer tous les incidents
+    var incidents = await _context.Incidents
+        .Where(i => i.Debutdimpact != null) // S'assurer que Debutdimpact n'est pas nul
+        .ToListAsync();
+
+    // Groupement par mois
+    var incidentsParMois = incidents
+        .GroupBy(i => i.Debutdimpact.Value.ToString("yyyy-MM")) // Groupement par année-mois
+        .Select(g => new
         {
-            _context = context;
-        }
+            Mois = g.Key,
+            Nombre = g.Count()
+        })
+        .ToList();
 
-        //BREADCRUMB................................
-        public List<BreadcrumbItem> GetBreadcrumb(string page)
+    // Groupement par semaine
+    var incidentsParSemaine = incidents
+        .GroupBy(i => CultureInfo.CurrentCulture.Calendar.GetWeekOfYear(
+            i.Debutdimpact.Value, CalendarWeekRule.FirstDay, DayOfWeek.Monday)) // Groupement par semaine de l'année
+        .Select(g => new
         {
-            var breadcrumb = new List<BreadcrumbItem>
-       {
-           new BreadcrumbItem { Title = "Homes", Url = Url.Action("Index", "Homes"), IsActive = false }
-       };
+            Semaine = g.Key,
+            Nombre = g.Count()
+        })
+        .ToList();
 
-            switch (page)
-            {
-                case "Index":
-                    breadcrumb.Add(new BreadcrumbItem { Title = "Index", Url = Url.Action("Index", "Incident"), IsActive = true });
-                    break;
-                case "Create":
-                    breadcrumb.Add(new BreadcrumbItem { Title = "Index", Url = Url.Action("Index", "Incident"), IsActive = false });
-                    breadcrumb.Add(new BreadcrumbItem { Title = "Create", Url = Url.Action("Create", "Incident"), IsActive = true });
-                    break;
-                case "Details":
-                    breadcrumb.Add(new BreadcrumbItem { Title = "Index", Url = Url.Action("Index", "Incident"), IsActive = false });
-                    breadcrumb.Add(new BreadcrumbItem { Title = "Details", Url = Url.Action("Details", "Incident"), IsActive = true });
-                    break;
-                case "Edit":
-                    breadcrumb.Add(new BreadcrumbItem { Title = "Index", Url = Url.Action("Index", "Incident"), IsActive = false });
-                    breadcrumb.Add(new BreadcrumbItem { Title = "Edit", Url = Url.Action("Edit", "Incident"), IsActive = true });
-                    break;
-                
-            }
+    // Ajouter les données au ViewBag pour les transmettre à la vue
+    ViewBag.IncidentsParMois = incidentsParMois;
+    ViewBag.IncidentsParSemaine = incidentsParSemaine;
 
-            return breadcrumb;
-        }
-
-        //GET INDEX
-        public async Task<IActionResult> Index(string searchString)
-        {
-            var breadcrumb = GetBreadcrumb("Index");
-            ViewBag.Breadcrumb = breadcrumb;
-            var incidents = await _context.Incidents
-                .Include(i => i.App)
-                .Include(i => i.Criticite)
-                .Include(i => i.Statut)
-                .Include(i => i.Origine)
-                .ToListAsync();
-
-            // Handle NULL values if necessary
-            foreach (var incident in incidents)
-            {
-                incident.App = incident.App ?? new Applicatif();
-                incident.Criticite = incident.Criticite ?? new Criticite();
-                incident.Statut = incident.Statut ?? new Statut();
-                incident.Origine = incident.Origine ?? new Origine();
-            }
-            if (!string.IsNullOrEmpty(searchString))
-            {
-                incidents = incidents.Where(u => u.Titre.Contains(searchString)).ToList();
-            }
-            return View(incidents);
-        }
+    return View();
+}
 
 
-        // GET: Incident/Create
-        public IActionResult Create()
-        {
-            
-            var breadcrumb = GetBreadcrumb("Create");
-            ViewBag.Breadcrumb = breadcrumb;
-            // Remplir les ViewBag pour les sélections
-            ViewBag.EquipeId = _context.Equipes.Select(e => new SelectListItem
-            {
-                Value = e.EquipeId.ToString(),
-                Text = e.NomEquipe
-            }).ToList();
-
-            ViewBag.AppId = _context.Applicatifs.Select(a => new SelectListItem
-            {
-                Value = a.AppId.ToString(),
-                Text = a.AppNom
-            }).ToList();
-
-            // Filtrer les criticités dont le statut est "Actif"
-            ViewBag.CriticiteId = _context.Criticites
-                .Where(c => c.Statut == "Actif") // Filtrer uniquement les criticités actives
-                .Select(c => new SelectListItem
-                {
-                    Value = c.CriticiteId.ToString(),
-                    Text = c.CriticiteNom
-                }).ToList();
-
-            ViewBag.StatutId = _context.Statuts
-                .Where(s => s.Statut1 == "Actif")
-                .Select(s => new SelectListItem
-            {
-                Value = s.StatutId.ToString(),
-                Text = s.StatutNom
-            }).ToList();
-
-            ViewBag.OrigineId = _context.Origines
-                .Where(o => o.OrigineNom != null) // Filtrer les valeurs NULL
-                .Where(o => o.Statut =="Actif")
-                .Select(o => new SelectListItem
-                {
-                    Value = o.OrigineId.ToString(),
-                    Text = o.OrigineNom
-                }).ToList();
-
-            return View();
-        }
-
-
-        // POST: Incident/Create
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("IncidentId,Description,DestinataireSup,CriticiteId,StatutId,AppId,Titre,Pec,RefTicket,LienTicket,Debutdimpact,Datepriseencharge,Impact,EquipeId")] Incident incident, string OrigineNom, Origine origine)
-        {
-            if (ModelState.IsValid)
-            {
-                // Normaliser le nom de l'origine pour la comparaison
-                var normalizedOrigineNom = OrigineNom.Trim().ToUpper(); // Convert to capital lettrs
-
-                // Vérifiez si une origine similaire existe déjà
-                var existingOrigine = await _context.Origines
-                    .FirstOrDefaultAsync(o => o.OrigineNom.ToUpper() == normalizedOrigineNom);
-
-                // Check if Descriptions is null or empty, and set it to "RAS" if so
-                if (string.IsNullOrEmpty(origine.Descriptions))
-                {
-                    origine.Descriptions = "RAS";
-                }
-                if (existingOrigine == null)
-                {
-                    // Vérifiez les origines existantes pour des correspondances similaires
-                    var similarOrigines = await _context.Origines
-                        .Where(o => o.OrigineNom.ToUpper().Contains(normalizedOrigineNom) ||
-                                     normalizedOrigineNom.Contains(o.OrigineNom.ToUpper()))
-                        .ToListAsync();
-                   
-                    if (similarOrigines.Any())
-                    {
-                        // Utilisez l'origine existante si une correspondance similaire est trouvée
-                        incident.OrigineId = similarOrigines.First().OrigineId;
-                    }
-                    else
-                    {
-                        // Si aucune origine similaire, ajoutez une nouvelle origine
-                        var newOrigine = new Origine { OrigineNom = normalizedOrigineNom }; // Utiliser le nom normalisé
-                        _context.Origines.Add(newOrigine);
-                        await _context.SaveChangesAsync();
-                        incident.OrigineId = newOrigine.OrigineId;
-                    }
-                }
-                else
-                {
-                    // Si une origine exacte existe, utilisez son ID
-                    incident.OrigineId = existingOrigine.OrigineId;
-                }
-
-                using (var transaction = await _context.Database.BeginTransactionAsync())
-                {
-                    try
-                    {
-                        _context.Add(incident);
-                        await _context.SaveChangesAsync(); 
-
-                        await _context.SaveChangesAsync(); 
-                        await transaction.CommitAsync();
-                        return RedirectToAction(nameof(Index));
-                    }
-                    catch (Exception)
-                    {
-                        await transaction.RollbackAsync();
-                        throw;
-                    }
-                }
-            }
-
-            ViewBag.EquipeId = _context.Equipes.Select(e => new SelectListItem
-            {
-                Value = e.EquipeId.ToString(),
-                Text = e.NomEquipe
-            }).ToList();
-
-            ViewBag.AppId = _context.Applicatifs.Select(a => new SelectListItem
-            {
-                Value = a.AppId.ToString(),
-                Text = a.AppNom
-            }).ToList();
-
-            ViewBag.CriticiteId = _context.Criticites.Select(c => new SelectListItem
-            {
-                Value = c.CriticiteId.ToString(),
-                Text = c.CriticiteNom
-            }).ToList();
-
-            ViewBag.StatutId = _context.Statuts.Select(s => new SelectListItem
-            {
-                Value = s.StatutId.ToString(),
-                Text = s.StatutNom
-            }).ToList();
-
-            ViewBag.OrigineId = _context.Origines.Select(o => new SelectListItem
-            {
-                Value = o.OrigineId.ToString(),
-                Text = o.OrigineNom
-            }).ToList();
-
-            return View(incident);
-        }
-
-
-
-        // GET: Incident/Details/5
-        public async Task<IActionResult> Details(int? id)
-        {
-            var breadcrumb = GetBreadcrumb("Details");
-            ViewBag.Breadcrumb = breadcrumb;
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var incident = await _context.Incidents
-                .Include(i => i.App)
-                .Include(i => i.App)
-               .Include(i => i.Criticite)
-                .Include(i => i.Statut)
-                .Include(i => i.Origine)
-                .Include(i => i.Equipe)
-                .Include(i=>i.PlanDactions)
-                .FirstOrDefaultAsync(m => m.IncidentId == id);
-
-            if (incident == null)
-            {
-                return NotFound();
-            }
-
-            ViewBag.StatutId = _context.Statuts
-                .Where(e => e.Statut1 == "Actif")
-                .Select(s => new SelectListItem
-                {
-                    Value = s.StatutId.ToString(),
-                    Text = s.StatutNom
-                }).ToList();
-
-            ViewBag.EquipeId = _context.Equipes
-                .Where(e => e.Statut == "Actif")
-                .Select(e => new SelectListItem
-                {
-                    Value = e.EquipeId.ToString(),
-                    Text = e.NomEquipe
-                }).ToList();
-
-            ViewBag.AppId = _context.Applicatifs.Select(a => new SelectListItem
-            {
-                Value = a.AppId.ToString(),
-                Text = a.AppNom
-            }).ToList();
-
-            ViewBag.CriticiteId = _context.Criticites
-                .Where(e => e.Statut == "Actif")
-                .Select(c => new SelectListItem
-                {
-                    Value = c.CriticiteId.ToString(),
-                    Text = c.CriticiteNom
-                }).ToList();
-
-            ViewBag.StatutId = _context.Statuts
-                .Where(e => e.Statut1 == "Actif")
-                .Select(s => new SelectListItem
-                {
-                    Value = s.StatutId.ToString(),
-                    Text = s.StatutNom
-                }).ToList();
-
-            ViewBag.OrigineId = _context.Origines
-                .Where(e => e.Statut == "Actif")
-                .Select(o => new SelectListItem
-                {
-                    Value = o.OrigineId.ToString(),
-                    Text = o.OrigineNom
-                }).ToList();
-
-
-
-            return View(incident);
-        }
-
-        public async Task<IActionResult> DownloadPostMortem(int id)
-        {
-            var incident = await _context.Incidents.FindAsync(id);
-            if (incident == null || incident.PostMortem == null)
-            {
-                return NotFound();
-            }
-
-            return File(incident.PostMortem, "application/octet-stream", "PostMortem.pdf");
-        }
-
-        [HttpPost]
-        public async Task<IActionResult> UploadPostMortem(int id, IFormFile postMortemFile)
-        {
-            if (postMortemFile == null || postMortemFile.Length == 0)
-            {
-                return BadRequest("Aucun fichier sélectionné.");
-            }
-
-            var incident = await _context.Incidents.FindAsync(id);
-            if (incident == null)
-            {
-                return NotFound();
-            }
-
-            using (var memoryStream = new MemoryStream())
-            {
-                await postMortemFile.CopyToAsync(memoryStream);
-                incident.PostMortem = memoryStream.ToArray();
-            }
-
-            _context.Update(incident);
-            await _context.SaveChangesAsync();
-
-            return RedirectToAction(nameof(Details), new { id = incident.IncidentId });
-        }
-
-        /* // GET: Incident/Edit/5
-         public async Task<IActionResult> Edit(int? id)
-         {
-             if (id == null)
-             {
-                 return NotFound();
-             }
-
-             var incident = await _context.Incidents
-                 .Include(i => i.App)
-                 .Include(i => i.Criticite)
-                 .Include(i => i.Statut)
-                 .Include(i => i.Origine)
-                 .FirstOrDefaultAsync(m => m.IncidentId == id);
-             if (incident == null)
-             {
-                 return NotFound();
-             }
-             PopulateDropDownLists(incident);
-             return View(incident);
-         }
-
-         // POST: Incident/Edit/5
-         [HttpPost]
-         [ValidateAntiForgeryToken]
-         public async Task<IActionResult> Edit(int id, [Bind("IncidentId,Description,DestinataireSup,OrigineId,CriticiteId,StatutId,AppId")] Incident incident)
-         {
-             if (id != incident.IncidentId)
-             {
-                 return NotFound();
-             }
-
-             if (ModelState.IsValid)
-             {
-                 try
-                 {
-                     _context.Update(incident);
-                     await _context.SaveChangesAsync();
-                 }
-                 catch (DbUpdateConcurrencyException)
-                 {
-                     if (!IncidentExists(incident.IncidentId))
-                     {
-                         return NotFound();
-                     }
-                     else
-                     {
-                         throw;
-                     }
-                 }
-                 return RedirectToAction(nameof(Index));
-             }
-             PopulateDropDownLists(incident);
-             return View(incident);
-         }*/
-
-        //POST:AJOUTER PLANDACTION
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AddPlanDaction(int incidentId, string planDescription, DateTime? dateReelle)
-        {
-            if (string.IsNullOrWhiteSpace(planDescription))
-            {
-                return BadRequest("Le plan d'action ne peut pas etre vide.");
-            }
-
-            var incident = await _context.Incidents.FindAsync(incidentId);
-            if (incident == null)
-            {
-                return NotFound();
-            }
-
-            if (string.IsNullOrWhiteSpace(planDescription))
-            {
-                planDescription = "Plan d'action par defaut"; 
-                dateReelle = DateTime.Now; 
-            }
-
-            var planDaction = new PlanDaction
-            {
-                PlanDescription = planDescription,
-                DateReelle = dateReelle ?? DateTime.Now, // Ensure this captures the correct date and time
-                IncidentId = incidentId
-            };
-
-            _context.PlanDactions.Add(planDaction);
-            await _context.SaveChangesAsync();
-
-            return RedirectToAction(nameof(Details), new { id = incidentId });
-        }
-
-        // GET: Edit Plan Daction
-        public async Task<IActionResult> EditPlanDaction(int id)
-        {
-            var planDaction = await _context.PlanDactions.FindAsync(id);
-            if (planDaction == null)
-            {
-                return NotFound();
-            }
-            return View(planDaction);
-        }
-
-        // POST: Edit Plan Daction
-       [HttpPost]
-[ValidateAntiForgeryToken]
-public IActionResult EditPlanDaction(int PlanId, string PlanDescription, DateTime DateReelle)
 {
-    var plan = _context.PlanDactions.Find(PlanId);
-    if (plan != null)
-    {
-        plan.PlanDescription = PlanDescription;
-        plan.DateReelle = DateReelle;
-        _context.SaveChanges();
-    }
-    return RedirectToAction("Details", new { id = plan.IncidentId });
+    return View();
 }
 
 
 
 
-        // POST: Delete Plan Daction
-        [HttpPost]
-[ValidateAntiForgeryToken]
-public async Task<IActionResult> DeletePlanDaction(int id)
-{
-    var planDaction = await _context.PlanDactions.FindAsync(id);
-    if (planDaction != null)
-    {
-        _context.PlanDactions.Remove(planDaction);
-        await _context.SaveChangesAsync();
-    }
-    return RedirectToAction("Details", new { id = planDaction.IncidentId });
+
+@{
+    ViewData["Title"] = "Dashboard des Incidents";
 }
 
+<h2>Dashboard des Incidents</h2>
 
+<div>
+    <h3>Incidents par Mois</h3>
+    <canvas id="incidentsParMoisChart"></canvas>
+</div>
 
-        // GET: Incident/Edit/5
-        public async Task<IActionResult> Edit(int? id)
-        {
-            var breadcrumb = GetBreadcrumb("Edit");
-            ViewBag.Breadcrumb = breadcrumb;
-            if (id == null)
-            {
-                return NotFound();
-            }
+<div>
+    <h3>Incidents par Semaine</h3>
+    <canvas id="incidentsParSemaineChart"></canvas>
+</div>
 
-            var incident = await _context.Incidents
-                .Include(i => i.App)
-                .Include(i => i.Criticite)
-                .Include(i => i.Statut)
-                .Include(i => i.Origine)
-                                .Include(i => i.Equipe)
+<script>
+    // Données pour les incidents par mois
+    var incidentsParMoisLabels = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(ViewBag.IncidentsParMois.Select(m => m.Mois)));
+    var incidentsParMoisData = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(ViewBag.IncidentsParMois.Select(m => m.Nombre)));
 
-                .FirstOrDefaultAsync(m => m.IncidentId == id);
-            if (incident == null)
-            {
-                return NotFound();
-            }
-
-            ViewBag.EquipeId = _context.Equipes
-                .Where(e => e.Statut == "Actif")
-                .Select(e => new SelectListItem
-            {
-                Value = e.EquipeId.ToString(),
-                Text = e.NomEquipe
-            }).ToList();
-
-            ViewBag.AppId = _context.Applicatifs.Select(a => new SelectListItem
-            {
-                Value = a.AppId.ToString(),
-                Text = a.AppNom
-            }).ToList();
-
-            ViewBag.CriticiteId = _context.Criticites
-                .Where(e => e.Statut == "Actif")
-                .Select(c => new SelectListItem
-            {
-                Value = c.CriticiteId.ToString(),
-                Text = c.CriticiteNom
-            }).ToList();
-
-            ViewBag.StatutId = _context.Statuts
-                .Where(e => e.Statut1 == "Actif")
-                .Select(s => new SelectListItem
-            {
-                Value = s.StatutId.ToString(),
-                Text = s.StatutNom
-            }).ToList();
-
-            ViewBag.OrigineId = _context.Origines
-                .Where(e => e.Statut == "Actif")
-                .Select(o => new SelectListItem
-            {
-                Value = o.OrigineId.ToString(),
-                Text = o.OrigineNom
-            }).ToList();
-
-         
-
-            return View(incident);
-        }
-
-
-
-        // POST: Incident/Edit/5
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("IncidentId,Description,DestinataireSup,OrigineId,CriticiteId,StatutId,AppId,Titre,RefTicket,LienTicket,Debutdimpact,Datepriseencharge,Impact,EquipeId,Dateresolution")] Incident incident)
-        {
-            if (id != incident.IncidentId)
-            {
-                return NotFound();
-            }
-
-            if (ModelState.IsValid)
-            {
-                try
-                {
-                    _context.Update(incident);
-                    await _context.SaveChangesAsync();
+    var ctxMois = document.getElementById('incidentsParMoisChart').getContext('2d');
+    new Chart(ctxMois, {
+        type: 'bar',
+        data: {
+            labels: incidentsParMoisLabels,
+            datasets: [{
+                label: 'Nombre d\'Incidents',
+                data: incidentsParMoisData,
+                backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true
                 }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!IncidentExists(incident.IncidentId))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
+            }
+        }
+    });
+
+    // Données pour les incidents par semaine
+    var incidentsParSemaineLabels = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(ViewBag.IncidentsParSemaine.Select(s => s.Semaine)));
+    var incidentsParSemaineData = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(ViewBag.IncidentsParSemaine.Select(s => s.Nombre)));
+
+    var ctxSemaine = document.getElementById('incidentsParSemaineChart').getContext('2d');
+    new Chart(ctxSemaine, {
+        type: 'line',
+        data: {
+            labels: incidentsParSemaineLabels,
+            datasets: [{
+                label: 'Nombre d\'Incidents',
+                data: incidentsParSemaineData,
+                backgroundColor: 'rgba(153, 102, 255, 0.5)',
+                borderColor: 'rgba(153, 102, 255, 1)',
+                borderWidth: 2,
+                fill: true
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true
                 }
-                return RedirectToAction(nameof(Index));
             }
-
-
-            ViewBag.EquipeId = _context.Equipes.Select(e => new SelectListItem
-            {
-                Value = e.EquipeId.ToString(),
-                Text = e.NomEquipe
-            }).ToList();
-            ViewBag.AppId = _context.Applicatifs.Select(a => new SelectListItem
-            {
-                Value = a.AppId.ToString(),
-                Text = a.AppNom
-            }).ToList();
-
-            ViewBag.CriticiteId = _context.Criticites.Select(c => new SelectListItem
-            {
-                Value = c.CriticiteId.ToString(),
-                Text = c.CriticiteNom
-            }).ToList();
-
-            ViewBag.StatutId = _context.Statuts.Select(s => new SelectListItem
-            {
-                Value = s.StatutId.ToString(),
-                Text = s.StatutNom
-            }).ToList();
-
-            ViewBag.OrigineId = _context.Origines.Select(o => new SelectListItem
-            {
-                Value = o.OrigineId.ToString(),
-                Text = o.OrigineNom
-            }).ToList();
-
-          
-
-            return View(incident);
         }
-
-
-
-        // GET: Incident/Delete/5
-        public async Task<IActionResult> Delete(int? id)
-        {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var incident = await _context.Incidents
-                .Include(i => i.App)
-              .Include(i => i.App)
-                .Include(i => i.Criticite)
-                .Include(i => i.Statut)
-                .Include(i => i.Origine)
-                .Include(i=>i.Equipe)
-               .FirstOrDefaultAsync(m => m.IncidentId == id);
-            if (incident == null)
-            {
-                return NotFound();
-            }
-
-            return View(incident);
-        }
-
-        // POST: Incident/Delete/5
-        [HttpPost, ActionName("Delete")]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(int id)
-        {
-            var incident = await _context.Incidents.FindAsync(id);
-            _context.Incidents.Remove(incident);
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
-        }
-
-        private bool IncidentExists(int id)
-        {
-            return _context.Incidents.Any(e => e.IncidentId == id);
-        }
-
-        private void PopulateDropDownLists(Incident incident = null)
-        {
-            ViewData["AppId"] = new SelectList(_context.Applicatifs, "App_ID", "App_nom", incident?.AppId);
-            ViewData["CriticiteId"] = new SelectList(_context.Criticites, "Criticite_ID", "Criticite_nom", incident?.CriticiteId);
-            ViewData["StatutId"] = new SelectList(_context.Statuts, "Statut_ID", "Statut_nom", incident?.StatutId);
-            ViewData["OrigineId"] = new SelectList(_context.Origines, "Origine_ID", "Origine_nom", incident?.OrigineId);
-            ViewData["EquipeId"] = new SelectList(_context.Equipes, "EquipeId", "NomEquipe", incident?.EquipeId);
-
-        }
-
-
-        //---------------------
-        [HttpPost]
-        public IActionResult UpdateStatut(int IncidentId, int StatutId)
-        {
-            var incident = _context.Incidents.Find(IncidentId);
-            if (incident != null)
-            {
-                var statut = _context.Statuts.Find(StatutId);
-                if (statut != null && statut.StatutNom == "Clos" && (incident.PostMortem == null || incident.PostMortem.Length == 0))
-                {
-                    return Json(new { success = false, message = "Le statut ne peut être mis à 'Clos' que si un post-mortem a été téléversé." });
-                }
-
-                incident.StatutId = StatutId;
-                _context.SaveChanges();
-                return Json(new { success = true });
-            }
-            return Json(new { success = false, message = "Incident non trouvé." });
-        }
-
-        [HttpPost]
-        public IActionResult UpdateDescription(int IncidentId, string Description)
-        {
-            var incident = _context.Incidents.Find(IncidentId);
-            if (incident != null)
-            {
-                incident.Description = Description;
-                _context.SaveChanges();
-            }
-           
-            return RedirectToAction("Details", new { id = IncidentId });
-        }
-
-        [HttpPost]
-        public IActionResult UpdateImpact(int IncidentId, string Impact)
-        {
-            var incident = _context.Incidents.Find(IncidentId);
-            if (incident != null)
-            {
-                incident.Impact = Impact;
-                _context.SaveChanges();
-            }
-            return RedirectToAction("Details", new { id = IncidentId });
-        }
-
-        [HttpPost]
-        public IActionResult UpdateTitre(int IncidentId, string Titre)
-        {
-            var incident = _context.Incidents.Find(IncidentId);
-            if (incident != null)
-            {
-                incident.Titre = Titre;
-                _context.SaveChanges();
-            }
-            return RedirectToAction("Details", new { id = IncidentId });
-        }
-
-        [HttpPost]
-        public IActionResult UpdateApplicatif(int IncidentId, int AppId)
-        {
-            var incident = _context.Incidents.Find(IncidentId);
-            if (incident != null)
-            {
-                incident.AppId = AppId;
-                _context.SaveChanges();
-            }
-            return RedirectToAction("Details", new { id = IncidentId });
-
-        }
-
-
-        [HttpPost]
-        public IActionResult UpdateCriticite(int IncidentId, int CriticiteId)
-        {
-            var incident = _context.Incidents.Find(IncidentId);
-            if (incident != null)
-            {
-                incident.CriticiteId = CriticiteId;
-                _context.SaveChanges();
-            }
-            return RedirectToAction("Details", new { id = IncidentId });
-        }
-
-        [HttpPost]
-        public IActionResult UpdateRefTicket(int IncidentId, string RefTicket)
-        {
-            var incident = _context.Incidents.Find(IncidentId);
-            if (incident != null)
-            {
-                incident.RefTicket = RefTicket;
-                _context.SaveChanges();
-            }
-            return RedirectToAction("Details", new { id = IncidentId });
-        }
-
-        [HttpPost]
-        public IActionResult UpdateLienTicket(int IncidentId, string LienTicket)
-        {
-            var incident = _context.Incidents.Find(IncidentId);
-            if (incident != null)
-            {
-                incident.LienTicket = LienTicket;
-                _context.SaveChanges();
-            }
-            return RedirectToAction("Details", new { id = IncidentId });
-        }
-
-        [HttpPost]
-        public IActionResult UpdatePriseEnCharge(int IncidentId, int EquipeId)
-        {
-            var incident = _context.Incidents.Find(IncidentId);
-            if (incident != null)
-            {
-                incident.EquipeId = EquipeId;
-                _context.SaveChanges();
-            }
-            return RedirectToAction("Details", new { id = IncidentId });
-        }
-
-        [HttpPost]
-        public IActionResult UpdateDebutImpact(int IncidentId, DateTime Debutdimpact)
-        {
-            var incident = _context.Incidents.Find(IncidentId);
-            if (incident != null)
-            {
-                incident.Debutdimpact = Debutdimpact;
-                _context.SaveChanges();
-            }
-            return RedirectToAction("Details", new { id = IncidentId });
-        }
-
-        [HttpPost]
-        public IActionResult UpdateDatePriseEnCharge(int IncidentId, DateTime Datepriseencharge)
-        {
-            var incident = _context.Incidents.Find(IncidentId);
-            if (incident != null)
-            {
-                incident.Datepriseencharge = Datepriseencharge;
-                _context.SaveChanges();
-            }
-            return RedirectToAction("Details", new { id = IncidentId });
-        }
-
-        [HttpPost]
-        public IActionResult UpdateDateResolution(int IncidentId, DateTime? Dateresolution)
-        {
-            var incident = _context.Incidents.Find(IncidentId);
-            if (incident != null)
-            {
-                if (incident.Statut?.StatutNom != "Résolu")
-                {
-                    ModelState.AddModelError("", "La date de résolution ne peut être modifiée que lorsque l'incident est résolu.");
-                    return View("Details", incident); // Assurez-vous que la vue "Details" est correctement configurée pour afficher les erreurs de modèle.
-                }
-
-                incident.Dateresolution = Dateresolution;
-                _context.SaveChanges();
-            }
-            return RedirectToAction("Details", new { id = IncidentId });
-        }
-
-        [HttpPost]
-        public IActionResult UpdateOrigine(int IncidentId, int OrigineId)
-        {
-            var incident = _context.Incidents.Find(IncidentId);
-            if (incident != null)
-            {
-                incident.OrigineId = OrigineId;
-                _context.SaveChanges();
-            }
-            return RedirectToAction("Details", new { id = IncidentId });
-        }
-
-    }
-}
-
-
-
-
+    });
+</script>
 
 
 
