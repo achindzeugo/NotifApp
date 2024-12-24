@@ -1,105 +1,305 @@
-<button class="btn btn-info ms-2 btn-sm" title="Tester Connectivité" onclick="testConnectivity(@item.AppId)">
-    <i class="fas fa-network-wired"></i> Tester
-</button>
+voici mon controller pour homes,
 
+using Microsoft.AspNetCore.Mvc;
+using NotifApps.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
-<script>
-    function testConnectivity(appId) {
-        fetch(`/Applicatifs/TestConnectivity?id=${appId}`)
-            .then(response => response.json())
-            .then(data => {
-                const resultsList = document.getElementById('connectivityResults');
-                resultsList.innerHTML = ''; // Clear previous results
-
-                if (data.success) {
-                    data.results.forEach(result => {
-                        const listItem = document.createElement('li');
-                        listItem.className = 'list-group-item';
-                        listItem.textContent = `Adresse: ${result.Address}, Type: ${result.Type}, Statut: ${result.Status}, Temps: ${result.RoundTripTime || 'N/A'}ms`;
-                        resultsList.appendChild(listItem);
-                    });
-                } else {
-                    const listItem = document.createElement('li');
-                    listItem.className = 'list-group-item text-danger';
-                    listItem.textContent = data.message;
-                    resultsList.appendChild(listItem);
-                }
-
-                // Show the modal
-                new bootstrap.Modal(document.getElementById('connectivityModal')).show();
-            })
-            .catch(error => {
-                console.error('Erreur lors du test de connectivité:', error);
-                alert('Une erreur est survenue lors du test de connectivité.');
-            });
-    }
-</script>
-
-
-
-[HttpGet]
-public async Task<IActionResult> TestConnectivity(int id)
+namespace NotifApps.Controllers
 {
-    var applicatif = await _context.Applicatifs
-        .Include(a => a.Addresses)
-        .FirstOrDefaultAsync(a => a.AppId == id);
-
-    if (applicatif == null || applicatif.Addresses == null || !applicatif.Addresses.Any())
+    public class HomesController : Controller
     {
-        return Json(new { success = false, message = "Aucune adresse trouvée pour cet applicatif." });
-    }
+        private readonly NotifdbContext _context;
 
-    var results = new List<object>();
-    foreach (var address in applicatif.Addresses)
-    {
-        try
+        public HomesController(NotifdbContext context)
         {
-            using (var ping = new System.Net.NetworkInformation.Ping())
+            _context = context;
+        }
+        //BREADCRUMB................................
+        public List<BreadcrumbItem> GetBreadcrumb(string page)
+        {
+            var breadcrumb = new List<BreadcrumbItem>
+       {
+           new BreadcrumbItem { Title = "Homes", Url = Url.Action("Index", "Homes"), IsActive = false }
+       };
+
+            switch (page)
             {
-                var reply = ping.Send(address.Value);
-                results.Add(new
-                {
-                    Type = address.Type,
-                    Address = address.Value,
-                    Status = reply.Status.ToString(),
-                    RoundTripTime = reply.RoundtripTime
-                });
+                case "Index":
+                    breadcrumb.Add(new BreadcrumbItem { Title = "Index", Url = Url.Action("Index", "Utilisateur"), IsActive = true });
+                    break;
+                case "Create":
+                    breadcrumb.Add(new BreadcrumbItem { Title = "Index", Url = Url.Action("Index", "Utilisateur"), IsActive = false });
+                    breadcrumb.Add(new BreadcrumbItem { Title = "Create", Url = Url.Action("Create", "Utilisateur"), IsActive = true });
+                    break;
+                case "Details":
+                    breadcrumb.Add(new BreadcrumbItem { Title = "Index", Url = Url.Action("Index", "Utilisateur"), IsActive = false });
+                    breadcrumb.Add(new BreadcrumbItem { Title = "Details", Url = Url.Action("Details", "Utilisateurt"), IsActive = true });
+                    break;
+                case "Edit":
+                    breadcrumb.Add(new BreadcrumbItem { Title = "Index", Url = Url.Action("Index", "Utilisateur"), IsActive = false });
+                    breadcrumb.Add(new BreadcrumbItem { Title = "Edit", Url = Url.Action("Edit", "Utilisateur"), IsActive = true });
+                    break;
+                case "AttacheEquipe":
+                    breadcrumb.Add(new BreadcrumbItem { Title = "Index", Url = Url.Action("Index", "Utilisateur"), IsActive = false });
+                    breadcrumb.Add(new BreadcrumbItem { Title = "AttacheEquipe", Url = Url.Action("AttacheEquipe", "Utilisateur"), IsActive = true });
+                    break;
+                case "UploadUsers":
+                    breadcrumb.Add(new BreadcrumbItem { Title = "Index", Url = Url.Action("Index", "Utilisateur"), IsActive = false });
+                    breadcrumb.Add(new BreadcrumbItem { Title = "UploadUsers", Url = Url.Action("UploadUsers", "Utilisateur"), IsActive = true });
+                    break;
+
             }
+
+            return breadcrumb;
         }
-        catch (Exception ex)
+        public IActionResult Index()
         {
-            results.Add(new
-            {
-                Type = address.Type,
-                Address = address.Value,
-                Status = "Erreur",
-                Message = ex.Message
-            });
+            var breadcrumb = GetBreadcrumb("Index");
+            ViewBag.Breadcrumb = breadcrumb;
+            var totalIncidents = _context.Incidents.Count();
+            var enCoursCount = _context.Incidents.Count(i => i.Statut.StatutNom == "En cours");
+            var criticiteP0Count = _context.Incidents.Count(i => i.Criticite.CriticiteNom == "P0");
+            var incidentsClosCount = _context.Incidents.Count(i => i.Statut.StatutNom == "Clos");
+            var incidentsResoluCount = _context.Incidents.Count(i => i.Statut.StatutNom == "Résolu");
+
+
+            ViewBag.TotalIncidents = totalIncidents;
+            ViewBag.EnCoursCount = enCoursCount;
+            ViewBag.CriticiteP0Count = criticiteP0Count;
+            ViewBag.IncidentsClosCount = incidentsClosCount;
+            ViewBag.IncidentsResoluCount = incidentsResoluCount;
+
+
+            return View();
+        }
+
+        public IActionResult Dashboard()
+        {
+            return View();
+        }
+        public IActionResult GetIncidentsByMonth()
+        {
+            var incidentsByMonth = _context.Incidents
+                .Where(i => i.Debutdimpact.HasValue) // Filtrer les incidents sans date de début d'impact
+                .GroupBy(i => new { i.Debutdimpact.Value.Year, i.Debutdimpact.Value.Month })
+                .Select(g => new
+                {
+                    Year = g.Key.Year,
+                    Month = g.Key.Month,
+                    Count = g.Count()
+                })
+                .OrderBy(g => g.Year).ThenBy(g => g.Month)
+                .ToList();
+
+            return Json(incidentsByMonth);
         }
     }
-
-    return Json(new { success = true, results });
 }
 
 
+voici ma vue pour homes, qui affiche les dashboards
+@{
+    ViewData["Title"] = "Dashboard";
+}
 
-<div class="modal fade" id="connectivityModal" tabindex="-1" aria-labelledby="connectivityModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="connectivityModalLabel">Résultats de Connectivité</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+<h1 class="text-center my-4">Insights</h1>
+<hr />
+<div class="container">
+    <div class="">
+        <!-- Cards Section -->
+        <div class="d-flex justify-content-between flex-wrap">
+            <!-- Total Incidents -->
+            <div class="card text-white bg-primary mb-3" style="width: 18rem;">
+                <div class="card-header">Total Incidents</div>
+                <div class="card-body">
+                    <h1 class="card-title text-center">@ViewBag.TotalIncidents</h1>
+                    <i class="fas fa-th-list"></i>
+                </div>
             </div>
-            <div class="modal-body">
-                <ul id="connectivityResults" class="list-group">
-                    <!-- Résultats des tests -->
-                </ul>
+
+            <!-- Incidents En Cours -->
+            <div class="card text-white bg-warning mb-3" style="width: 18rem;">
+                <div class="card-header">Incidents En Cours</div>
+                <div class="card-body">
+                    <h1 class="card-title text-center">@ViewBag.EnCoursCount</h1>
+                    <i class="fas fa-spinner"></i>
+                </div>
+            </div>
+
+            <!-- Criticité P0, haute criticité -->
+            <div class="card text-white bg-danger mb-3" style="width: 18rem;">
+                <div class="card-header">Criticité P0</div>
+                <div class="card-body">
+                    <h1 class="card-title text-center">@ViewBag.CriticiteP0Count</h1>
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+            </div>
+
+            <div class="card text-white bg-success mb-3" style="width: 18rem;">
+                <div class="card-header">Incidents Résolu</div>
+                <div class="card-body">
+                    <h1 class="card-title text-center">@ViewBag.incidentsResoluCount</h1>
+                    <i class="fas fa-check"></i>
+                </div>
+            </div>
+
+            <!-- Incidents Clos -->
+            <div class="card text-white bg-secondary mb-3" style="width: 18rem;">
+                <div class="card-header">Incidents Clos</div>
+                <div class="card-body">
+                    <h1 class="card-title text-center">@ViewBag.incidentsClosCount</h1>
+                    <i class="fas fa-check-double"></i>
+                </div>
+            </div>
+
+
+
+        </div>
+    </div>
+    <!-- Graphics Section -->
+    <div class="mt-5">
+        <h2 class="text-center">Dashboards</h2>
+        <hr />
+        <div class="row">
+            <!-- Placeholder for Graphs -->
+            <div class=" d-flex justify-content-center">
+                <div class="col-md-6 ms-2 flex-fill">
+                    <div class="card">
+                        <div class="chart-container">
+                            <canvas id="chart1"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 ms-2 flex-fill">
+                    <div class="card">
+                        <div class="chart-container">
+                            <canvas id="chart2"></canvas>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
+<script src="~/js/Chart.js"></script>
+<script>
+    // G 1
+    const ctx1 = document.getElementById('chart1').getContext('2d');
+    new Chart(ctx1, {
+        type: 'bar',
+        data: {
+            labels: ['Incidents Totaux', 'En Cours', 'Criticité P0', 'Résolu','Clos'],
+            datasets: [{
+                label: 'Statistiques des Incidents',
+                data: [@ViewBag.TotalIncidents, @ViewBag.EnCoursCount, @ViewBag.CriticiteP0Count,@ViewBag.IncidentsResoluCount, @ViewBag.IncidentsClosCount],
+                backgroundColor: ['blue', 'orange', 'red', 'green','SlateBlue']
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false },
+                tooltip: { enabled: true }
+            }
+        }
+    });
 
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+    // graph 2
+    const ctx2 = document.getElementById('chart2').getContext('2d');
+    new Chart(ctx2, {
+        type: 'pie',
+        data: {
+            labels: ['En Cours', 'Résolu','Clos'],
+            datasets: [{
+                data: [@ViewBag.EnCoursCount,@ViewBag.IncidentsResoluCount, @ViewBag.IncidentsClosCount],
+                backgroundColor: ['orange', 'green','SlateBlue']
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: true },
+                tooltip: { enabled: true }
+            }
+        }
+    });
+</script>
+
+<script src="~/js/Chart.js"></script>
+
+<style>
+    .chart-container {
+        width: 100%;
+        height: 400px;
+    }
+</style>
+
+<style>
+    .chart-container {
+        width: 500px;
+        height: 400px;
+    }
+
+    #chart1 {
+        width: 100% !important;
+        height: 100% !important;
+    }
+
+    #chart2 {
+        width: 90% !important;
+        height: 90% !important;
+    }
+</style>
+
+
+j'aimerais ajouter a ca un graphique qui va montrer les incidents qu'il y'a eu pendant 
+une periode de temps donnée, et j'aimerais qu'on puisse choisir le filtre par semaine, mois, en fonction des annees 
+
+donc si c'est 2024, j'ai la possibilité de choisir le filtre sois par mois ou par semaine
+donc sois par semaine (mon, tues, wed, thurs, fri) ou mois (jan, feb, mar, april, may....)
+pour le faire on peut utiliser les dates de debut d'impact 
+
+voici mon modele pour incident
+    public partial class Incident
+    {
+        public Incident()
+        {
+            ApplicationIncidents = new HashSet<ApplicationIncident>();
+            PlanDactions = new List<PlanDaction>();
+    }
+
+        public int IncidentId { get; set; }
+        public string Description { get; set; }
+        public string DestinataireSup { get; set; }
+        public int? OrigineId { get; set; }
+        public int? CriticiteId { get; set; }
+        public int? StatutId { get; set; }
+        public int? AppId { get; set; }
+        public string Titre { get; set; }
+        public string Pec { get; set; }
+        public string RefTicket { get; set; }
+        public string LienTicket { get; set; }
+        public DateTime? Debutdimpact { get; set; }
+        public DateTime? Datepriseencharge { get; set; }
+        public DateTime? Dateresolution { get; set; }
+        public string Impact { get; set; }
+        public int? PecId { get; set; }
+        public int? EquipeId { get; set; }
+        public virtual Equipe Equipe { get; set; }
+        public virtual Applicatif App { get; set; }
+        public virtual Criticite Criticite { get; set; }
+        public virtual Origine Origine { get; set; }
+        public virtual Statut Statut { get; set; }
+        public byte[] PostMortem { get; set; } // Nouvelle propriété ajoutée PM
+        public virtual ICollection<ApplicationIncident> ApplicationIncidents { get; set; }
+        public virtual ICollection<PlanDaction> PlanDactions { get; set; }
+
+    }
+
+}
+
 
