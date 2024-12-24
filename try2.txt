@@ -1,112 +1,90 @@
-using System.Net.NetworkInformation;
-
-public IActionResult TestConnectivity(int id)
+public IActionResult GetIncidentsByTimePeriod(int year, string filterType)
 {
-    var applicatif = _context.Applicatifs
-        .Include(a => a.Addresses)
-        .FirstOrDefault(a => a.AppId == id);
+    var incidents = _context.Incidents
+        .Where(i => i.Debutdimpact.HasValue && i.Debutdimpact.Value.Year == year)
+        .ToList();
 
-    if (applicatif == null)
+    var groupedData = filterType switch
     {
-        return Json(new { success = false, message = "Applicatif introuvable" });
-    }
-
-    var results = new List<object>();
-
-    foreach (var address in applicatif.Addresses)
-    {
-        try
-        {
-            using (var ping = new Ping())
+        "week" => incidents
+            .GroupBy(i => CultureInfo.CurrentCulture.Calendar.GetWeekOfYear(
+                i.Debutdimpact.Value, CalendarWeekRule.FirstDay, DayOfWeek.Monday))
+            .Select(g => new
             {
-                var reply = ping.Send(address.Value);
-                results.Add(new
-                {
-                    Type = address.Type,
-                    Address = address.Value,
-                    Status = reply.Status.ToString(),
-                    RoundTripTime = reply.RoundtripTime
-                });
-            }
-        }
-        catch (Exception ex)
-        {
-            results.Add(new
+                Week = g.Key,
+                Count = g.Count()
+            }),
+        "month" => incidents
+            .GroupBy(i => i.Debutdimpact.Value.Month)
+            .Select(g => new
             {
-                Type = address.Type,
-                Address = address.Value,
-                Status = "Erreur",
-                Message = ex.Message
-            });
-        }
-    }
+                Month = g.Key,
+                Count = g.Count()
+            }),
+        _ => Enumerable.Empty<object>()
+    };
 
-    return PartialView("_ConnectivityResults", results);
+    return Json(groupedData);
 }
 
 
 
-
-<table class="table table-bordered">
-    <thead>
-        <tr>
-            <th>Type</th>
-            <th>Adresse</th>
-            <th>Status</th>
-            <th>Temps de Réponse (ms)</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var result in Model)
-        {
-            <tr>
-                <td>@result.Type</td>
-                <td>@result.Address</td>
-                <td>@result.Status</td>
-                <td>@result.RoundTripTime</td>
-            </tr>
-        }
-    </tbody>
-</table>
+<div class="d-flex justify-content-center mb-4">
+    <select id="yearFilter" class="form-select w-25 me-2">
+        <option value="2023">2023</option>
+        <option value="2024" selected>2024</option>
+    </select>
+    <select id="timeFilter" class="form-select w-25">
+        <option value="month">Mois</option>
+        <option value="week">Semaine</option>
+    </select>
+    <button id="applyFilter" class="btn btn-primary ms-2">Filtrer</button>
+</div>
 
 
 
 
-<button class="btn btn-info ms-2 btn-sm" title="Tester Connectivité" data-bs-toggle="modal" data-bs-target="#connectivityModal" 
-    onclick="loadConnectivityResults(@item.AppId)">
-    <i class="fas fa-network-wired"></i> Tester
-</button>
 
-
-
-<div class="modal fade" id="connectivityModal" tabindex="-1" aria-labelledby="connectivityModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="connectivityModalLabel">Résultats de Connectivité</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body" id="connectivityResults">
-                <!-- Les résultats seront chargés ici -->
-            </div>
+<div class="col-md-6 ms-2 flex-fill">
+    <div class="card">
+        <div class="chart-container">
+            <canvas id="chart3"></canvas>
         </div>
     </div>
 </div>
 
 
-function loadConnectivityResults(appId) {
-    const resultsContainer = document.getElementById('connectivityResults');
-    resultsContainer.innerHTML = '<p>Chargement...</p>';
+document.getElementById('applyFilter').addEventListener('click', () => {
+    const year = document.getElementById('yearFilter').value;
+    const filterType = document.getElementById('timeFilter').value;
 
-    fetch(`/Applicatifs/TestConnectivity/${appId}`)
-        .then(response => response.text())
-        .then(html => {
-            resultsContainer.innerHTML = html;
-        })
-        .catch(error => {
-            resultsContainer.innerHTML = '<p>Erreur lors du chargement des résultats.</p>';
-            console.error(error);
+    fetch(`/Homes/GetIncidentsByTimePeriod?year=${year}&filterType=${filterType}`)
+        .then(response => response.json())
+        .then(data => {
+            const labels = data.map(d => filterType === 'month' ? 
+                new Date(0, d.Month - 1).toLocaleString('default', { month: 'short' }) : `Semaine ${d.Week}`);
+            const counts = data.map(d => d.Count);
+
+            const ctx3 = document.getElementById('chart3').getContext('2d');
+            new Chart(ctx3, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: `Incidents par ${filterType === 'month' ? 'mois' : 'semaine'} (${year})`,
+                        data: counts,
+                        borderColor: 'blue',
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: true },
+                        tooltip: { enabled: true }
+                    }
+                }
+            });
         });
-}
-
+});
 
