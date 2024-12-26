@@ -1,45 +1,50 @@
-public IActionResult GetIncidentsByTimePeriod(int year, string filterType)
+public IActionResult GetMonthlyIncidentData()
 {
-    var incidents = _context.Incidents
-        .Where(i => i.Debutdimpact.HasValue && i.Debutdimpact.Value.Year == year)
+    var monthlyIncidents = _context.Incidents
+        .Where(i => i.Debutdimpact.HasValue) // Ignorer les incidents sans date d'impact
+        .GroupBy(i => i.Debutdimpact.Value.Month)
+        .Select(g => new
+        {
+            Month = g.Key,
+            Count = g.Count()
+        })
+        .OrderBy(g => g.Month)
         .ToList();
 
-    var groupedData = filterType switch
-    {
-        "week" => incidents
-            .GroupBy(i => CultureInfo.CurrentCulture.Calendar.GetWeekOfYear(
-                i.Debutdimpact.Value, CalendarWeekRule.FirstDay, DayOfWeek.Monday))
-            .Select(g => new
-            {
-                Week = g.Key,
-                Count = g.Count()
-            }),
-        "month" => incidents
-            .GroupBy(i => i.Debutdimpact.Value.Month)
-            .Select(g => new
-            {
-                Month = g.Key,
-                Count = g.Count()
-            }),
-        _ => Enumerable.Empty<object>()
-    };
+    // Remplir les mois manquants avec 0
+    var incidentCounts = Enumerable.Range(1, 12)
+        .Select(month => new
+        {
+            Month = month,
+            Count = monthlyIncidents.FirstOrDefault(x => x.Month == month)?.Count ?? 0public IActionResult GetMonthlyIncidentData()
+{
+    var monthlyIncidents = _context.Incidents
+        .Where(i => i.Debutdimpact.HasValue) // Ignorer les incidents sans date d'impact
+        .GroupBy(i => i.Debutdimpact.Value.Month)
+        .Select(g => new
+        {
+            Month = g.Key,
+            Count = g.Count()
+        })
+        .OrderBy(g => g.Month)
+        .ToList();
 
-    return Json(groupedData);
+    // Remplir les mois manquants avec 0
+    var incidentCounts = Enumerable.Range(1, 12)
+        .Select(month => new
+        {
+            Month = month,
+            Count = monthlyIncidents.FirstOrDefault(x => x.Month == month)?.Count ?? 0
+        })
+        .ToList();
+
+    return Json(incidentCounts);
 }
+        })
+        .ToList();
 
-
-
-<div class="d-flex justify-content-center mb-4">
-    <select id="yearFilter" class="form-select w-25 me-2">
-        <option value="2023">2023</option>
-        <option value="2024" selected>2024</option>
-    </select>
-    <select id="timeFilter" class="form-select w-25">
-        <option value="month">Mois</option>
-        <option value="week">Semaine</option>
-    </select>
-    <button id="applyFilter" class="btn btn-primary ms-2">Filtrer</button>
-</div>
+    return Json(incidentCounts);
+}
 
 
 
@@ -48,33 +53,38 @@ public IActionResult GetIncidentsByTimePeriod(int year, string filterType)
 <div class="col-md-6 ms-2 flex-fill">
     <div class="card">
         <div class="chart-container">
-            <canvas id="chart3"></canvas>
+            <canvas id="monthlyChart"></canvas>
         </div>
     </div>
 </div>
 
 
-document.getElementById('applyFilter').addEventListener('click', () => {
-    const year = document.getElementById('yearFilter').value;
-    const filterType = document.getElementById('timeFilter').value;
 
-    fetch(`/Homes/GetIncidentsByTimePeriod?year=${year}&filterType=${filterType}`)
+
+<script>
+    fetch('/Homes/GetMonthlyIncidentData')
         .then(response => response.json())
         .then(data => {
-            const labels = data.map(d => filterType === 'month' ? 
-                new Date(0, d.Month - 1).toLocaleString('default', { month: 'short' }) : `Semaine ${d.Week}`);
-            const counts = data.map(d => d.Count);
+            const labels = data.map(item => {
+                const monthNames = [
+                    'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+                    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+                ];
+                return monthNames[item.Month - 1];
+            });
+            const counts = data.map(item => item.Count);
 
-            const ctx3 = document.getElementById('chart3').getContext('2d');
-            new Chart(ctx3, {
+            const ctx = document.getElementById('monthlyChart').getContext('2d');
+            new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels,
+                    labels: labels,
                     datasets: [{
-                        label: `Incidents par ${filterType === 'month' ? 'mois' : 'semaine'} (${year})`,
+                        label: 'Incidents par Mois',
                         data: counts,
                         borderColor: 'blue',
-                        fill: false
+                        backgroundColor: 'rgba(0, 0, 255, 0.2)',
+                        fill: true
                     }]
                 },
                 options: {
@@ -82,9 +92,14 @@ document.getElementById('applyFilter').addEventListener('click', () => {
                     plugins: {
                         legend: { display: true },
                         tooltip: { enabled: true }
+                    },
+                    scales: {
+                        x: { title: { display: true, text: 'Mois' } },
+                        y: { title: { display: true, text: 'Nombre d\'Incidents' } }
                     }
                 }
             });
-        });
-});
+        })
+        .catch(error => console.error('Erreur lors de la récupération des données :', error));
+</script>
 
