@@ -1,5 +1,101 @@
 [{"month":1,"count":0},{"month":2,"count":0},{"month":3,"count":0},{"month":4,"count":0},{"month":5,"count":0},{"month":6,"count":0},{"month":7,"count":0},{"month":8,"count":0},{"month":9,"count":0},{"month":10,"count":2},{"month":11,"count":2},{"month":12,"count":1}]
 
+[HttpGet]
+public IActionResult GetMonthlyIncidentData()
+{
+    // Récupérer les données groupées par mois
+    var incidentData = _context.Incidents
+        .GroupBy(i => i.Debutdimpact.Month)
+        .Select(g => new { Month = g.Key, Count = g.Count() })
+        .ToList();
+
+    // Ajouter les mois manquants
+    var allMonths = Enumerable.Range(1, 12)
+        .Select(m => new
+        {
+            Month = m,
+            Count = incidentData.FirstOrDefault(i => i.Month == m)?.Count ?? 0
+        })
+        .ToList();
+
+    return Json(allMonths);
+}
+
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Graphique des Incidents</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <canvas id="monthlyChart" width="400" height="200"></canvas>
+    <script>
+        // Récupérer les données JSON depuis le serveur
+        fetch('/Homes/GetMonthlyIncidentData')
+            .then(response => response.json())
+            .then(data => {
+                // Liste des noms des mois
+                const monthNames = [
+                    'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+                    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+                ];
+
+                // Extraire les labels (mois) et les counts (nombre d'incidents)
+                const labels = data.map(item => monthNames[item.Month - 1]);
+                const counts = data.map(item => item.Count);
+
+                // Configuration du graphique
+                const ctx = document.getElementById('monthlyChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'line', // Type de graphique (ligne)
+                    data: {
+                        labels: labels, // Mois
+                        datasets: [{
+                            label: 'Incidents par Mois',
+                            data: counts, // Nombre d'incidents
+                            borderColor: 'blue', // Couleur de la ligne
+                            backgroundColor: 'rgba(0, 0, 255, 0.2)', // Couleur de remplissage
+                            fill: true // Remplir la zone sous la courbe
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                labels: {
+                                    color: 'black'
+                                }
+                            },
+                            tooltip: {
+                                enabled: true
+                            }
+                        },
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Mois'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Nombre d\'Incidents'
+                                },
+                                beginAtZero: true // Démarrer l'axe Y à zéro
+                            }
+                        }
+                    }
+                });
+            })
+            .catch(error => console.error('Erreur lors de la récupération des données :', error));
+    </script>
+</body>
+</html>
 
 
 
