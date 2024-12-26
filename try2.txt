@@ -16,35 +16,13 @@ public IActionResult GetMonthlyIncidentData()
         .Select(month => new
         {
             Month = month,
-            Count = monthlyIncidents.FirstOrDefault(x => x.Month == month)?.Count ?? 0public IActionResult GetMonthlyIncidentData()
-{
-    var monthlyIncidents = _context.Incidents
-        .Where(i => i.Debutdimpact.HasValue) // Ignorer les incidents sans date d'impact
-        .GroupBy(i => i.Debutdimpact.Value.Month)
-        .Select(g => new
-        {
-            Month = g.Key,
-            Count = g.Count()
-        })
-        .OrderBy(g => g.Month)
-        .ToList();
-
-    // Remplir les mois manquants avec 0
-    var incidentCounts = Enumerable.Range(1, 12)
-        .Select(month => new
-        {
-            Month = month,
             Count = monthlyIncidents.FirstOrDefault(x => x.Month == month)?.Count ?? 0
         })
         .ToList();
 
     return Json(incidentCounts);
 }
-        })
-        .ToList();
 
-    return Json(incidentCounts);
-}
 
 
 
