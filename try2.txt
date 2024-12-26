@@ -1,146 +1,18 @@
-[{"month":1,"count":0},{"month":2,"count":0},{"month":3,"count":0},{"month":4,"count":0},{"month":5,"count":0},{"month":6,"count":0},{"month":7,"count":0},{"month":8,"count":0},{"month":9,"count":0},{"month":10,"count":2},{"month":11,"count":2},{"month":12,"count":1}]
-
 [HttpGet]
-public IActionResult GetMonthlyIncidentData()
+public IActionResult GetIncidentSummary()
 {
-    // Récupérer les données groupées par mois
-    var incidentData = _context.Incidents
-        .GroupBy(i => i.Debutdimpact.Month)
-        .Select(g => new { Month = g.Key, Count = g.Count() })
-        .ToList();
+    // Remplacez ceci par votre logique réelle pour récupérer les données
+    var incidentData = _dbContext.Incidents.Select(i => new
+    {
+        TotalIncidents = i.TotalIncidents,
+        IncidentsClos = i.IncidentsClos,
+        IncidentsResolu = i.IncidentsResolu,
+        CriticiteP0SansPM = i.CriticiteP0SansPM,
+        CriticiteP1SansPM = i.CriticiteP1SansPM,
+        CriticiteP2SansPM = i.CriticiteP2SansPM
+    }).ToList();
 
-    // Ajouter les mois manquants
-    var allMonths = Enumerable.Range(1, 12)
-        .Select(m => new
-        {
-            Month = m,
-            Count = incidentData.FirstOrDefault(i => i.Month == m)?.Count ?? 0
-        })
-        .ToList();
-
-    return Json(allMonths);
-}
-
-
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Graphique des Incidents</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
-<body>
-    <canvas id="monthlyChart" width="400" height="200"></canvas>
-    <script>
-        // Récupérer les données JSON depuis le serveur
-        fetch('/Homes/GetMonthlyIncidentData')
-            .then(response => response.json())
-            .then(data => {
-                // Liste des noms des mois
-                const monthNames = [
-                    'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-                    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
-                ];
-
-                // Extraire les labels (mois) et les counts (nombre d'incidents)
-                const labels = data.map(item => monthNames[item.Month - 1]);
-                const counts = data.map(item => item.Count);
-
-                // Configuration du graphique
-                const ctx = document.getElementById('monthlyChart').getContext('2d');
-                new Chart(ctx, {
-                    type: 'line', // Type de graphique (ligne)
-                    data: {
-                        labels: labels, // Mois
-                        datasets: [{
-                            label: 'Incidents par Mois',
-                            data: counts, // Nombre d'incidents
-                            borderColor: 'blue', // Couleur de la ligne
-                            backgroundColor: 'rgba(0, 0, 255, 0.2)', // Couleur de remplissage
-                            fill: true // Remplir la zone sous la courbe
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        plugins: {
-                            legend: {
-                                display: true,
-                                labels: {
-                                    color: 'black'
-                                }
-                            },
-                            tooltip: {
-                                enabled: true
-                            }
-                        },
-                        scales: {
-                            x: {
-                                title: {
-                                    display: true,
-                                    text: 'Mois'
-                                }
-                            },
-                            y: {
-                                title: {
-                                    display: true,
-                                    text: 'Nombre d\'Incidents'
-                                },
-                                beginAtZero: true // Démarrer l'axe Y à zéro
-                            }
-                        }
-                    }
-                });
-            })
-            .catch(error => console.error('Erreur lors de la récupération des données :', error));
-    </script>
-</body>
-</html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-public IActionResult GetMonthlyIncidentData()
-{
-    var monthlyIncidents = _context.Incidents
-        .Where(i => i.Debutdimpact.HasValue) // Ignorer les incidents sans date d'impact
-        .GroupBy(i => i.Debutdimpact.Value.Month)
-        .Select(g => new
-        {
-            Month = g.Key,
-            Count = g.Count()
-        })
-        .OrderBy(g => g.Month)
-        .ToList();
-
-    // Remplir les mois manquants avec 0
-    var incidentCounts = Enumerable.Range(1, 12)
-        .Select(month => new
-        {
-            Month = month,
-            Count = monthlyIncidents.FirstOrDefault(x => x.Month == month)?.Count ?? 0
-        })
-        .ToList();
-
-    return Json(incidentCounts);
+    return Json(incidentData);
 }
 
 
@@ -148,56 +20,51 @@ public IActionResult GetMonthlyIncidentData()
 
 
 
-<div class="col-md-6 ms-2 flex-fill">
-    <div class="card">
-        <div class="chart-container">
-            <canvas id="monthlyChart"></canvas>
-        </div>
-    </div>
+<div class="container mt-5">
+    <h2 class="text-center">Tableau des Incidents</h2>
+    <hr />
+    <table id="incidentTable" class="table table-striped table-bordered">
+        <thead>
+            <tr>
+                <th>Total Incidents</th>
+                <th>Incidents Clos</th>
+                <th>Incidents Résolu</th>
+                <th>Criticité P0 sans PM</th>
+                <th>Criticité P1 sans PM</th>
+                <th>Criticité P2 sans PM</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
 </div>
 
 
 
 
-<script>
-    fetch('/Homes/GetMonthlyIncidentData')
-        .then(response => response.json())
-        .then(data => {
-            const labels = data.map(item => {
-                const monthNames = [
-                    'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-                    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
-                ];
-                return monthNames[item.Month - 1];
-            });
-            const counts = data.map(item => item.Count);
 
-            const ctx = document.getElementById('monthlyChart').getContext('2d');
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Incidents par Mois',
-                        data: counts,
-                        borderColor: 'blue',
-                        backgroundColor: 'rgba(0, 0, 255, 0.2)',
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: { display: true },
-                        tooltip: { enabled: true }
-                    },
-                    scales: {
-                        x: { title: { display: true, text: 'Mois' } },
-                        y: { title: { display: true, text: 'Nombre d\'Incidents' } }
-                    }
-                }
-            });
-        })
-        .catch(error => console.error('Erreur lors de la récupération des données :', error));
+
+<script src="https://cdn.datatables.net/1.10.21/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.10.21/js/dataTables.bootstrap4.min.js"></script>
+<script>
+    $(document).ready(function () {
+        $('#incidentTable').DataTable({
+            ajax: {
+                url: '/Homes/GetIncidentSummary', // Remplacez par l'URL de votre méthode
+                dataSrc: '' // La structure des données JSON est un tableau
+            },
+            columns: [
+                { data: 'TotalIncidents' },
+                { data: 'IncidentsClos' },
+                { data: 'IncidentsResolu' },
+                { data: 'CriticiteP0SansPM' },
+                { data: 'CriticiteP1SansPM' },
+                { data: 'CriticiteP2SansPM' }
+            ],
+            language: {
+                url: "//cdn.datatables.net/plug-ins/1.10.21/i18n/French.json" // Traduction en français
+            }
+        });
+    });
 </script>
 
