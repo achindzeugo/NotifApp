@@ -1,18 +1,58 @@
-[HttpGet]
-public IActionResult GetIncidentSummary()
-{
-    // Remplacez ceci par votre logique réelle pour récupérer les données
-    var incidentData = _dbContext.Incidents.Select(i => new
-    {
-        TotalIncidents = i.TotalIncidents,
-        IncidentsClos = i.IncidentsClos,
-        IncidentsResolu = i.IncidentsResolu,
-        CriticiteP0SansPM = i.CriticiteP0SansPM,
-        CriticiteP1SansPM = i.CriticiteP1SansPM,
-        CriticiteP2SansPM = i.CriticiteP2SansPM
-    }).ToList();
+<div class="row">
+    <div class="col-md-6">
+        <label for="startDate">Date de début :</label>
+        <input type="date" id="startDate" class="form-control" />
+    </div>
+    <div class="col-md-6">
+        <label for="endDate">Date de fin :</label>
+        <input type="date" id="endDate" class="form-control" />
+    </div>
+</div>
+<div class="mt-3">
+    <button id="filterButton" class="btn btn-primary">Filtrer</button>
+</div>
 
-    return Json(incidentData);
+<!-- Monthly Chart -->
+<div class="col-md-6 ms-2 mt-4">
+    <div class="card">
+        <div class="chart-container">
+            <canvas id="monthlyChart"></canvas>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+[HttpGet]
+public IActionResult GetMonthlyIncidentData(DateTime? startDate, DateTime? endDate)
+{
+    // Filtrer les incidents par plage de dates
+    var query = _context.Incidents.AsQueryable();
+
+    if (startDate.HasValue)
+        query = query.Where(i => i.Debutdimpact >= startDate.Value);
+
+    if (endDate.HasValue)
+        query = query.Where(i => i.Debutdimpact <= endDate.Value);
+
+    // Récupérer les données groupées par mois
+    var incidentData = query
+        .GroupBy(i => i.Debutdimpact.Value.Month)
+        .Select(g => new { Month = g.Key, Count = g.Count() })
+        .ToList();
+
+    // Ajouter les mois manquants
+    var allMonths = Enumerable.Range(1, 12)
+        .Select(m => new
+        {
+            Month = m,
+            Count = incidentData.FirstOrDefault(i => i.Month == m)?.Count ?? 0
+        })
+        .ToList();
+
+    return Json(allMonths);
 }
 
 
@@ -20,51 +60,65 @@ public IActionResult GetIncidentSummary()
 
 
 
-<div class="container mt-5">
-    <h2 class="text-center">Tableau des Incidents</h2>
-    <hr />
-    <table id="incidentTable" class="table table-striped table-bordered">
-        <thead>
-            <tr>
-                <th>Total Incidents</th>
-                <th>Incidents Clos</th>
-                <th>Incidents Résolu</th>
-                <th>Criticité P0 sans PM</th>
-                <th>Criticité P1 sans PM</th>
-                <th>Criticité P2 sans PM</th>
-            </tr>
-        </thead>
-        <tbody>
-        </tbody>
-    </table>
-</div>
 
-
-
-
-
-
-<script src="https://cdn.datatables.net/1.10.21/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.10.21/js/dataTables.bootstrap4.min.js"></script>
 <script>
-    $(document).ready(function () {
-        $('#incidentTable').DataTable({
-            ajax: {
-                url: '/Homes/GetIncidentSummary', // Remplacez par l'URL de votre méthode
-                dataSrc: '' // La structure des données JSON est un tableau
-            },
-            columns: [
-                { data: 'TotalIncidents' },
-                { data: 'IncidentsClos' },
-                { data: 'IncidentsResolu' },
-                { data: 'CriticiteP0SansPM' },
-                { data: 'CriticiteP1SansPM' },
-                { data: 'CriticiteP2SansPM' }
-            ],
-            language: {
-                url: "//cdn.datatables.net/plug-ins/1.10.21/i18n/French.json" // Traduction en français
-            }
-        });
+    document.getElementById('filterButton').addEventListener('click', function () {
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+
+        // Construire l'URL avec les paramètres de filtre
+        const url = `/Homes/GetMonthlyIncidentData?startDate=${startDate}&endDate=${endDate}`;
+
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                const monthNames = [
+                    'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+                    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+                ];
+
+                const labels = data.map(item => monthNames[item.Month - 1]);
+                const counts = data.map(item => item.Count);
+
+                // Mettre à jour le graphique
+                if (window.monthlyChartInstance) {
+                    window.monthlyChartInstance.destroy();
+                }
+
+                const ctx = document.getElementById('monthlyChart').getContext('2d');
+                window.monthlyChartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Évolution des incidents par mois',
+                            data: counts,
+                            borderColor: 'blue',
+                            backgroundColor: 'rgba(0, 0, 255, 0.2)',
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { display: true },
+                            tooltip: { enabled: true }
+                        },
+                        scales: {
+                            x: {
+                                title: { display: true, text: 'Mois' }
+                            },
+                            y: {
+                                title: { display: true, text: 'Nombre d\'Incidents' },
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            })
+            .catch(error => console.error('Erreur lors de la récupération des données :', error));
     });
 </script>
+
+
 
